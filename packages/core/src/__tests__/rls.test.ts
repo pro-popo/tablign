@@ -20,10 +20,17 @@ const URL = env.SUPABASE_URL;
 const ANON = env.SUPABASE_ANON_KEY;
 const SERVICE = env.SUPABASE_SERVICE_ROLE_KEY;
 
+if (!URL || !ANON || !SERVICE) {
+  throw new Error(
+    "packages/core/.env.test에 SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY가 필요합니다.",
+  );
+}
+
 async function makeUser(email: string): Promise<{ client: SupabaseClient; id: string }> {
   const admin = createClient(URL, SERVICE, {
     auth: { persistSession: false, autoRefreshToken: false },
-    realtime: { transport: ws },
+    // ws의 타입과 supabase의 WebSocketLikeConstructor가 정확히 일치하지 않아 캐스팅 (런타임 동작은 정상)
+    realtime: { transport: ws as unknown as typeof WebSocket },
   });
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
@@ -34,7 +41,8 @@ async function makeUser(email: string): Promise<{ client: SupabaseClient; id: st
 
   const client = createClient(URL, ANON, {
     auth: { persistSession: false, autoRefreshToken: false },
-    realtime: { transport: ws },
+    // ws의 타입과 supabase의 WebSocketLikeConstructor가 정확히 일치하지 않아 캐스팅 (런타임 동작은 정상)
+    realtime: { transport: ws as unknown as typeof WebSocket },
   });
   const { error: signInErr } = await client.auth.signInWithPassword({
     email,
