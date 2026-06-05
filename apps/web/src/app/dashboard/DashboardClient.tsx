@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Board, Sidebar, CollectionColumn } from "@tablign/ui";
-import type { Collection } from "@tablign/core";
+import { useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
+import { Board, Sidebar, LinkCard, AddLinkInput } from "@tablign/ui";
+import type { Collection, Link } from "@tablign/core";
+import { positionBetween } from "@tablign/core";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useSpaces,
   useCreateSpace,
@@ -11,10 +14,28 @@ import {
   useDeleteCollection,
   useLinks,
   useAddLink,
+  moveLink,
+  supabase,
 } from "@/lib/queries";
+import { BoardDnd } from "./BoardDnd";
 
 function openUrl(url: string) {
   window.open(url, "_blank", "noopener");
+}
+
+function DraggableLink({ link }: { link: Link }) {
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: link.id,
+    data: { link },
+  });
+  const style = transform
+    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 1 }
+    : undefined;
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      <LinkCard link={link} onOpen={openUrl} />
+    </div>
+  );
 }
 
 function CollectionColumnContainer({
@@ -28,15 +49,39 @@ function CollectionColumnContainer({
 }) {
   const { data: links = [] } = useLinks(collection.id);
   const addLink = useAddLink(collection.id);
+  const { setNodeRef, isOver } = useDroppable({
+    id: collection.id,
+    data: { collectionId: collection.id },
+  });
+
   return (
-    <CollectionColumn
-      collection={collection}
-      links={links}
-      onOpenLink={openUrl}
-      onAddLink={(url) => addLink.mutate({ user_id: userId, url })}
-      onOpenAll={() => links.forEach((l) => openUrl(l.url))}
-      onDeleteCollection={onDelete}
-    />
+    <section
+      ref={setNodeRef}
+      style={{
+        width: 260,
+        flexShrink: 0,
+        background: isOver ? "#eef3ff" : "#f7f8fa",
+        borderRadius: 10,
+        padding: 10,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <strong>{collection.icon ? `${collection.icon} ` : ""}{collection.title}</strong>
+        <span style={{ display: "flex", gap: 6 }}>
+          <button type="button" onClick={() => links.forEach((l) => openUrl(l.url))} title="모두 열기">↗</button>
+          <button type="button" onClick={() => onDelete(collection.id)} title="삭제">✕</button>
+        </span>
+      </header>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {links.map((link) => (
+          <DraggableLink key={link.id} link={link} />
+        ))}
+      </div>
+      <AddLinkInput onAdd={(url) => addLink.mutate({ user_id: userId, url })} />
+    </section>
   );
 }
 
@@ -52,6 +97,22 @@ export function DashboardClient({ userId, userEmail }: { userId: string; userEma
   const { data: collections = [] } = useCollections(activeSpaceId);
   const createCollection = useCreateCollection(activeSpaceId);
   const deleteCollection = useDeleteCollection(activeSpaceId);
+
+  const qc = useQueryClient();
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const link = event.active.data.current?.link as Link | undefined;
+    const targetCollectionId = event.over?.data.current?.collectionId as string | undefined;
+    if (!link || !targetCollectionId) return;
+
+    const targetLinks = qc.getQueryData<Link[]>(["links", targetCollectionId]) ?? [];
+    const last = targetLinks.filter((l) => l.id !== link.id).at(-1);
+    const newPos = positionBetween(last?.position, undefined);
+
+    await moveLink(supabase, link.id, targetCollectionId, newPos);
+    qc.invalidateQueries({ queryKey: ["links", link.collection_id] });
+    qc.invalidateQueries({ queryKey: ["links", targetCollectionId] });
+  }
 
   return (
     <div style={{ display: "flex" }}>
@@ -83,16 +144,18 @@ export function DashboardClient({ userId, userEmail }: { userId: string; userEma
             </form>
           </span>
         </header>
-        <Board>
-          {collections.map((c) => (
-            <CollectionColumnContainer
-              key={c.id}
-              collection={c}
-              userId={userId}
-              onDelete={(id) => deleteCollection.mutate(id)}
-            />
-          ))}
-        </Board>
+        <BoardDnd onDragEnd={handleDragEnd}>
+          <Board>
+            {collections.map((c) => (
+              <CollectionColumnContainer
+                key={c.id}
+                collection={c}
+                userId={userId}
+                onDelete={(id) => deleteCollection.mutate(id)}
+              />
+            ))}
+          </Board>
+        </BoardDnd>
       </main>
     </div>
   );
