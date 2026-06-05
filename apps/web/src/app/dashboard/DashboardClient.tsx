@@ -18,6 +18,7 @@ import {
   supabase,
 } from "@/lib/queries";
 import { BoardDnd } from "./BoardDnd";
+import { SearchBar } from "./SearchBar";
 import { useRealtimeSync } from "@/lib/useRealtimeSync";
 
 function openUrl(url: string) {
@@ -135,7 +136,10 @@ export function DashboardClient({ userId, userEmail }: { userId: string; userEma
       />
       <main style={{ flex: 1 }}>
         <header style={{ display: "flex", justifyContent: "space-between", padding: 16 }}>
-          <span>{userEmail}</span>
+          <span style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <span>{userEmail}</span>
+            <SearchBar />
+          </span>
           <span style={{ display: "flex", gap: 12 }}>
             <button
               type="button"
