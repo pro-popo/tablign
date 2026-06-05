@@ -23,9 +23,11 @@ export function useRealtimeSync() {
       .on("postgres_changes", { event: "*", schema: "public", table: "links" }, () =>
         qc.invalidateQueries({ queryKey: ["links"] }),
       )
-      .on("postgres_changes", { event: "*", schema: "public", table: "collection_tags" }, () =>
-        qc.invalidateQueries({ queryKey: ["collection_tags"] }),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "collection_tags" }, () => {
+        // 컬렉션별 태그 목록과 태그필터(tag_collections) 둘 다 무효화
+        qc.invalidateQueries({ queryKey: ["collection_tags"] });
+        qc.invalidateQueries({ queryKey: ["tag_collections"] });
+      })
       .subscribe();
 
     return () => {

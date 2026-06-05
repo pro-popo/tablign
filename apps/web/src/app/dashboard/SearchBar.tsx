@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useDeferredValue, useState } from "react";
 import { useSearch } from "@/lib/queries";
 
 function openUrl(url: string) {
@@ -9,8 +9,10 @@ function openUrl(url: string) {
 
 export function SearchBar() {
   const [query, setQuery] = useState("");
-  const { data } = useSearch(query);
-  const hasResults = query.trim().length > 0 && data;
+  // 매 키 입력마다 요청하지 않도록 지연된 값으로 검색한다.
+  const deferredQuery = useDeferredValue(query);
+  const { data } = useSearch(deferredQuery);
+  const hasResults = deferredQuery.trim().length > 0 && data;
 
   return (
     <div style={{ position: "relative" }}>

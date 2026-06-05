@@ -60,6 +60,8 @@ export async function listTagsForCollection(
     .select("tags(*)")
     .eq("collection_id", collectionId);
   if (error) throw error;
+  // PostgREST 중첩 select("tags(*)")의 반환 타입을 supabase-js가 정확히 좁히지 못해
+  // unknown으로 받아 캐스팅한다. 런타임 형태는 { tags: Tag }.
   return (data ?? []).map((row: unknown) => (row as { tags: Tag }).tags).filter(Boolean);
 }
 

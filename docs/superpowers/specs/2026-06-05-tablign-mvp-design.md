@@ -271,3 +271,9 @@ Plan 2 구현 후 코드 리뷰에서 확인된, 의도적으로 미룬 항목:
 
 - **드래그앤드롭 재정렬은 현재 "맨 뒤로 이동"만 지원.** 컬럼 내 임의 위치 삽입/같은 컬럼 재정렬은 미구현(Plan 2 Task 10에서 범위 한정). `positionBetween`은 중간 삽입을 지원하므로, 향후 plan에서 드롭 인덱스 기반 재정렬로 확장.
 - **`/api/metadata` SSRF 하드닝 일부만 적용.** http(s) 스킴만 허용 + `redirect: "manual"`까지 적용함. 사설/루프백/링크로컬 호스트(예: 169.254.169.254, RFC1918) 차단은 미적용 — 인증 게이트 뒤의 MVP 위험으로 수용하되, 공개 배포 전 호스트 차단을 추가할 것.
+
+### Plan 3 후속 (코드 리뷰 도출)
+
+- **Realtime RLS 누수 확인 필요.** `postgres_changes` 구독은 클라이언트 JWT + 테이블 RLS로 타 사용자 행이 전달되지 않아야 한다(`@supabase/ssr` 브라우저 클라이언트가 토큰을 전달하므로 통상 안전). 다만 무효화 콜백은 페이로드 비의존(테이블 키만 무효화 → 재조회는 RLS 보호)이라, 설령 이벤트가 새더라도 "어떤 행이 바뀌었다"는 사실 외 데이터 노출은 없음. 공개 배포 전 2-사용자 음성 테스트로 확정할 것.
+- **`collection_tags` REPLICA IDENTITY FULL 미적용.** DELETE/UPDATE 시 PK 외 컬럼이 페이로드에 안 옴. 현재는 페이로드 비의존 무효화라 동작에 문제 없음. payload.old를 쓰게 되면 `alter table public.collection_tags replica identity full;` 추가.
+- **검색 디바운스 적용함**(useDeferredValue). 태그 생성은 대소문자 구분 정확 일치 — 추후 대소문자 무시/유니크 제약 고려.
