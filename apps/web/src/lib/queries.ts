@@ -12,6 +12,14 @@ import {
   deleteLink,
   moveLink,
   updateLink,
+  listTags,
+  createTag,
+  addTagToCollection,
+  removeTagFromCollection,
+  listTagsForCollection,
+  listCollectionIdsForTag,
+  searchCollections,
+  searchLinks,
 } from "@tablign/core";
 import { createClient } from "./supabase/browser";
 import { fetchMetadata } from "./metadata";
@@ -85,6 +93,63 @@ export function useDeleteLink(collectionId: string) {
   return useMutation({
     mutationFn: (id: string) => deleteLink(supabase, id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["links", collectionId] }),
+  });
+}
+
+export function useTags() {
+  return useQuery({ queryKey: ["tags"], queryFn: () => listTags(supabase) });
+}
+
+export function useCreateTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { user_id: string; name: string }) => createTag(supabase, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tags"] }),
+  });
+}
+
+export function useCollectionTags(collectionId: string) {
+  return useQuery({
+    queryKey: ["collection_tags", collectionId],
+    queryFn: () => listTagsForCollection(supabase, collectionId),
+  });
+}
+
+export function useAddTagToCollection(collectionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tagId: string) => addTagToCollection(supabase, collectionId, tagId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["collection_tags", collectionId] }),
+  });
+}
+
+export function useRemoveTagFromCollection(collectionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tagId: string) => removeTagFromCollection(supabase, collectionId, tagId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["collection_tags", collectionId] }),
+  });
+}
+
+export function useCollectionIdsForTag(tagId: string | null) {
+  return useQuery({
+    queryKey: ["tag_collections", tagId],
+    queryFn: () => listCollectionIdsForTag(supabase, tagId!),
+    enabled: !!tagId,
+  });
+}
+
+export function useSearch(query: string) {
+  return useQuery({
+    queryKey: ["search", query],
+    queryFn: async () => {
+      const [collections, links] = await Promise.all([
+        searchCollections(supabase, query),
+        searchLinks(supabase, query),
+      ]);
+      return { collections, links };
+    },
+    enabled: query.trim().length > 0,
   });
 }
 

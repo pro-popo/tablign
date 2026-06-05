@@ -16,8 +16,13 @@ import {
   useAddLink,
   moveLink,
   supabase,
+  useTags,
+  useCollectionIdsForTag,
 } from "@/lib/queries";
 import { BoardDnd } from "./BoardDnd";
+import { SearchBar } from "./SearchBar";
+import { TagBar } from "./TagBar";
+import { useRealtimeSync } from "@/lib/useRealtimeSync";
 
 function openUrl(url: string) {
   window.open(url, "_blank", "noopener");
@@ -75,6 +80,7 @@ function CollectionColumnContainer({
           <button type="button" onClick={() => onDelete(collection.id)} title="삭제">✕</button>
         </span>
       </header>
+      <TagBar collectionId={collection.id} userId={userId} />
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {links.map((link) => (
           <DraggableLink key={link.id} link={link} />
@@ -86,6 +92,7 @@ function CollectionColumnContainer({
 }
 
 export function DashboardClient({ userId, userEmail }: { userId: string; userEmail: string }) {
+  useRealtimeSync();
   const { data: spaces = [] } = useSpaces();
   const createSpace = useCreateSpace();
   const [activeSpaceId, setActiveSpaceId] = useState<string | null>(null);
@@ -97,6 +104,10 @@ export function DashboardClient({ userId, userEmail }: { userId: string; userEma
   const { data: collections = [] } = useCollections(activeSpaceId);
   const createCollection = useCreateCollection(activeSpaceId);
   const deleteCollection = useDeleteCollection(activeSpaceId);
+
+  const { data: tags = [] } = useTags();
+  const [activeTagId, setActiveTagId] = useState<string | null>(null);
+  const { data: taggedCollectionIds } = useCollectionIdsForTag(activeTagId);
 
   const qc = useQueryClient();
 
@@ -120,6 +131,10 @@ export function DashboardClient({ userId, userEmail }: { userId: string; userEma
     }
   }
 
+  const visibleCollections = activeTagId
+    ? collections.filter((c) => (taggedCollectionIds ?? []).includes(c.id))
+    : collections;
+
   return (
     <div style={{ display: "flex" }}>
       <Sidebar
@@ -133,7 +148,30 @@ export function DashboardClient({ userId, userEmail }: { userId: string; userEma
       />
       <main style={{ flex: 1 }}>
         <header style={{ display: "flex", justifyContent: "space-between", padding: 16 }}>
-          <span>{userEmail}</span>
+          <span style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <span>{userEmail}</span>
+            <SearchBar />
+            <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {tags.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveTagId(activeTagId === t.id ? null : t.id)}
+                  style={{
+                    fontSize: 11,
+                    borderRadius: 10,
+                    padding: "2px 8px",
+                    border: "1px solid #cdd",
+                    cursor: "pointer",
+                    background: activeTagId === t.id ? "#2c46a6" : "#fff",
+                    color: activeTagId === t.id ? "#fff" : "#333",
+                  }}
+                >
+                  #{t.name}
+                </button>
+              ))}
+            </span>
+          </span>
           <span style={{ display: "flex", gap: 12 }}>
             <button
               type="button"
@@ -152,7 +190,7 @@ export function DashboardClient({ userId, userEmail }: { userId: string; userEma
         </header>
         <BoardDnd onDragEnd={handleDragEnd}>
           <Board>
-            {collections.map((c) => (
+            {visibleCollections.map((c) => (
               <CollectionColumnContainer
                 key={c.id}
                 collection={c}
