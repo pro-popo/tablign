@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { listSpaces, createSpace, updateSpace, deleteSpace } from "../data/spaces";
 import { listCollections, createCollection, updateCollection, deleteCollection } from "../data/collections";
+import { listLinks, createLink, updateLink, deleteLink, moveLink } from "../data/links";
 
 const envText = readFileSync(resolve(__dirname, "../../.env.test"), "utf8");
 const env = Object.fromEntries(
@@ -125,5 +126,74 @@ describe("collections 데이터 접근", () => {
     await deleteCollection(user.client, created.id);
     const list = await listCollections(user.client, spaceId);
     expect(list.some((c) => c.id === created.id)).toBe(false);
+  });
+});
+
+describe("links 데이터 접근", () => {
+  let user: { client: SupabaseClient; id: string };
+  let collectionId: string;
+  let otherCollectionId: string;
+
+  beforeAll(async () => {
+    user = await makeUser(`links-${Date.now()}@test.local`);
+    const space = await createSpace(user.client, { user_id: user.id, name: "개인" });
+    const c1 = await createCollection(user.client, {
+      user_id: user.id,
+      space_id: space.id,
+      title: "C1",
+    });
+    const c2 = await createCollection(user.client, {
+      user_id: user.id,
+      space_id: space.id,
+      title: "C2",
+    });
+    collectionId = c1.id;
+    otherCollectionId = c2.id;
+  });
+
+  it("링크를 만들고 컬렉션별로 조회한다", async () => {
+    const created = await createLink(user.client, {
+      user_id: user.id,
+      collection_id: collectionId,
+      url: "https://example.com",
+      title: "예시",
+    });
+    expect(created.url).toBe("https://example.com");
+    const list = await listLinks(user.client, collectionId);
+    expect(list.some((l) => l.id === created.id)).toBe(true);
+  });
+
+  it("링크 제목을 수정한다", async () => {
+    const created = await createLink(user.client, {
+      user_id: user.id,
+      collection_id: collectionId,
+      url: "https://a.com",
+    });
+    const updated = await updateLink(user.client, created.id, { custom_title: "내 제목" });
+    expect(updated.custom_title).toBe("내 제목");
+  });
+
+  it("링크를 다른 컬렉션으로 이동하고 position을 갱신한다", async () => {
+    const created = await createLink(user.client, {
+      user_id: user.id,
+      collection_id: collectionId,
+      url: "https://move.com",
+    });
+    const moved = await moveLink(user.client, created.id, otherCollectionId, 500);
+    expect(moved.collection_id).toBe(otherCollectionId);
+    expect(moved.position).toBe(500);
+    const fromList = await listLinks(user.client, collectionId);
+    expect(fromList.some((l) => l.id === created.id)).toBe(false);
+  });
+
+  it("링크를 삭제한다", async () => {
+    const created = await createLink(user.client, {
+      user_id: user.id,
+      collection_id: collectionId,
+      url: "https://del.com",
+    });
+    await deleteLink(user.client, created.id);
+    const list = await listLinks(user.client, collectionId);
+    expect(list.some((l) => l.id === created.id)).toBe(false);
   });
 });
