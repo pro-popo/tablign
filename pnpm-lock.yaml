@@ -19,6 +19,9 @@ importers:
       '@tablign/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@tablign/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.50.0
         version: 5.101.0(react@18.3.1)
