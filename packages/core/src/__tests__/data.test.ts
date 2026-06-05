@@ -4,6 +4,7 @@ import ws from "ws";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { listSpaces, createSpace, updateSpace, deleteSpace } from "../data/spaces";
+import { listCollections, createCollection, updateCollection, deleteCollection } from "../data/collections";
 
 const envText = readFileSync(resolve(__dirname, "../../.env.test"), "utf8");
 const env = Object.fromEntries(
@@ -77,5 +78,52 @@ describe("spaces 데이터 접근", () => {
     const list = await listSpaces(u.client);
     const positions = list.map((s) => s.position);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+});
+
+describe("collections 데이터 접근", () => {
+  let user: { client: SupabaseClient; id: string };
+  let spaceId: string;
+
+  beforeAll(async () => {
+    user = await makeUser(`cols-${Date.now()}@test.local`);
+    const space = await createSpace(user.client, { user_id: user.id, name: "개인" });
+    spaceId = space.id;
+  });
+
+  it("컬렉션을 만들고 스페이스별로 조회한다", async () => {
+    const created = await createCollection(user.client, {
+      user_id: user.id,
+      space_id: spaceId,
+      title: "읽을거리",
+    });
+    expect(created.title).toBe("읽을거리");
+    const list = await listCollections(user.client, spaceId);
+    expect(list.some((c) => c.id === created.id)).toBe(true);
+  });
+
+  it("컬렉션 제목과 노트를 수정한다", async () => {
+    const created = await createCollection(user.client, {
+      user_id: user.id,
+      space_id: spaceId,
+      title: "임시",
+    });
+    const updated = await updateCollection(user.client, created.id, {
+      title: "수정됨",
+      note: "메모",
+    });
+    expect(updated.title).toBe("수정됨");
+    expect(updated.note).toBe("메모");
+  });
+
+  it("컬렉션을 삭제한다", async () => {
+    const created = await createCollection(user.client, {
+      user_id: user.id,
+      space_id: spaceId,
+      title: "삭제대상",
+    });
+    await deleteCollection(user.client, created.id);
+    const list = await listCollections(user.client, spaceId);
+    expect(list.some((c) => c.id === created.id)).toBe(false);
   });
 });
