@@ -13,7 +13,8 @@ import {
 import { supabase } from "../lib/supabase";
 
 function openUrl(url: string) {
-  window.open(url, "_blank", "noopener");
+  // 확장 컨텍스트에서는 chrome.tabs.create를 써야 "모두 열기"가 팝업 차단 없이 전부 열린다.
+  chrome.tabs.create({ url });
 }
 
 function Column({ collection, userId }: { collection: Collection; userId: string }) {

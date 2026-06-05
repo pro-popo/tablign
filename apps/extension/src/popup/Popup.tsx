@@ -55,8 +55,20 @@ export function Popup() {
     const col = await createCollection(supabase, { user_id: userId, space_id: spaceId, title });
     const tabs = await chrome.tabs.query({ currentWindow: true });
     const inputs = tabsToLinkInputs(tabs, userId, col.id);
-    for (const input of inputs) await createLink(supabase, input);
-    setStatus(`${inputs.length}개 탭 저장됨 ✓`);
+    let done = 0;
+    for (const input of inputs) {
+      try {
+        await createLink(supabase, input);
+        done++;
+      } catch (err) {
+        console.error("링크 저장 실패", err);
+      }
+    }
+    setStatus(
+      done === inputs.length
+        ? `${done}개 탭 저장됨 ✓`
+        : `${done}/${inputs.length}개 저장됨 (일부 실패)`,
+    );
   }
 
   return (
