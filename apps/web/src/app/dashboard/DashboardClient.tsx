@@ -109,9 +109,15 @@ export function DashboardClient({ userId, userEmail }: { userId: string; userEma
     const last = targetLinks.filter((l) => l.id !== link.id).at(-1);
     const newPos = positionBetween(last?.position, undefined);
 
-    await moveLink(supabase, link.id, targetCollectionId, newPos);
-    qc.invalidateQueries({ queryKey: ["links", link.collection_id] });
-    qc.invalidateQueries({ queryKey: ["links", targetCollectionId] });
+    try {
+      // 현재는 대상 컬렉션의 맨 뒤로만 이동한다(컬럼 내 임의 위치 재정렬은 향후 plan에서).
+      await moveLink(supabase, link.id, targetCollectionId, newPos);
+    } catch (err) {
+      console.error("링크 이동 실패", err);
+    } finally {
+      qc.invalidateQueries({ queryKey: ["links", link.collection_id] });
+      qc.invalidateQueries({ queryKey: ["links", targetCollectionId] });
+    }
   }
 
   return (
