@@ -1,0 +1,13 @@
+{
+  "name": "tablign",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
