@@ -5,3 +5,4 @@ export * from "./data/spaces";
 export * from "./data/collections";
 export * from "./data/links";
 export * from "./data/tags";
+export * from "./data/search";

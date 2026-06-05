@@ -15,6 +15,7 @@ import {
   listTagsForCollection,
   listCollectionIdsForTag,
 } from "../data/tags";
+import { searchCollections, searchLinks } from "../data/search";
 
 const envText = readFileSync(resolve(__dirname, "../../.env.test"), "utf8");
 const env = Object.fromEntries(
@@ -256,5 +257,45 @@ describe("tags 데이터 접근", () => {
     await deleteTag(user.client, tag.id);
     const list = await listTags(user.client);
     expect(list.some((t) => t.id === tag.id)).toBe(false);
+  });
+});
+
+describe("search 데이터 접근", () => {
+  let user: { client: SupabaseClient; id: string };
+
+  beforeAll(async () => {
+    user = await makeUser(`search-${Date.now()}@test.local`);
+    const space = await createSpace(user.client, { user_id: user.id, name: "개인" });
+    const c = await createCollection(user.client, {
+      user_id: user.id,
+      space_id: space.id,
+      title: "리액트 자료",
+    });
+    await createLink(user.client, {
+      user_id: user.id,
+      collection_id: c.id,
+      url: "https://nextjs.org/docs",
+      title: "Next.js 문서",
+    });
+  });
+
+  it("컬렉션 제목으로 검색한다", async () => {
+    const results = await searchCollections(user.client, "리액트");
+    expect(results.some((c) => c.title.includes("리액트"))).toBe(true);
+  });
+
+  it("링크 제목으로 검색한다", async () => {
+    const results = await searchLinks(user.client, "Next.js");
+    expect(results.some((l) => (l.title ?? "").includes("Next.js"))).toBe(true);
+  });
+
+  it("링크 url로 검색한다", async () => {
+    const results = await searchLinks(user.client, "nextjs.org");
+    expect(results.some((l) => l.url.includes("nextjs.org"))).toBe(true);
+  });
+
+  it("빈 쿼리는 빈 배열을 반환한다", async () => {
+    expect(await searchCollections(user.client, "  ")).toEqual([]);
+    expect(await searchLinks(user.client, "")).toEqual([]);
   });
 });
