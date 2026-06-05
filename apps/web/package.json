@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "echo \"no web unit tests in plan 1\" && exit 0"
+    "test": "vitest run"
   },
   "dependencies": {
     "@tablign/core": "workspace:*",
@@ -20,6 +20,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
   }
 }
