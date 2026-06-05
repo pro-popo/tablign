@@ -23,6 +23,17 @@ export async function listCollections(
   return data as Collection[];
 }
 
+export async function listAllCollections(
+  client: SupabaseClient,
+): Promise<Collection[]> {
+  const { data, error } = await client
+    .from("collections")
+    .select()
+    .order("position", { ascending: true });
+  if (error) throw error;
+  return data as Collection[];
+}
+
 export async function createCollection(
   client: SupabaseClient,
   input: CreateCollectionInput,
