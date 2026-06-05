@@ -18,6 +18,7 @@ import {
   supabase,
 } from "@/lib/queries";
 import { BoardDnd } from "./BoardDnd";
+import { useRealtimeSync } from "@/lib/useRealtimeSync";
 
 function openUrl(url: string) {
   window.open(url, "_blank", "noopener");
@@ -86,6 +87,7 @@ function CollectionColumnContainer({
 }
 
 export function DashboardClient({ userId, userEmail }: { userId: string; userEmail: string }) {
+  useRealtimeSync();
   const { data: spaces = [] } = useSpaces();
   const createSpace = useCreateSpace();
   const [activeSpaceId, setActiveSpaceId] = useState<string | null>(null);
