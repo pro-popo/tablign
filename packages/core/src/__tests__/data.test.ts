@@ -4,7 +4,7 @@ import ws from "ws";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { listSpaces, createSpace, updateSpace, deleteSpace } from "../data/spaces";
-import { listCollections, createCollection, updateCollection, deleteCollection } from "../data/collections";
+import { listCollections, createCollection, updateCollection, deleteCollection, listAllCollections } from "../data/collections";
 import { listLinks, createLink, updateLink, deleteLink, moveLink } from "../data/links";
 import {
   listTags,
@@ -297,5 +297,18 @@ describe("search 데이터 접근", () => {
   it("빈 쿼리는 빈 배열을 반환한다", async () => {
     expect(await searchCollections(user.client, "  ")).toEqual([]);
     expect(await searchLinks(user.client, "")).toEqual([]);
+  });
+});
+
+describe("listAllCollections", () => {
+  it("스페이스에 상관없이 사용자의 모든 컬렉션을 반환한다", async () => {
+    const user = await makeUser(`allcols-${Date.now()}@test.local`);
+    const s1 = await createSpace(user.client, { user_id: user.id, name: "S1" });
+    const s2 = await createSpace(user.client, { user_id: user.id, name: "S2" });
+    await createCollection(user.client, { user_id: user.id, space_id: s1.id, title: "A" });
+    await createCollection(user.client, { user_id: user.id, space_id: s2.id, title: "B" });
+    const all = await listAllCollections(user.client);
+    expect(all.some((c) => c.title === "A")).toBe(true);
+    expect(all.some((c) => c.title === "B")).toBe(true);
   });
 });
