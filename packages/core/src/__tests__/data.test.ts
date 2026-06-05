@@ -6,6 +6,15 @@ import { resolve } from "node:path";
 import { listSpaces, createSpace, updateSpace, deleteSpace } from "../data/spaces";
 import { listCollections, createCollection, updateCollection, deleteCollection } from "../data/collections";
 import { listLinks, createLink, updateLink, deleteLink, moveLink } from "../data/links";
+import {
+  listTags,
+  createTag,
+  deleteTag,
+  addTagToCollection,
+  removeTagFromCollection,
+  listTagsForCollection,
+  listCollectionIdsForTag,
+} from "../data/tags";
 
 const envText = readFileSync(resolve(__dirname, "../../.env.test"), "utf8");
 const env = Object.fromEntries(
@@ -195,5 +204,57 @@ describe("links 데이터 접근", () => {
     await deleteLink(user.client, created.id);
     const list = await listLinks(user.client, collectionId);
     expect(list.some((l) => l.id === created.id)).toBe(false);
+  });
+});
+
+describe("tags 데이터 접근", () => {
+  let user: { client: SupabaseClient; id: string };
+  let collectionId: string;
+
+  beforeAll(async () => {
+    user = await makeUser(`tags-${Date.now()}@test.local`);
+    const space = await createSpace(user.client, { user_id: user.id, name: "개인" });
+    const c = await createCollection(user.client, {
+      user_id: user.id,
+      space_id: space.id,
+      title: "C",
+    });
+    collectionId = c.id;
+  });
+
+  it("태그를 만들고 목록에 나타난다", async () => {
+    const tag = await createTag(user.client, { user_id: user.id, name: "디자인" });
+    expect(tag.name).toBe("디자인");
+    const list = await listTags(user.client);
+    expect(list.some((t) => t.id === tag.id)).toBe(true);
+  });
+
+  it("컬렉션에 태그를 달고 컬렉션의 태그 목록에 나타난다", async () => {
+    const tag = await createTag(user.client, { user_id: user.id, name: "읽을거리" });
+    await addTagToCollection(user.client, collectionId, tag.id);
+    const tags = await listTagsForCollection(user.client, collectionId);
+    expect(tags.some((t) => t.id === tag.id)).toBe(true);
+  });
+
+  it("태그로 컬렉션 id를 조회한다", async () => {
+    const tag = await createTag(user.client, { user_id: user.id, name: "필터용" });
+    await addTagToCollection(user.client, collectionId, tag.id);
+    const ids = await listCollectionIdsForTag(user.client, tag.id);
+    expect(ids).toContain(collectionId);
+  });
+
+  it("컬렉션에서 태그를 제거한다", async () => {
+    const tag = await createTag(user.client, { user_id: user.id, name: "제거대상" });
+    await addTagToCollection(user.client, collectionId, tag.id);
+    await removeTagFromCollection(user.client, collectionId, tag.id);
+    const tags = await listTagsForCollection(user.client, collectionId);
+    expect(tags.some((t) => t.id === tag.id)).toBe(false);
+  });
+
+  it("태그를 삭제한다", async () => {
+    const tag = await createTag(user.client, { user_id: user.id, name: "삭제대상" });
+    await deleteTag(user.client, tag.id);
+    const list = await listTags(user.client);
+    expect(list.some((t) => t.id === tag.id)).toBe(false);
   });
 });
