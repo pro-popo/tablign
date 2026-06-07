@@ -1,0 +1,16 @@
+export const theme = {
+  accent: "#3b5bdb",
+  accentWeak: "#edf0fe",
+  text: "#1f2430",
+  textMuted: "#868e96",
+  textFaint: "#adb5bd",
+  border: "#eaecef",
+  borderCard: "#e9ebee",
+  bg: "#fcfcfd",
+  surface: "#ffffff",
+  surface2: "#f1f3f5",
+  danger: "#e03131",
+  radiusCard: 9,
+  radiusBtn: 7,
+  radiusChip: 8,
+} as const;
