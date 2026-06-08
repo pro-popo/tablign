@@ -10,7 +10,8 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@tablign/core": "workspace:*"
+    "@tablign/core": "workspace:*",
+    "lucide-react": "^0.460.0"
   },
   "peerDependencies": {
     "react": "^18.3.0",

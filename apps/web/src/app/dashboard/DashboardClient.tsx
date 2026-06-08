@@ -1,101 +1,58 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
-import { Board, Sidebar, LinkCard, AddLinkInput } from "@tablign/ui";
-import type { Collection, Link } from "@tablign/core";
-import { positionBetween } from "@tablign/core";
-import { useQueryClient } from "@tanstack/react-query";
+import { AppShell, Board, CollectionSection, EmptyState, Button, useToast } from "@tablign/ui";
+import type { Collection } from "@tablign/core";
+import { useDroppable } from "@dnd-kit/core";
 import {
-  useSpaces,
-  useCreateSpace,
-  useCollections,
-  useCreateCollection,
-  useDeleteCollection,
-  useLinks,
-  useAddLink,
-  moveLink,
-  supabase,
-  useTags,
-  useCollectionIdsForTag,
+  useSpaces, useCreateSpace, useCollections, useCreateCollection, useDeleteCollection,
+  useLinks, useAddLink, useDeleteLink, useTags, useCollectionIdsForTag,
 } from "@/lib/queries";
-import { BoardDnd } from "./BoardDnd";
+import { usePanelState } from "@/lib/usePanelState";
+import { useRealtimeSync } from "@/lib/useRealtimeSync";
+import { Sidebar } from "./Sidebar";
+import { Toolbar } from "./Toolbar";
 import { SearchBar } from "./SearchBar";
 import { TagBar } from "./TagBar";
-import { useRealtimeSync } from "@/lib/useRealtimeSync";
 
 function openUrl(url: string) {
   window.open(url, "_blank", "noopener");
 }
 
-function DraggableLink({ link }: { link: Link }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
-    id: link.id,
-    data: { link },
-  });
-  const style = transform
-    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 1 }
-    : undefined;
+function SectionContainer({ collection, userId }: { collection: Collection; userId: string }) {
+  const { data: links = [] } = useLinks(collection.id);
+  const addLink = useAddLink(collection.id);
+  const deleteLink = useDeleteLink(collection.id);
+  const deleteCollection = useDeleteCollection(collection.space_id);
+  const toast = useToast();
+  const { setNodeRef, isOver } = useDroppable({ id: collection.id, data: { collectionId: collection.id } });
+
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-      <LinkCard link={link} onOpen={openUrl} />
+    <div ref={setNodeRef}>
+      <CollectionSection
+        collection={collection}
+        links={links}
+        isOver={isOver}
+        tagSlot={<TagBar collectionId={collection.id} userId={userId} />}
+        onOpenLink={openUrl}
+        onDeleteLink={(id) => deleteLink.mutate(id)}
+        onAddLink={(url) => { addLink.mutate({ user_id: userId, url }); toast.show("링크를 추가했어요"); }}
+        onOpenAll={(_id) => links.forEach((l) => openUrl(l.url))}
+        onDeleteCollection={(id) => { deleteCollection.mutate(id); toast.show("컬렉션을 삭제했어요"); }}
+      />
     </div>
   );
 }
 
-function CollectionColumnContainer({
-  collection,
-  userId,
-  onDelete,
-}: {
-  collection: Collection;
-  userId: string;
-  onDelete: (id: string) => void;
-}) {
-  const { data: links = [] } = useLinks(collection.id);
-  const addLink = useAddLink(collection.id);
-  const { setNodeRef, isOver } = useDroppable({
-    id: collection.id,
-    data: { collectionId: collection.id },
-  });
-
-  return (
-    <section
-      ref={setNodeRef}
-      style={{
-        width: 260,
-        flexShrink: 0,
-        background: isOver ? "#eef3ff" : "#f7f8fa",
-        borderRadius: 10,
-        padding: 10,
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-      }}
-    >
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <strong>{collection.icon ? `${collection.icon} ` : ""}{collection.title}</strong>
-        <span style={{ display: "flex", gap: 6 }}>
-          <button type="button" onClick={() => links.forEach((l) => openUrl(l.url))} title="모두 열기">↗</button>
-          <button type="button" onClick={() => onDelete(collection.id)} title="삭제">✕</button>
-        </span>
-      </header>
-      <TagBar collectionId={collection.id} userId={userId} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {links.map((link) => (
-          <DraggableLink key={link.id} link={link} />
-        ))}
-      </div>
-      <AddLinkInput onAdd={(url) => addLink.mutate({ user_id: userId, url })} />
-    </section>
-  );
-}
-
-export function DashboardClient({ userId, userEmail }: { userId: string; userEmail: string }) {
-  useRealtimeSync();
+export function DashboardClient({ userId }: { userId: string; userEmail: string }) {
   const { data: spaces = [] } = useSpaces();
+  const { data: tags = [] } = useTags();
   const createSpace = useCreateSpace();
   const [activeSpaceId, setActiveSpaceId] = useState<string | null>(null);
+  const [activeTagId, setActiveTagId] = useState<string | null>(null);
+  const { state: panels, toggleLeft, toggleRight } = usePanelState();
+  const toast = useToast();
+  useRealtimeSync();
 
   useEffect(() => {
     if (!activeSpaceId && spaces.length > 0) setActiveSpaceId(spaces[0].id);
@@ -103,104 +60,49 @@ export function DashboardClient({ userId, userEmail }: { userId: string; userEma
 
   const { data: collections = [] } = useCollections(activeSpaceId);
   const createCollection = useCreateCollection(activeSpaceId);
-  const deleteCollection = useDeleteCollection(activeSpaceId);
+  const { data: taggedIds } = useCollectionIdsForTag(activeTagId);
 
-  const { data: tags = [] } = useTags();
-  const [activeTagId, setActiveTagId] = useState<string | null>(null);
-  const { data: taggedCollectionIds } = useCollectionIdsForTag(activeTagId);
-
-  const qc = useQueryClient();
-
-  async function handleDragEnd(event: DragEndEvent) {
-    const link = event.active.data.current?.link as Link | undefined;
-    const targetCollectionId = event.over?.data.current?.collectionId as string | undefined;
-    if (!link || !targetCollectionId) return;
-
-    const targetLinks = qc.getQueryData<Link[]>(["links", targetCollectionId]) ?? [];
-    const last = targetLinks.filter((l) => l.id !== link.id).at(-1);
-    const newPos = positionBetween(last?.position, undefined);
-
-    try {
-      // 현재는 대상 컬렉션의 맨 뒤로만 이동한다(컬럼 내 임의 위치 재정렬은 향후 plan에서).
-      await moveLink(supabase, link.id, targetCollectionId, newPos);
-    } catch (err) {
-      console.error("링크 이동 실패", err);
-    } finally {
-      qc.invalidateQueries({ queryKey: ["links", link.collection_id] });
-      qc.invalidateQueries({ queryKey: ["links", targetCollectionId] });
-    }
-  }
-
-  const visibleCollections = activeTagId
-    ? collections.filter((c) => (taggedCollectionIds ?? []).includes(c.id))
-    : collections;
+  const visible = activeTagId ? collections.filter((c) => (taggedIds ?? []).includes(c.id)) : collections;
+  const activeSpace = spaces.find((s) => s.id === activeSpaceId);
 
   return (
-    <div style={{ display: "flex" }}>
-      <Sidebar
-        spaces={spaces}
-        activeSpaceId={activeSpaceId}
-        onSelectSpace={setActiveSpaceId}
-        onAddSpace={() => {
-          const name = prompt("새 스페이스 이름");
-          if (name) createSpace.mutate({ user_id: userId, name });
-        }}
+    <AppShell
+      leftOpen={panels.left}
+      rightOpen={false}
+      onToggleLeft={toggleLeft}
+      onToggleRight={toggleRight}
+      left={
+        <Sidebar
+          spaces={spaces}
+          tags={tags}
+          activeSpaceId={activeSpaceId}
+          activeTagId={activeTagId}
+          onSelectSpace={setActiveSpaceId}
+          onToggleTag={(id) => setActiveTagId((cur) => (cur === id ? null : id))}
+          onAddSpace={(name) => { createSpace.mutate({ user_id: userId, name }); toast.show("스페이스를 추가했어요"); }}
+          onCollapse={toggleLeft}
+          searchSlot={<SearchBar />}
+        />
+      }
+    >
+      {!panels.left && (
+        <div style={{ position: "absolute", top: 10, left: 12, zIndex: 5 }}>
+          <Button variant="outline" onClick={toggleLeft}>≡ 메뉴</Button>
+        </div>
+      )}
+      <Toolbar
+        spaceName={activeSpace?.name ?? "—"}
+        collectionCount={collections.length}
+        canAdd={!!activeSpaceId}
+        onAddCollection={(title) => { if (activeSpaceId) { createCollection.mutate({ user_id: userId, space_id: activeSpaceId, title }); toast.show("컬렉션을 추가했어요"); } }}
       />
-      <main style={{ flex: 1 }}>
-        <header style={{ display: "flex", justifyContent: "space-between", padding: 16 }}>
-          <span style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span>{userEmail}</span>
-            <SearchBar />
-            <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {tags.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setActiveTagId(activeTagId === t.id ? null : t.id)}
-                  style={{
-                    fontSize: 11,
-                    borderRadius: 10,
-                    padding: "2px 8px",
-                    border: "1px solid #cdd",
-                    cursor: "pointer",
-                    background: activeTagId === t.id ? "#2c46a6" : "#fff",
-                    color: activeTagId === t.id ? "#fff" : "#333",
-                  }}
-                >
-                  #{t.name}
-                </button>
-              ))}
-            </span>
-          </span>
-          <span style={{ display: "flex", gap: 12 }}>
-            <button
-              type="button"
-              onClick={() => {
-                if (!activeSpaceId) return;
-                const title = prompt("새 컬렉션 제목");
-                if (title) createCollection.mutate({ user_id: userId, space_id: activeSpaceId, title });
-              }}
-            >
-              + 컬렉션
-            </button>
-            <form action="/auth/signout" method="post">
-              <button type="submit">로그아웃</button>
-            </form>
-          </span>
-        </header>
-        <BoardDnd onDragEnd={handleDragEnd}>
-          <Board>
-            {visibleCollections.map((c) => (
-              <CollectionColumnContainer
-                key={c.id}
-                collection={c}
-                userId={userId}
-                onDelete={(id) => deleteCollection.mutate(id)}
-              />
-            ))}
-          </Board>
-        </BoardDnd>
-      </main>
-    </div>
+      <Board>
+        {visible.length === 0 ? (
+          <EmptyState title="아직 컬렉션이 없어요. 상단 '＋ 컬렉션'으로 시작하세요." />
+        ) : (
+          visible.map((c) => <SectionContainer key={c.id} collection={c} userId={userId} />)
+        )}
+      </Board>
+    </AppShell>
   );
 }
