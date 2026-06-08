@@ -5,9 +5,5 @@ export interface BoardProps {
 }
 
 export function Board({ children }: BoardProps) {
-  return (
-    <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: 16, alignItems: "flex-start" }}>
-      {children}
-    </div>
-  );
+  return <div style={{ padding: "16px 18px", overflow: "auto", height: "100%", boxSizing: "border-box" }}>{children}</div>;
 }
