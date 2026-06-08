@@ -17,22 +17,26 @@ const baseLink: Link = {
 };
 
 describe("LinkCard", () => {
-  it("custom_title이 있으면 그것을, 없으면 title을 보여준다", () => {
-    const { rerender } = render(<LinkCard link={baseLink} onOpen={() => {}} />);
+  it("custom_title > title > 도메인 순으로 라벨을 보여준다", () => {
+    const { rerender } = render(<LinkCard link={baseLink} onOpen={() => {}} onDelete={() => {}} />);
     expect(screen.getByText("예시 제목")).toBeInTheDocument();
-    rerender(<LinkCard link={{ ...baseLink, custom_title: "내가 정한 제목" }} onOpen={() => {}} />);
-    expect(screen.getByText("내가 정한 제목")).toBeInTheDocument();
-  });
-
-  it("title도 custom_title도 없으면 도메인을 보여준다", () => {
-    render(<LinkCard link={{ ...baseLink, title: null }} onOpen={() => {}} />);
+    rerender(<LinkCard link={{ ...baseLink, custom_title: "내 제목" }} onOpen={() => {}} onDelete={() => {}} />);
+    expect(screen.getByText("내 제목")).toBeInTheDocument();
+    rerender(<LinkCard link={{ ...baseLink, title: null }} onOpen={() => {}} onDelete={() => {}} />);
     expect(screen.getByText("example.com")).toBeInTheDocument();
   });
 
-  it("클릭하면 onOpen이 url과 함께 호출된다", () => {
+  it("카드를 클릭하면 onOpen(url)이 호출된다", () => {
     const onOpen = vi.fn();
-    render(<LinkCard link={baseLink} onOpen={onOpen} />);
-    fireEvent.click(screen.getByRole("button"));
+    render(<LinkCard link={baseLink} onOpen={onOpen} onDelete={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /예시 제목/ }));
     expect(onOpen).toHaveBeenCalledWith("https://example.com/page");
+  });
+
+  it("삭제 버튼을 누르면 onDelete(id)가 호출된다", () => {
+    const onDelete = vi.fn();
+    render(<LinkCard link={baseLink} onOpen={() => {}} onDelete={onDelete} />);
+    fireEvent.click(screen.getByRole("button", { name: "삭제" }));
+    expect(onDelete).toHaveBeenCalledWith("1");
   });
 });

@@ -9,6 +9,7 @@ export interface CollectionColumnProps {
   onAddLink: (url: string) => void;
   onOpenAll: (collectionId: string) => void;
   onDeleteCollection: (collectionId: string) => void;
+  onDeleteLink: (id: string) => void;
 }
 
 export function CollectionColumn({
@@ -18,6 +19,7 @@ export function CollectionColumn({
   onAddLink,
   onOpenAll,
   onDeleteCollection,
+  onDeleteLink,
 }: CollectionColumnProps) {
   return (
     <section
@@ -48,7 +50,7 @@ export function CollectionColumn({
       </header>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {links.map((link) => (
-          <LinkCard key={link.id} link={link} onOpen={onOpenLink} />
+          <LinkCard key={link.id} link={link} onOpen={onOpenLink} onDelete={onDeleteLink} />
         ))}
       </div>
       <AddLinkInput onAdd={onAddLink} />
