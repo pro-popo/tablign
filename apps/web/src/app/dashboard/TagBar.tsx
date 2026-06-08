@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { InlineInput, theme, Plus, X } from "@tablign/ui";
 import { useCollectionTags, useTags, useCreateTag, useAddTagToCollection, useRemoveTagFromCollection } from "@/lib/queries";
 
 export function TagBar({ collectionId, userId }: { collectionId: string; userId: string }) {
@@ -8,53 +10,58 @@ export function TagBar({ collectionId, userId }: { collectionId: string; userId:
   const createTag = useCreateTag();
   const addTag = useAddTagToCollection(collectionId);
   const removeTag = useRemoveTagFromCollection(collectionId);
+  const [adding, setAdding] = useState(false);
 
-  function handleAdd() {
-    const name = prompt("태그 이름 (기존 태그면 그 태그가 연결됩니다)");
-    if (!name) return;
+  function handleAdd(name: string) {
+    setAdding(false);
     const existing = allTags.find((t) => t.name === name);
     if (existing) {
       addTag.mutate(existing.id);
     } else {
-      createTag.mutate(
-        { user_id: userId, name },
-        { onSuccess: (tag) => addTag.mutate(tag.id) },
-      );
+      createTag.mutate({ user_id: userId, name }, { onSuccess: (tag) => addTag.mutate(tag.id) });
     }
   }
 
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
       {tags.map((t) => (
         <span
           key={t.id}
           style={{
             fontSize: 11,
-            background: "#e6ebff",
-            color: "#2c46a6",
-            borderRadius: 10,
-            padding: "2px 8px",
+            background: theme.accentWeak,
+            color: theme.accent,
+            borderRadius: theme.radiusChip,
+            padding: "2px 4px 2px 8px",
             display: "inline-flex",
-            gap: 4,
+            alignItems: "center",
+            gap: 2,
           }}
         >
           #{t.name}
           <button
             type="button"
+            aria-label={`${t.name} 태그 제거`}
             onClick={() => removeTag.mutate(t.id)}
-            style={{ border: "none", background: "none", cursor: "pointer", color: "inherit" }}
+            style={{ border: "none", background: "none", cursor: "pointer", color: "inherit", display: "flex", padding: 0 }}
           >
-            ×
+            <X size={12} />
           </button>
         </span>
       ))}
-      <button
-        type="button"
-        onClick={handleAdd}
-        style={{ fontSize: 11, border: "none", background: "none", color: "#06c", cursor: "pointer" }}
-      >
-        + 태그
-      </button>
+      {adding ? (
+        <div style={{ width: 140 }}>
+          <InlineInput placeholder="태그 이름" onSubmit={handleAdd} onCancel={() => setAdding(false)} />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          style={{ fontSize: 11, border: "none", background: "none", color: theme.accent, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 2 }}
+        >
+          <Plus size={12} /> 태그
+        </button>
+      )}
     </div>
   );
 }

@@ -9,9 +9,11 @@ import {
   useLinks, useAddLink, useDeleteLink, useTags, useCollectionIdsForTag,
 } from "@/lib/queries";
 import { usePanelState } from "@/lib/usePanelState";
+import { useRealtimeSync } from "@/lib/useRealtimeSync";
 import { Sidebar } from "./Sidebar";
 import { Toolbar } from "./Toolbar";
 import { SearchBar } from "./SearchBar";
+import { TagBar } from "./TagBar";
 
 function openUrl(url: string) {
   window.open(url, "_blank", "noopener");
@@ -31,6 +33,7 @@ function SectionContainer({ collection, userId }: { collection: Collection; user
         collection={collection}
         links={links}
         isOver={isOver}
+        tagSlot={<TagBar collectionId={collection.id} userId={userId} />}
         onOpenLink={openUrl}
         onDeleteLink={(id) => deleteLink.mutate(id)}
         onAddLink={(url) => { addLink.mutate({ user_id: userId, url }); toast.show("링크를 추가했어요"); }}
@@ -49,6 +52,7 @@ export function DashboardClient({ userId }: { userId: string; userEmail: string 
   const [activeTagId, setActiveTagId] = useState<string | null>(null);
   const { state: panels, toggleLeft, toggleRight } = usePanelState();
   const toast = useToast();
+  useRealtimeSync();
 
   useEffect(() => {
     if (!activeSpaceId && spaces.length > 0) setActiveSpaceId(spaces[0].id);

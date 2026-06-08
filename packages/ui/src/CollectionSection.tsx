@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { Collection, Link } from "@tablign/core";
 import { LinkCard } from "./LinkCard";
 import { InlineInput } from "./InlineInput";
@@ -10,6 +10,7 @@ export interface CollectionSectionProps {
   links: Link[];
   collapsed?: boolean;
   isOver?: boolean;
+  tagSlot?: ReactNode;
   onOpenLink: (url: string) => void;
   onDeleteLink: (id: string) => void;
   onAddLink: (url: string) => void;
@@ -18,7 +19,7 @@ export interface CollectionSectionProps {
 }
 
 export function CollectionSection({
-  collection, links, collapsed: collapsedProp, isOver,
+  collection, links, collapsed: collapsedProp, isOver, tagSlot,
   onOpenLink, onDeleteLink, onAddLink, onOpenAll, onDeleteCollection,
 }: CollectionSectionProps) {
   const [collapsed, setCollapsed] = useState(!!collapsedProp);
@@ -61,6 +62,7 @@ export function CollectionSection({
       </header>
       {!collapsed && (
         <>
+          {tagSlot && <div style={{ marginBottom: 8 }}>{tagSlot}</div>}
           {adding && (
             <div style={{ marginBottom: 8 }}>
               <InlineInput
