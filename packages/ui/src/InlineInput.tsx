@@ -6,10 +6,11 @@ export interface InlineInputProps {
   onSubmit: (value: string) => void;
   onCancel: () => void;
   autoFocus?: boolean;
+  defaultValue?: string;
 }
 
-export function InlineInput({ placeholder, onSubmit, onCancel, autoFocus = true }: InlineInputProps) {
-  const [value, setValue] = useState("");
+export function InlineInput({ placeholder, onSubmit, onCancel, autoFocus = true, defaultValue = "" }: InlineInputProps) {
+  const [value, setValue] = useState(defaultValue);
 
   function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
