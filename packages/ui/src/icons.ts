@@ -12,6 +12,7 @@ export {
   Download,
   X,
   ExternalLink,
+  Pencil,
   Trash2,
   Globe,
   LogOut,

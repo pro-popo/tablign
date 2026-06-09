@@ -14,7 +14,7 @@ const groups: WindowGroup[] = [
 function renderPanel(props: Partial<React.ComponentProps<typeof OpenTabsPanel>> = {}) {
   return render(
     <DndContext>
-      <OpenTabsPanel groups={groups} onSaveWindow={() => {}} onCloseTab={() => {}} onCollapse={() => {}} {...props} />
+      <OpenTabsPanel groups={groups} onSaveWindow={() => {}} onCloseWindow={() => {}} onCloseTab={() => {}} onCollapse={() => {}} {...props} />
     </DndContext>,
   );
 }

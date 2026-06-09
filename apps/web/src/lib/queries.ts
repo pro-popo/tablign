@@ -12,6 +12,7 @@ import {
   deleteLink,
   moveLink,
   updateLink,
+  updateCollection,
   listTags,
   createTag,
   addTagToCollection,
@@ -93,6 +94,23 @@ export function useDeleteLink(collectionId: string) {
   return useMutation({
     mutationFn: (id: string) => deleteLink(supabase, id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["links", collectionId] }),
+  });
+}
+
+export function useUpdateLink(collectionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { id: string; patch: { custom_title: string | null; url: string; note: string | null } }) =>
+      updateLink(supabase, args.id, args.patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["links", collectionId] }),
+  });
+}
+
+export function useRenameCollection(spaceId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { id: string; title: string }) => updateCollection(supabase, args.id, { title: args.title }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["collections", spaceId] }),
   });
 }
 

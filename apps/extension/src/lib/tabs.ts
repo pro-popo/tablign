@@ -39,6 +39,20 @@ export interface WindowGroup {
   tabs: WindowTab[];
 }
 
+/**
+ * OPEN TABS에서 드래그한 탭을 컬렉션 섹션에 드롭했을 때 저장할 링크 입력을 만든다.
+ * 탭이 없거나 드롭 대상이 없거나 비-http(s) 탭이면 null.
+ */
+export function tabDropToLinkInput(
+  tab: WindowTab | undefined,
+  collectionId: string | undefined,
+  userId: string,
+): CreateLinkInput | null {
+  if (!tab || !collectionId) return null;
+  const [input] = tabsToLinkInputs([tab], userId, collectionId);
+  return input ?? null;
+}
+
 export function groupTabsByWindow(tabs: WindowTab[]): WindowGroup[] {
   const order: number[] = [];
   const map = new Map<number, WindowTab[]>();

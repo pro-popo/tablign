@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppShell, Board, CollectionSection, EmptyState, Button, useToast } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, EmptyState, useToast } from "@tablign/ui";
 import type { Collection } from "@tablign/core";
 import { useDroppable } from "@dnd-kit/core";
 import {
   useSpaces, useCreateSpace, useCollections, useCreateCollection, useDeleteCollection,
-  useLinks, useAddLink, useDeleteLink, useTags, useCollectionIdsForTag,
+  useLinks, useAddLink, useDeleteLink, useUpdateLink, useRenameCollection, useTags, useCollectionIdsForTag,
 } from "@/lib/queries";
 import { usePanelState } from "@/lib/usePanelState";
 import { useRealtimeSync } from "@/lib/useRealtimeSync";
@@ -23,6 +23,8 @@ function SectionContainer({ collection, userId }: { collection: Collection; user
   const { data: links = [] } = useLinks(collection.id);
   const addLink = useAddLink(collection.id);
   const deleteLink = useDeleteLink(collection.id);
+  const updateLink = useUpdateLink(collection.id);
+  const renameCollection = useRenameCollection(collection.space_id);
   const deleteCollection = useDeleteCollection(collection.space_id);
   const toast = useToast();
   const { setNodeRef, isOver } = useDroppable({ id: collection.id, data: { collectionId: collection.id } });
@@ -39,6 +41,8 @@ function SectionContainer({ collection, userId }: { collection: Collection; user
         onAddLink={(url) => { addLink.mutate({ user_id: userId, url }); toast.show("링크를 추가했어요"); }}
         onOpenAll={(_id) => links.forEach((l) => openUrl(l.url))}
         onDeleteCollection={(id) => { deleteCollection.mutate(id); toast.show("컬렉션을 삭제했어요"); }}
+        onUpdateLink={(id, patch) => updateLink.mutate({ id, patch })}
+        onRenameCollection={(id, title) => renameCollection.mutate({ id, title })}
       />
     </div>
   );
@@ -85,11 +89,6 @@ export function DashboardClient({ userId }: { userId: string; userEmail: string 
         />
       }
     >
-      {!panels.left && (
-        <div style={{ position: "absolute", top: 10, left: 12, zIndex: 5 }}>
-          <Button variant="outline" onClick={toggleLeft}>≡ 메뉴</Button>
-        </div>
-      )}
       <Toolbar
         spaceName={activeSpace?.name ?? "—"}
         collectionCount={collections.length}

@@ -300,6 +300,24 @@ describe("search 데이터 접근", () => {
   });
 });
 
+describe("links note/url 편집", () => {
+  it("createLink는 note를 저장하고 updateLink로 url·note·제목을 바꾼다", async () => {
+    const user = await makeUser(`linknote-${Date.now()}@test.local`);
+    const space = await createSpace(user.client, { user_id: user.id, name: "개인" });
+    const c = await createCollection(user.client, { user_id: user.id, space_id: space.id, title: "C" });
+    const created = await createLink(user.client, {
+      user_id: user.id, collection_id: c.id, url: "https://a.com", note: "메모1",
+    });
+    expect(created.note).toBe("메모1");
+    const updated = await updateLink(user.client, created.id, {
+      url: "https://b.com", note: "메모2", custom_title: "내 제목",
+    });
+    expect(updated.url).toBe("https://b.com");
+    expect(updated.note).toBe("메모2");
+    expect(updated.custom_title).toBe("내 제목");
+  });
+});
+
 describe("listAllCollections", () => {
   it("스페이스에 상관없이 사용자의 모든 컬렉션을 반환한다", async () => {
     const user = await makeUser(`allcols-${Date.now()}@test.local`);

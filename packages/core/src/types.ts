@@ -34,6 +34,7 @@ export interface Link {
   favicon_url: string | null;
   thumbnail_url: string | null;
   custom_title: string | null;
+  note: string | null;
   position: number;
   created_at: string;
 }

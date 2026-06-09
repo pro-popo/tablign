@@ -8,7 +8,7 @@ const collection: Collection = {
   icon: null, note: null, position: 1000, created_at: "2026-01-01T00:00:00Z",
 };
 const links: Link[] = [
-  { id: "l1", collection_id: "c1", user_id: "u1", url: "https://a.com", title: "A", favicon_url: null, thumbnail_url: null, custom_title: null, position: 1000, created_at: "x" },
+  { id: "l1", collection_id: "c1", user_id: "u1", url: "https://a.com", title: "A", favicon_url: null, thumbnail_url: null, custom_title: null, note: null, position: 1000, created_at: "x" },
 ];
 
 function noop() {}
@@ -44,5 +44,28 @@ describe("CollectionSection", () => {
     fireEvent.change(input, { target: { value: "https://x.com" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onAddLink).toHaveBeenCalledWith("https://x.com");
+  });
+
+  it("제목 클릭 시 인라인 편집되고 Enter로 onRenameCollection을 호출한다", () => {
+    const onRename = vi.fn();
+    render(
+      <CollectionSection collection={collection} links={links}
+        onOpenLink={noop} onDeleteLink={noop} onAddLink={noop} onOpenAll={noop} onDeleteCollection={noop}
+        onRenameCollection={onRename} />,
+    );
+    fireEvent.click(screen.getByText("읽을거리"));
+    const input = screen.getByDisplayValue("읽을거리");
+    fireEvent.change(input, { target: { value: "새 이름" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onRename).toHaveBeenCalledWith("c1", "새 이름");
+  });
+
+  it("autoEditTitle이면 마운트 시 제목 편집 입력이 보인다", () => {
+    render(
+      <CollectionSection collection={collection} links={links}
+        onOpenLink={noop} onDeleteLink={noop} onAddLink={noop} onOpenAll={noop} onDeleteCollection={noop}
+        onRenameCollection={noop} autoEditTitle />,
+    );
+    expect(screen.getByDisplayValue("읽을거리")).toBeInTheDocument();
   });
 });

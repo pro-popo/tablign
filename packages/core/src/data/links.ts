@@ -9,6 +9,7 @@ export interface CreateLinkInput {
   favicon_url?: string | null;
   thumbnail_url?: string | null;
   custom_title?: string | null;
+  note?: string | null;
   position?: number;
 }
 
@@ -20,7 +21,8 @@ export async function listLinks(
     .from("links")
     .select()
     .eq("collection_id", collectionId)
-    .order("position", { ascending: true });
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
   if (error) throw error;
   return data as Link[];
 }
@@ -42,7 +44,7 @@ export async function updateLink(
   client: SupabaseClient,
   id: string,
   patch: Partial<
-    Pick<Link, "title" | "custom_title" | "favicon_url" | "thumbnail_url" | "position">
+    Pick<Link, "title" | "custom_title" | "url" | "favicon_url" | "thumbnail_url" | "note" | "position">
   >,
 ): Promise<Link> {
   const { data, error } = await client
