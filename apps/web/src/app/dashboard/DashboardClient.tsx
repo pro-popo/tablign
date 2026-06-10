@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell, Board, CollectionSection, EmptyState, useToast } from "@tablign/ui";
 import type { Collection } from "@tablign/core";
 import { useDroppable } from "@dnd-kit/core";
@@ -52,15 +53,19 @@ export function DashboardClient({ userId }: { userId: string; userEmail: string 
   const { data: spaces = [] } = useSpaces();
   const { data: tags = [] } = useTags();
   const createSpace = useCreateSpace();
-  const [activeSpaceId, setActiveSpaceId] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTagId, setActiveTagId] = useState<string | null>(null);
   const { state: panels, toggleLeft, toggleRight } = usePanelState();
   const toast = useToast();
   useRealtimeSync();
 
-  useEffect(() => {
-    if (!activeSpaceId && spaces.length > 0) setActiveSpaceId(spaces[0].id);
-  }, [spaces, activeSpaceId]);
+  // 활성 스페이스는 URL(?space=<id>)을 단일 출처로 파생한다.
+  // 파라미터가 없거나 더는 존재하지 않는 id면 첫 스페이스로 폴백한다.
+  const spaceParam = searchParams.get("space");
+  const activeSpaceId =
+    (spaceParam && spaces.some((s) => s.id === spaceParam) ? spaceParam : spaces[0]?.id) ?? null;
+  const selectSpace = (id: string) => router.replace(`/dashboard?space=${id}`);
 
   const { data: collections = [] } = useCollections(activeSpaceId);
   const createCollection = useCreateCollection(activeSpaceId);
@@ -81,7 +86,7 @@ export function DashboardClient({ userId }: { userId: string; userEmail: string 
           tags={tags}
           activeSpaceId={activeSpaceId}
           activeTagId={activeTagId}
-          onSelectSpace={setActiveSpaceId}
+          onSelectSpace={selectSpace}
           onToggleTag={(id) => setActiveTagId((cur) => (cur === id ? null : id))}
           onAddSpace={(name) => { createSpace.mutate({ user_id: userId, name }); toast.show("스페이스를 추가했어요"); }}
           onCollapse={toggleLeft}
