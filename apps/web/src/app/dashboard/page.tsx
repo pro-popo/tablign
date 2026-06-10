@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardClient } from "./DashboardClient";
@@ -10,5 +11,9 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
-  return <DashboardClient userId={user.id} userEmail={user.email ?? ""} />;
+  return (
+    <Suspense>
+      <DashboardClient userId={user.id} userEmail={user.email ?? ""} />
+    </Suspense>
+  );
 }

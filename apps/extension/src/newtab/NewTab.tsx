@@ -22,6 +22,7 @@ import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, type WindowGroup, type WindowTab } from "../lib/tabs";
 import { placeInOrder, sequentialPositions } from "../lib/order";
 import { usePanelState } from "../lib/usePanelState";
+import { useActiveSpace } from "../lib/useActiveSpace";
 import { OpenTabsPanel } from "./OpenTabsPanel";
 import { ExtSidebar } from "./ExtSidebar";
 import { ExtSearchBar } from "./ExtSearchBar";
@@ -46,7 +47,7 @@ type Active = { type: "tab"; tab: WindowTab } | { type: "link"; link: Link } | n
 export function NewTab() {
   const [session, setSession] = useState<Session | null>(null);
   const [spaces, setSpaces] = useState<Space[]>([]);
-  const [activeSpaceId, setActiveSpaceId] = useState<string | null>(null);
+  const { activeSpaceId, setActiveSpaceId, loaded: spaceLoaded } = useActiveSpace();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [linksByCol, setLinksByCol] = useState<Record<string, Link[]>>({});
   // 드래그 중 onDragEnd가 최신 상태를 읽도록 ref로 동기 보관(state 배칭 레이스 방지).
@@ -72,15 +73,19 @@ export function NewTab() {
   }, []);
 
   // 스페이스 + 태그 로드
+  // chrome.storage에서 활성 스페이스를 읽은 뒤(spaceLoaded) 실행해, 저장된 스페이스가
+  // 아직 존재하면 그대로 유지하고, 없거나 삭제됐으면 첫 스페이스로 폴백한다.
   useEffect(() => {
-    if (!session) return;
+    if (!session || !spaceLoaded) return;
     (async () => {
       const sp = await listSpaces(supabase);
       setSpaces(sp);
-      setActiveSpaceId((cur) => cur ?? sp[0]?.id ?? null);
+      const keep = activeSpaceId && sp.some((s) => s.id === activeSpaceId);
+      setActiveSpaceId(keep ? activeSpaceId : (sp[0]?.id ?? null));
       setTags(await listTags(supabase));
     })();
-  }, [session]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, spaceLoaded]);
 
   async function loadCollections() {
     if (!activeSpaceId) { setCollections([]); setLinksByCol({}); return; }
