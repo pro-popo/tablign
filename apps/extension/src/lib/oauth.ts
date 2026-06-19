@@ -33,7 +33,10 @@ export async function signInWithGoogle(): Promise<string | undefined> {
   try {
     resultUrl = await chrome.identity.launchWebAuthFlow({ url: data.url, interactive: true });
   } catch (e) {
-    return e instanceof Error ? e.message : "구글 인증에 실패했습니다";
+    const msg = e instanceof Error ? e.message : "";
+    // 사용자가 구글 창을 닫거나 취소한 경우: 에러로 표시하지 않음
+    if (/did not approve|cancel|closed/i.test(msg)) return undefined;
+    return msg || "구글 인증에 실패했습니다";
   }
 
   const code = extractCodeFromRedirect(resultUrl);
