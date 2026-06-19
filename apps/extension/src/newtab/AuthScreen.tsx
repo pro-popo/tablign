@@ -53,7 +53,13 @@ const css = `
 .as-gchip{width:24px;height:24px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;flex:none}
 .as-fine{margin:16px 0 0;font-size:12px;color:${theme.textFaint}}
 .as-err{margin:14px 0 0;font-size:12.5px;color:${theme.danger};line-height:1.5}
-@media (max-width:720px){.as-app{display:none}.as-panel{flex:1;align-items:center;text-align:center;box-shadow:none;border-left:none}}
+/* 모바일(좁은 화면): 보드 숨기고 콘텐츠를 세로 가운데로 모음 */
+@media (max-width:720px){
+  .as-app{display:none}
+  .as-panel{flex:1;justify-content:center;gap:24px;text-align:center;padding:40px 28px;box-shadow:none;border-left:none}
+  .as-mono{margin-left:auto;margin-right:auto}
+  .as-benefits{align-items:center}
+}
 @media (prefers-reduced-motion:reduce){.as-app .as-card{animation:none}}
 `;
 
