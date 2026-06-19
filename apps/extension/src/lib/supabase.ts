@@ -21,6 +21,8 @@ export const supabase = createClient(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,
+      // 확장에서 구글 로그인 시 chrome.identity로 받은 code를 직접 교환하므로 PKCE 필요
+      flowType: "pkce",
     },
   },
 );

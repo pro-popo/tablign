@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { Space } from "@tablign/core";
-import { Hash, Plus, Pencil, PanelLeftClose, InlineInput, theme } from "@tablign/ui";
+import { Hash, Plus, Pencil, PanelLeftClose, LogOut, InlineInput, theme } from "@tablign/ui";
 
 export interface ExtSidebarProps {
   spaces: Space[];
@@ -10,10 +10,11 @@ export interface ExtSidebarProps {
   onAddSpace: (name: string) => void;
   onRenameSpace: (id: string, name: string) => void;
   onCollapse: () => void;
+  onSignOut: () => void;
   searchSlot: ReactNode;
 }
 
-export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, onAddSpace, onRenameSpace, onCollapse, searchSlot }: ExtSidebarProps) {
+export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, onAddSpace, onRenameSpace, onCollapse, onSignOut, searchSlot }: ExtSidebarProps) {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -77,7 +78,11 @@ export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, on
 
       <div style={{ marginTop: "auto", padding: "12px 14px", borderTop: `1px solid ${theme.border}`, display: "flex", alignItems: "center", gap: 8, color: theme.textMuted }}>
         <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#dfe2ea", flexShrink: 0 }} />
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>{userEmail || "내 계정"}</span>
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>{userEmail || "내 계정"}</span>
+        <button type="button" title="로그아웃" aria-label="로그아웃" onClick={onSignOut}
+          style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3, flexShrink: 0 }}>
+          <LogOut size={15} color={theme.textFaint} />
+        </button>
       </div>
     </>
   );
