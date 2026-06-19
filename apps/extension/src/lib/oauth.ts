@@ -22,8 +22,8 @@ export async function signInWithGoogle(): Promise<string | undefined> {
     options: {
       redirectTo,
       skipBrowserRedirect: true,
-      // 한 번 로그인한 뒤에도 매번 계정 선택 화면을 띄운다(자동 로그인 방지).
-      queryParams: { prompt: "select_account" },
+      // 매번 계정 선택 + 동의 화면을 강제해 자동(무인증) 로그인을 막는다.
+      queryParams: { prompt: "select_account consent" },
     },
   });
   if (error) return error.message;

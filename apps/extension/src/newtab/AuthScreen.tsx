@@ -107,7 +107,7 @@ export function AuthScreen() {
             </div>
           </div>
           <div className="as-col">
-            <div className="as-colT">쇼핑 위시</div>
+            <div className="as-colT">참고 자료</div>
             <div className="as-row">
               <div className="as-card" style={{ animationDelay: "0.59s" }}><span className="f" style={{ background: "#ec4899" }} /><span className="l1" /><span className="l2" /></div>
               <div className="as-card" style={{ animationDelay: "0.65s" }}><span className="f" style={{ background: "#0ea5e9" }} /><span className="l1" /><span className="l2" /></div>
