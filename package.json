@@ -2,6 +2,7 @@
   "name": "tablign",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "pnpm@10.15.0",
   "scripts": {
     "test": "pnpm -r test",
     "build": "pnpm -r build",
@@ -9,5 +10,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp"]
   }
 }
