@@ -51,6 +51,8 @@ const css = `
 .as-gbtn:active{transform:translateY(1px)}
 .as-gbtn:disabled{cursor:default;opacity:.6;box-shadow:none}
 .as-gchip{width:24px;height:24px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.as-spinner{width:20px;height:20px;border-radius:50%;border:2.5px solid rgba(255,255,255,.45);border-top-color:#fff;animation:asSpin .7s linear infinite}
+@keyframes asSpin{to{transform:rotate(360deg)}}
 .as-fine{margin:16px 0 0;font-size:12px;color:${theme.textFaint}}
 .as-err{margin:14px 0 0;font-size:12.5px;color:${theme.danger};line-height:1.5}
 /* 모바일(좁은 화면): 보드 숨기고 콘텐츠를 세로 가운데로 모음 */
@@ -141,8 +143,14 @@ export function AuthScreen() {
         </div>
         <div className="as-bottom">
           <button className="as-gbtn" type="button" onClick={handleGoogle} disabled={loading}>
-            <span className="as-gchip"><GoogleIcon /></span>
-            {loading ? "로그인 중…" : "Google로 계속하기"}
+            {loading ? (
+              <span className="as-spinner" aria-label="로그인 중" />
+            ) : (
+              <>
+                <span className="as-gchip"><GoogleIcon /></span>
+                Google로 계속하기
+              </>
+            )}
           </button>
           {error && <p className="as-err">{error}</p>}
         </div>
