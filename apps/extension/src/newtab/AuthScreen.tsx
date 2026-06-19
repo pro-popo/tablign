@@ -39,10 +39,13 @@ const css = `
 .as-card .l2{height:6px;border-radius:3px;background:#eef0f5;width:55%}
 @keyframes asSnap{from{opacity:0;transform:translateY(9px) scale(.97)}to{opacity:1;transform:none}}
 .as-app .as-card{animation:asSnap .55s cubic-bezier(.2,.8,.2,1) backwards}
-.as-panel{flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 40px;min-width:300px;background:#fff;position:relative;z-index:2;box-shadow:-22px 0 50px rgba(20,30,60,.16);border-left:1px solid #eef0f3}
+.as-panel{flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:52px 40px;min-width:300px;background:#fff;position:relative;z-index:2;box-shadow:-22px 0 50px rgba(20,30,60,.16);border-left:1px solid #eef0f3}
 .as-mono{width:46px;height:46px;border-radius:13px;background:${theme.text};color:#fff;font-weight:800;font-size:22px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
 .as-panel h1{font-size:24px;letter-spacing:-.03em;line-height:1.14;margin:0 0 10px;font-weight:700}
-.as-panel .sub{color:${theme.textMuted};font-size:13px;line-height:1.55;margin:0 0 26px}
+.as-panel .sub{color:${theme.textMuted};font-size:13px;line-height:1.55;margin:0 0 24px}
+.as-benefits{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:13px}
+.as-benefit{display:flex;align-items:center;gap:10px;font-size:13px;color:#495057}
+.as-ck{width:20px;height:20px;border-radius:50%;background:${theme.accentWeak};color:${theme.accent};display:flex;align-items:center;justify-content:center;flex:none;font-size:12px;font-weight:800}
 .as-gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:11px;padding:13px 18px;border-radius:11px;border:none;background:${theme.accent};color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;box-shadow:0 8px 20px ${theme.accent}33;transition:opacity .15s,transform .05s}
 .as-gbtn:hover{opacity:.94}
 .as-gbtn:active{transform:translateY(1px)}
@@ -117,17 +120,25 @@ export function AuthScreen() {
         </div>
       </div>
 
-      {/* 우측: 로그인 */}
+      {/* 우측: 로그인 (상단 콘텐츠 / 하단 버튼) */}
       <div className="as-panel">
-        <div className="as-mono">t</div>
-        <h1>탭을 정렬하는<br />가장 단정한 방법.</h1>
-        <p className="sub">열린 탭과 북마크를 컬렉션으로 모아 한눈에 관리하세요.</p>
-        <button className="as-gbtn" type="button" onClick={handleGoogle} disabled={loading}>
-          <span className="as-gchip"><GoogleIcon /></span>
-          {loading ? "로그인 중…" : "Google로 계속하기"}
-        </button>
-        <p className="as-fine">어느 기기에서나 컬렉션이 동기화됩니다.</p>
-        {error && <p className="as-err">{error}</p>}
+        <div className="as-top">
+          <div className="as-mono">t</div>
+          <h1>탭을 정렬하는<br />가장 단정한 방법.</h1>
+          <p className="sub">열린 탭과 북마크를 컬렉션으로 모아 한눈에 관리하세요.</p>
+          <ul className="as-benefits">
+            <li className="as-benefit"><span className="as-ck">✓</span> 열린 탭을 한 번에 저장</li>
+            <li className="as-benefit"><span className="as-ck">✓</span> 컬렉션·스페이스로 정리</li>
+            <li className="as-benefit"><span className="as-ck">✓</span> 어느 기기에서나 동기화</li>
+          </ul>
+        </div>
+        <div className="as-bottom">
+          <button className="as-gbtn" type="button" onClick={handleGoogle} disabled={loading}>
+            <span className="as-gchip"><GoogleIcon /></span>
+            {loading ? "로그인 중…" : "Google로 계속하기"}
+          </button>
+          {error && <p className="as-err">{error}</p>}
+        </div>
       </div>
     </div>
   );
