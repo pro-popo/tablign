@@ -56,7 +56,8 @@ const css = `
 /* 모바일(좁은 화면): 보드 숨기고 콘텐츠를 세로 가운데로 모음 */
 @media (max-width:720px){
   .as-app{display:none}
-  .as-panel{flex:1;justify-content:center;gap:24px;text-align:center;padding:40px 28px;box-shadow:none;border-left:none}
+  .as-panel{flex:1;gap:24px;text-align:center;padding:40px 28px;box-shadow:none;border-left:none}
+  .as-top{flex:1;display:flex;flex-direction:column;justify-content:center}
   .as-mono{margin-left:auto;margin-right:auto}
   .as-benefits{align-items:center}
 }
