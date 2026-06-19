@@ -22,7 +22,7 @@ const css = `
 .as-brand{display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:2px}
 .as-logo{width:25px;height:25px;border-radius:8px;background:${theme.text};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
 .as-brand b{font-size:13px}
-.as-lbl{font-size:9.5px;letter-spacing:.16em;color:${theme.textFaint};margin:4px 4px 2px}
+.as-lbl{font-size:12px;letter-spacing:.16em;color:${theme.textFaint};margin:4px 4px 2px}
 .as-sp{display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:7px;font-size:12.5px;color:#5b636b}
 .as-sp.on{background:${theme.accentWeak};color:${theme.accent};font-weight:600}
 .as-sp .h{color:#c2c8cf}
@@ -31,21 +31,14 @@ const css = `
 .as-h b{font-size:14px}
 .as-h i{font-style:normal;color:${theme.textFaint};font-size:12.5px}
 .as-col{margin-bottom:16px}
-.as-colT{font-size:11.5px;color:#454c54;margin:0 0 8px;font-weight:600}
+.as-colT{font-size:12px;color:#454c54;margin:0 0 8px;font-weight:600}
 .as-row{display:flex;gap:10px}
 .as-card{flex:1;min-width:0;background:${theme.surface};border:1px solid #edeef1;border-radius:9px;padding:10px 10px 11px;display:flex;flex-direction:column;gap:7px;box-shadow:0 1px 3px rgba(40,60,120,.05)}
 .as-card .f{width:17px;height:17px;border-radius:5px}
 .as-card .l1{height:6px;border-radius:3px;background:#e9ecf1;width:85%}
 .as-card .l2{height:6px;border-radius:3px;background:#eef0f5;width:55%}
-/* 영상 컬렉션용 카드(썸네일 + 재생 버튼) */
-.as-vcard{flex:1;min-width:0;background:${theme.surface};border:1px solid #edeef1;border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(40,60,120,.05)}
-.as-vthumb{height:46px;display:flex;align-items:center;justify-content:center}
-.as-play{width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.18)}
-.as-play::after{content:"";border-left:7px solid ${theme.text};border-top:5px solid transparent;border-bottom:5px solid transparent;margin-left:2px}
-.as-vmeta{padding:7px 9px}
-.as-vmeta .l1{height:6px;border-radius:3px;background:#e9ecf1;width:80%}
 @keyframes asSnap{from{opacity:0;transform:translateY(9px) scale(.97)}to{opacity:1;transform:none}}
-.as-app .as-card,.as-app .as-vcard{animation:asSnap .55s cubic-bezier(.2,.8,.2,1) backwards}
+.as-app .as-card{animation:asSnap .55s cubic-bezier(.2,.8,.2,1) backwards}
 .as-panel{flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 40px;min-width:300px;background:#fff;position:relative;z-index:2;box-shadow:-22px 0 50px rgba(20,30,60,.16);border-left:1px solid #eef0f3}
 .as-mono{width:46px;height:46px;border-radius:13px;background:${theme.text};color:#fff;font-weight:800;font-size:22px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
 .as-panel h1{font-size:24px;letter-spacing:-.03em;line-height:1.14;margin:0 0 10px;font-weight:700}
@@ -55,10 +48,10 @@ const css = `
 .as-gbtn:active{transform:translateY(1px)}
 .as-gbtn:disabled{cursor:default;opacity:.6;box-shadow:none}
 .as-gchip{width:24px;height:24px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;flex:none}
-.as-fine{margin:16px 0 0;font-size:11.5px;color:${theme.textFaint}}
+.as-fine{margin:16px 0 0;font-size:12px;color:${theme.textFaint}}
 .as-err{margin:14px 0 0;font-size:12.5px;color:${theme.danger};line-height:1.5}
 @media (max-width:720px){.as-app{display:none}.as-panel{flex:1;align-items:center;text-align:center;box-shadow:none;border-left:none}}
-@media (prefers-reduced-motion:reduce){.as-app .as-card,.as-app .as-vcard{animation:none}}
+@media (prefers-reduced-motion:reduce){.as-app .as-card{animation:none}}
 `;
 
 export function AuthScreen() {
@@ -114,11 +107,11 @@ export function AuthScreen() {
             </div>
           </div>
           <div className="as-col">
-            <div className="as-colT">나중에 볼 영상</div>
+            <div className="as-colT">쇼핑 위시</div>
             <div className="as-row">
-              <div className="as-vcard" style={{ animationDelay: "0.59s" }}><div className="as-vthumb" style={{ background: "linear-gradient(135deg,#fca5a5,#dc2626)" }}><span className="as-play" /></div><div className="as-vmeta"><span className="l1" /></div></div>
-              <div className="as-vcard" style={{ animationDelay: "0.65s" }}><div className="as-vthumb" style={{ background: "linear-gradient(135deg,#7dd3fc,#0891b2)" }}><span className="as-play" /></div><div className="as-vmeta"><span className="l1" /></div></div>
-              <div className="as-vcard" style={{ animationDelay: "0.71s" }}><div className="as-vthumb" style={{ background: "linear-gradient(135deg,#fdba74,#ea580c)" }}><span className="as-play" /></div><div className="as-vmeta"><span className="l1" /></div></div>
+              <div className="as-card" style={{ animationDelay: "0.59s" }}><span className="f" style={{ background: "#ec4899" }} /><span className="l1" /><span className="l2" /></div>
+              <div className="as-card" style={{ animationDelay: "0.65s" }}><span className="f" style={{ background: "#0ea5e9" }} /><span className="l1" /><span className="l2" /></div>
+              <div className="as-card" style={{ animationDelay: "0.71s" }}><span className="f" style={{ background: "#f97316" }} /><span className="l1" /><span className="l2" /></div>
             </div>
           </div>
         </div>
