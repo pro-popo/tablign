@@ -8,3 +8,6 @@ coverage/
 *.log
 packages/core/.env.test
 apps/extension/.env
+supabase/.env
+.claude/
+.DS_Store
