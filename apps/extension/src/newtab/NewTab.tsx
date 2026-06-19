@@ -27,6 +27,7 @@ import { OpenTabsPanel } from "./OpenTabsPanel";
 import { ExtSidebar } from "./ExtSidebar";
 import { ExtSearchBar } from "./ExtSearchBar";
 import { DndLinkList } from "./DndLinkList";
+import { AuthScreen } from "./AuthScreen";
 
 interface DragPreview { label: string; faviconUrl: string | null; domain: string }
 
@@ -319,12 +320,7 @@ export function NewTab() {
   }
 
   if (!session) {
-    return (
-      <div style={{ padding: 40, fontFamily: "system-ui" }}>
-        <h2>tablign</h2>
-        <p>팝업(확장 아이콘)에서 로그인하면 여기에 컬렉션이 표시됩니다.</p>
-      </div>
-    );
+    return <AuthScreen />;
   }
 
   const userId = session.user.id;
@@ -359,6 +355,7 @@ export function NewTab() {
             onSelectSpace={(id) => { setActiveSpaceId(id); setActiveTagId(null); }}
             onAddSpace={addSpace}
             onRenameSpace={renameSpace}
+            onSignOut={async () => { await supabase.auth.signOut(); }}
             onCollapse={toggleLeft}
             searchSlot={<ExtSearchBar />}
           />

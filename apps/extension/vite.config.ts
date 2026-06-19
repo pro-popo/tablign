@@ -10,8 +10,8 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, "popup.html"),
         newtab: resolve(__dirname, "newtab.html"),
+        background: resolve(__dirname, "src/background.ts"),
       },
       output: {
         entryFileNames: "assets/[name].js",

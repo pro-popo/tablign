@@ -3,8 +3,9 @@
   "name": "tablign",
   "version": "0.0.1",
   "description": "시각적 북마크·탭 관리",
-  "action": { "default_popup": "popup.html", "default_title": "tablign" },
+  "action": { "default_title": "tablign" },
+  "background": { "service_worker": "assets/background.js", "type": "module" },
   "chrome_url_overrides": { "newtab": "newtab.html" },
-  "permissions": ["tabs", "storage"],
+  "permissions": ["tabs", "storage", "identity"],
   "host_permissions": ["http://127.0.0.1:54321/*"]
 }
