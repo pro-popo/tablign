@@ -6,10 +6,13 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 
-// 포인터가 실제로 들어간 droppable만 인정(밖이면 없음 → 드롭 취소). 카드(아이템)를 컨테이너보다 우선.
 const collisionDetection: CollisionDetection = (args) => {
   const hits = pointerWithin(args);
-  const cardHit = hits.find((h) => !String(h.id).startsWith("container:"));
+  // 카드(탭/링크) > 컨테이너(컬렉션 container:/창 window:) 순으로 우선.
+  const cardHit = hits.find((h) => {
+    const id = String(h.id);
+    return !id.startsWith("container:") && !id.startsWith("window:");
+  });
   return cardHit ? [cardHit] : hits;
 };
 import { AppShell, Board, CollectionSection, EmptyState, Button, Favicon, theme, Tag, Plus } from "@tablign/ui";
@@ -19,7 +22,7 @@ import {
   type Collection, type Link, type Space, type Tag as TagModel,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
-import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, type WindowGroup, type WindowTab } from "../lib/tabs";
+import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
 import { placeInOrder, sequentialPositions } from "../lib/order";
 import { usePanelState } from "../lib/usePanelState";
 import { useActiveSpace } from "../lib/useActiveSpace";
@@ -56,11 +59,16 @@ export function NewTab() {
   useEffect(() => { linksByColRef.current = linksByCol; }, [linksByCol]);
   // 드래그 시작 시점의 원래 컬렉션(링크 객체의 collection_id가 드래그 중 갱신되므로 시작값을 보관).
   const dragOriginRef = useRef<string | null>(null);
+  // 드래그 중 onDragEnd가 최신 groups를 읽도록 ref로 동기 보관.
+  const groupsRef = useRef<WindowGroup[]>([]);
+  // 드래그 시작 시점의 groups 스냅샷(탭이 컬렉션 위로 돌아오거나 취소될 때 원복용).
+  const groupsOriginRef = useRef<WindowGroup[]>([]);
   const [tags, setTags] = useState<TagModel[]>([]);
   const [activeTagId, setActiveTagId] = useState<string | null>(null);
   const [taggedIds, setTaggedIds] = useState<string[]>([]);
   const [showTagMenu, setShowTagMenu] = useState(false);
   const [groups, setGroups] = useState<WindowGroup[]>([]);
+  useEffect(() => { groupsRef.current = groups; }, [groups]);
   const [active, setActive] = useState<Active>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const [autoEditId, setAutoEditId] = useState<string | null>(null);
@@ -163,6 +171,7 @@ export function NewTab() {
       setActive({ type: "link", link });
     } else if (d?.kind === "tab") {
       dragOriginRef.current = null;
+      groupsOriginRef.current = groups;
       setActive({ type: "tab", tab: d.tab as WindowTab });
     } else {
       setActive(null);
@@ -176,10 +185,39 @@ export function NewTab() {
     if (!over) { setDragOverCol(null); return; }
     const activeId = String(active.id);
     const overId = String(over.id);
+    const d = active.data.current;
+
+    // 탭을 "열린 탭" 창 영역 위로 끌면 실제 창 간/내 재배치를 실시간 미리보기.
+    if (d?.kind === "tab") {
+      const winTarget = resolveTabDropTarget(groupsRef.current, overId);
+      if (winTarget) {
+        const tid = parseTabDragId(activeId);
+        if (tid != null) {
+          setGroups((prev) => {
+            const next = moveTab(prev, tid, winTarget.toWindowId, winTarget.toIndex);
+            groupsRef.current = next;
+            return next;
+          });
+        }
+        // 컬렉션에 남아있던 자리표시 카드 제거.
+        setLinksByCol((prev) => {
+          const cur = findContainerIn(prev, NEW_TAB_PLACEHOLDER);
+          if (!cur) return prev;
+          const next = { ...prev, [cur]: (prev[cur] ?? []).filter((l) => l.id !== NEW_TAB_PLACEHOLDER) };
+          linksByColRef.current = next;
+          return next;
+        });
+        setDragOverCol(null);
+        return;
+      }
+      // 컬렉션 영역으로 돌아옴: 창 미리보기를 원본으로 원복하고 아래 컬렉션 로직으로 진행.
+      setGroups(groupsOriginRef.current);
+      groupsRef.current = groupsOriginRef.current;
+    }
+
     const overC = findContainer(overId);
     if (!overC) { setDragOverCol(null); return; }
     setDragOverCol(overC);
-    const d = active.data.current;
 
     setLinksByCol((prev) => {
       const next = ((): Record<string, Link[]> => {
@@ -251,11 +289,29 @@ export function NewTab() {
     const activeId = String(active.id);
     setActive(null);
     setDragOverCol(null);
-    if (!over || !session) { loadCollections(); return; }
+    if (!over || !session) {
+      if (d?.kind === "tab") { setGroups(groupsOriginRef.current); groupsRef.current = groupsOriginRef.current; }
+      loadCollections();
+      return;
+    }
 
     const map = linksByColRef.current; // 드래그 중 갱신된 최신 상태
 
     if (d?.kind === "tab") {
+      // 1) 창에 드롭: 실제 브라우저 탭 이동
+      const winTarget = resolveTabDropTarget(groupsRef.current, String(over.id));
+      if (winTarget) {
+        const tid = parseTabDragId(activeId);
+        if (tid != null) {
+          const g = groupsRef.current.find((x) => x.windowId === winTarget.toWindowId);
+          const index = g ? g.tabs.findIndex((t) => t.id === tid) : -1;
+          try { await chrome.tabs.move(tid, { windowId: winTarget.toWindowId, index }); } catch (e) { console.error(e); }
+          const tabs = await chrome.tabs.query({});
+          setGroups(groupTabsByWindow(tabs as WindowTab[]));
+        }
+        return;
+      }
+      // 2) 컬렉션에 드롭: 기존 저장 로직
       const overC = findContainerIn(map, NEW_TAB_PLACEHOLDER); // 자리표시 카드가 들어간 컬렉션
       if (!overC) { loadCollections(); return; }
       const items = map[overC] ?? [];
@@ -282,6 +338,7 @@ export function NewTab() {
   }
 
   function handleDragCancel() {
+    if (active?.type === "tab") { setGroups(groupsOriginRef.current); groupsRef.current = groupsOriginRef.current; }
     setActive(null);
     setDragOverCol(null);
     loadCollections();
