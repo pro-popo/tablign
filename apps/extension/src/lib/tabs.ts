@@ -108,3 +108,36 @@ export function moveTab(
     return g;
   });
 }
+
+/** 드래그 id `tab-123` → 123. tab 접두사가 아니거나 숫자가 아니면 null. */
+export function parseTabDragId(id: string): number | null {
+  if (!id.startsWith("tab-")) return null;
+  const n = Number(id.slice("tab-".length));
+  return Number.isFinite(n) ? n : null;
+}
+
+export interface TabDropTarget {
+  toWindowId: number;
+  toIndex: number;
+}
+
+/**
+ * onDragOver/End의 over 대상이 "열린 탭" 창 영역인지 판정하고 대상 창/삽입 index를 계산한다.
+ * - overId === `window:{wid}` → 해당 창의 끝
+ * - overId === `tab-{id}`     → 그 탭이 속한 창의 그 탭 위치
+ * 창/탭 대상이 아니면(=컬렉션) null.
+ */
+export function resolveTabDropTarget(groups: WindowGroup[], overId: string): TabDropTarget | null {
+  if (overId.startsWith("window:")) {
+    const wid = Number(overId.slice("window:".length));
+    const g = groups.find((x) => x.windowId === wid);
+    return g ? { toWindowId: wid, toIndex: g.tabs.length } : null;
+  }
+  const tid = parseTabDragId(overId);
+  if (tid == null) return null;
+  for (const g of groups) {
+    const idx = g.tabs.findIndex((t) => t.id === tid);
+    if (idx >= 0) return { toWindowId: g.windowId, toIndex: idx };
+  }
+  return null;
+}

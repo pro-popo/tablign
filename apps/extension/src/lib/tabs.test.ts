@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tabsToLinkInputs, tabDropToLinkInput, moveTab } from "./tabs";
+import { tabsToLinkInputs, tabDropToLinkInput, moveTab, parseTabDragId, resolveTabDropTarget } from "./tabs";
 import { groupTabsByWindow, type WindowTab, type WindowGroup } from "./tabs";
 
 const tabs = [
@@ -118,5 +118,47 @@ describe("moveTab", () => {
   it("탭/대상 창이 없으면 원본을 그대로 반환한다", () => {
     expect(moveTab(groups, 999, 10, 0)).toBe(groups);
     expect(moveTab(groups, 1, 999, 0)).toBe(groups);
+  });
+});
+
+describe("parseTabDragId", () => {
+  it("tab-123 → 123", () => {
+    expect(parseTabDragId("tab-123")).toBe(123);
+  });
+  it("tab 접두사가 아니면 null", () => {
+    expect(parseTabDragId("container:abc")).toBeNull();
+    expect(parseTabDragId("window:10")).toBeNull();
+  });
+  it("숫자가 아니면 null", () => {
+    expect(parseTabDragId("tab-abc")).toBeNull();
+  });
+});
+
+describe("resolveTabDropTarget", () => {
+  const groups: WindowGroup[] = [
+    { windowId: 10, tabs: [
+      { id: 1, windowId: 10, url: "https://a.com" },
+      { id: 2, windowId: 10, url: "https://b.com" },
+    ] },
+    { windowId: 20, tabs: [] },
+  ];
+
+  it("window:{wid}는 해당 창의 끝 index를 돌려준다", () => {
+    expect(resolveTabDropTarget(groups, "window:10")).toEqual({ toWindowId: 10, toIndex: 2 });
+    expect(resolveTabDropTarget(groups, "window:20")).toEqual({ toWindowId: 20, toIndex: 0 });
+  });
+
+  it("tab-{id}는 그 탭이 속한 창과 그 탭의 index를 돌려준다", () => {
+    expect(resolveTabDropTarget(groups, "tab-2")).toEqual({ toWindowId: 10, toIndex: 1 });
+  });
+
+  it("컬렉션 대상(container:/링크 id)이면 null", () => {
+    expect(resolveTabDropTarget(groups, "container:c1")).toBeNull();
+    expect(resolveTabDropTarget(groups, "some-link-uuid")).toBeNull();
+  });
+
+  it("존재하지 않는 창/탭이면 null", () => {
+    expect(resolveTabDropTarget(groups, "window:999")).toBeNull();
+    expect(resolveTabDropTarget(groups, "tab-999")).toBeNull();
   });
 });
