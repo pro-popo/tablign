@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { Space } from "@tablign/core";
-import { Hash, Plus, Pencil, PanelLeftClose, LogOut, InlineInput, theme } from "@tablign/ui";
+import { Hash, Plus, Pencil, PanelLeftClose, LogOut, InlineInput, theme, Logo } from "@tablign/ui";
 
 export interface ExtSidebarProps {
   spaces: Space[];
@@ -21,10 +21,7 @@ export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, on
   return (
     <>
       <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${theme.border}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 24, height: 24, borderRadius: 7, background: theme.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>t</div>
-          <strong>tablign</strong>
-        </div>
+        <Logo size={24} />
         <button type="button" title="사이드바 접기" aria-label="사이드바 접기" onClick={onCollapse} style={{ border: "none", background: "none", cursor: "pointer", display: "flex" }}>
           <PanelLeftClose size={16} color={theme.textFaint} />
         </button>

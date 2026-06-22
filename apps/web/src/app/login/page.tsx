@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Logo } from "@tablign/ui";
 import { createClient } from "@/lib/supabase/browser";
 
 export default function LoginPage() {
@@ -42,7 +43,8 @@ export default function LoginPage() {
 
   return (
     <main style={{ maxWidth: 360, margin: "80px auto", fontFamily: "sans-serif" }}>
-      <h1>tablign 로그인</h1>
+      <div style={{ marginBottom: 20 }}><Logo size={30} /></div>
+      <h1 style={{ fontSize: 20, margin: "0 0 16px" }}>로그인</h1>
       <form onSubmit={handleEmail} style={{ display: "grid", gap: 8 }}>
         <input
           type="email"

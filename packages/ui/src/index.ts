@@ -1,5 +1,6 @@
 export * from "./theme";
 export * from "./icons";
+export * from "./Logo";
 export * from "./Button";
 export * from "./Card";
 export * from "./EmptyState";

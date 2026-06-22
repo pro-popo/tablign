@@ -1,4 +1,5 @@
 import type { Space } from "@tablign/core";
+import { Logo } from "./Logo";
 
 export interface SidebarProps {
   spaces: Space[];
@@ -20,7 +21,7 @@ export function Sidebar({ spaces, activeSpaceId, onSelectSpace, onAddSpace }: Si
         boxSizing: "border-box",
       }}
     >
-      <div style={{ fontWeight: 700, color: "#fff", marginBottom: 16 }}>🗂 tablign</div>
+      <div style={{ marginBottom: 16 }}><Logo tone="dark" size={22} /></div>
       <div style={{ fontSize: 11, letterSpacing: 1, opacity: 0.6, marginBottom: 8 }}>SPACES</div>
       {spaces.map((space) => (
         <button
