@@ -15,11 +15,11 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, EmptyState, Button, Favicon, theme, Tag, Plus } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, EmptyState, Button, Favicon, theme, Plus } from "@tablign/ui";
 import {
   listSpaces, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
-  updateLink, updateCollection, updateSpace, listTags, listCollectionIdsForTag,
-  type Collection, type Link, type Space, type Tag as TagModel,
+  updateLink, updateCollection, updateSpace,
+  type Collection, type Link, type Space,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
@@ -63,10 +63,6 @@ export function NewTab() {
   const groupsRef = useRef<WindowGroup[]>([]);
   // 드래그 시작 시점의 groups 스냅샷(탭이 컬렉션 위로 돌아오거나 취소될 때 원복용).
   const groupsOriginRef = useRef<WindowGroup[]>([]);
-  const [tags, setTags] = useState<TagModel[]>([]);
-  const [activeTagId, setActiveTagId] = useState<string | null>(null);
-  const [taggedIds, setTaggedIds] = useState<string[]>([]);
-  const [showTagMenu, setShowTagMenu] = useState(false);
   const [groups, setGroups] = useState<WindowGroup[]>([]);
   useEffect(() => { groupsRef.current = groups; }, [groups]);
   const [active, setActive] = useState<Active>(null);
@@ -81,7 +77,7 @@ export function NewTab() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // 스페이스 + 태그 로드
+  // 스페이스 로드
   // chrome.storage에서 활성 스페이스를 읽은 뒤(spaceLoaded) 실행해, 저장된 스페이스가
   // 아직 존재하면 그대로 유지하고, 없거나 삭제됐으면 첫 스페이스로 폴백한다.
   useEffect(() => {
@@ -91,7 +87,6 @@ export function NewTab() {
       setSpaces(sp);
       const keep = activeSpaceId && sp.some((s) => s.id === activeSpaceId);
       setActiveSpaceId(keep ? activeSpaceId : (sp[0]?.id ?? null));
-      setTags(await listTags(supabase));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, spaceLoaded]);
@@ -104,12 +99,6 @@ export function NewTab() {
     setLinksByCol(Object.fromEntries(entries));
   }
   useEffect(() => { if (session && activeSpaceId) loadCollections(); /* eslint-disable-next-line */ }, [session, activeSpaceId]);
-
-  // 태그 필터 대상 컬렉션 id
-  useEffect(() => {
-    if (!activeTagId) { setTaggedIds([]); return; }
-    listCollectionIdsForTag(supabase, activeTagId).then(setTaggedIds);
-  }, [activeTagId]);
 
   async function reloadCollection(collectionId: string) {
     const links = await listLinks(supabase, collectionId);
@@ -409,7 +398,7 @@ export function NewTab() {
             spaces={spaces}
             activeSpaceId={activeSpaceId}
             userEmail={session.user.email ?? ""}
-            onSelectSpace={(id) => { setActiveSpaceId(id); setActiveTagId(null); }}
+            onSelectSpace={(id) => { setActiveSpaceId(id); }}
             onAddSpace={addSpace}
             onRenameSpace={renameSpace}
             onSignOut={async () => { await supabase.auth.signOut(); }}
@@ -427,37 +416,14 @@ export function NewTab() {
               <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
               <span style={{ color: theme.textFaint }}>· {collections.length} 컬렉션</span>
             </div>
-            <div style={{ display: "flex", gap: 7, alignItems: "center", position: "relative" }}>
-              <Button
-                variant="outline"
-                onClick={() => setShowTagMenu((v) => !v)}
-                style={activeTagId ? { background: theme.accentWeak, color: theme.accent, borderColor: theme.accent } : undefined}
-              >
-                <Tag size={15} /> {activeTagId ? `#${tags.find((t) => t.id === activeTagId)?.name ?? "태그"}` : "태그"}
-              </Button>
-              {showTagMenu && (
-                <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 6, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,.12)", padding: 8, zIndex: 30, minWidth: 160, display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {tags.length === 0 && <span style={{ color: theme.textFaint, fontSize: 12 }}>태그 없음</span>}
-                  {tags.map((t) => {
-                    const on = t.id === activeTagId;
-                    return (
-                      <button key={t.id} type="button" onClick={() => { setActiveTagId(on ? null : t.id); setShowTagMenu(false); }}
-                        style={{ fontSize: 11, borderRadius: theme.radiusChip, padding: "3px 9px", cursor: "pointer", border: `1px solid ${on ? theme.accent : theme.border}`, background: on ? theme.accent : "#fff", color: on ? "#fff" : "#5c636b" }}>
-                        #{t.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              <Button onClick={addCollection}>
-                <Plus size={15} /> 컬렉션
-              </Button>
-            </div>
+            <Button onClick={addCollection}>
+              <Plus size={15} /> 컬렉션
+            </Button>
           </div>
           {(() => {
-            const visibleCollections = activeTagId ? collections.filter((c) => taggedIds.includes(c.id)) : collections;
+            const visibleCollections = collections;
             return visibleCollections.length === 0 ? (
-              <EmptyState title={activeTagId ? "이 태그가 달린 컬렉션이 없어요." : "컬렉션이 없어요. ‘＋ 컬렉션’으로 영역을 만든 뒤, 열린 탭을 드래그해 넣어보세요."} />
+              <EmptyState title="컬렉션이 없어요. ‘＋ 컬렉션’으로 영역을 만든 뒤, 열린 탭을 드래그해 넣어보세요." />
             ) : (
               visibleCollections.map((c) => {
               const links = linksByCol[c.id] ?? [];
