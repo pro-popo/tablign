@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { theme } from "@tablign/ui";
+import { theme, Logo } from "@tablign/ui";
 import { signInWithGoogle } from "../lib/oauth";
 
 /** 구글 공식 4색 G 로고 */
@@ -86,7 +86,7 @@ export function AuthScreen() {
       {/* 좌측: 제품 미리보기(장식용) */}
       <div className="as-app" aria-hidden="true">
         <aside className="as-side">
-          <div className="as-brand"><div className="as-logo">t</div><b>tablign</b></div>
+          <div className="as-brand"><Logo size={22} /></div>
           <div className="as-lbl">SPACES</div>
           <div className="as-sp on"><span className="h">#</span> 개인</div>
           <div className="as-sp"><span className="h">#</span> 업무</div>
