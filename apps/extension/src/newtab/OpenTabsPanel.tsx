@@ -51,7 +51,7 @@ function WindowGroupView({
     <div style={{ marginBottom: 14 }}>
       {/* 헤더 행 전체 클릭으로 창 접기/펼치기. 저장·닫기 버튼은 stopPropagation으로 토글 방지. */}
       <div onClick={() => setCollapsed((c) => !c)}
-        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: theme.textMuted, marginBottom: 8, cursor: "pointer" }}>
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: theme.textMuted, marginBottom: 8, cursor: "pointer", userSelect: "none" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <button type="button" aria-expanded={!collapsed} aria-label={`창 ${index + 1} ${collapsed ? "펼치기" : "접기"}`}
             onClick={(e) => { e.stopPropagation(); setCollapsed((c) => !c); }}
