@@ -58,4 +58,25 @@ describe("OpenTabsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "창 2 전체 저장" }));
     expect(onSaveWindow).toHaveBeenCalledWith(20);
   });
+
+  it("창 헤더를 클릭하면 해당 창의 탭이 접히고 다시 클릭하면 펼쳐진다", () => {
+    renderPanel();
+    expect(screen.getByText("탭 A")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("창 1"));
+    expect(screen.queryByText("탭 A")).not.toBeInTheDocument();
+    // 다른 창은 그대로
+    expect(screen.getByText("탭 C")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("창 1"));
+    expect(screen.getByText("탭 A")).toBeInTheDocument();
+  });
+
+  it("창 저장 버튼을 클릭해도 탭이 접히지 않는다", () => {
+    const onSaveWindow = vi.fn();
+    renderPanel({ onSaveWindow });
+    fireEvent.click(screen.getByRole("button", { name: "창 1 전체 저장" }));
+    expect(onSaveWindow).toHaveBeenCalledWith(10);
+    expect(screen.getByText("탭 A")).toBeInTheDocument();
+  });
 });
