@@ -1,26 +1,22 @@
-import { useEffect, useState } from "react";
+import {
+  usePanelState as useShared,
+  isPanelState,
+  PANEL_STATE_KEY,
+  type PanelStateStorage,
+} from "@tablign/ui";
 
-export interface PanelState { left: boolean; right: boolean }
-const KEY = "tablign.panels";
-const DEFAULT: PanelState = { left: true, right: true };
+const adapter: PanelStateStorage = {
+  read: (cb) => {
+    chrome.storage.local.get(PANEL_STATE_KEY, (res) => {
+      const v = res[PANEL_STATE_KEY];
+      cb(isPanelState(v) ? v : null);
+    });
+  },
+  write: (state) => {
+    chrome.storage.local.set({ [PANEL_STATE_KEY]: state });
+  },
+};
 
 export function usePanelState() {
-  const [state, setState] = useState<PanelState>(DEFAULT);
-
-  useEffect(() => {
-    chrome.storage.local.get(KEY, (res) => {
-      const v = res[KEY];
-      if (v && typeof v.left === "boolean" && typeof v.right === "boolean") setState(v);
-    });
-  }, []);
-
-  function toggle(key: keyof PanelState) {
-    setState((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      chrome.storage.local.set({ [KEY]: next });
-      return next;
-    });
-  }
-
-  return { state, toggleLeft: () => toggle("left"), toggleRight: () => toggle("right") };
+  return useShared(adapter);
 }
