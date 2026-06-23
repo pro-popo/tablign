@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>컬렉션 순서 변경 — 시안 비교</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accentWeak:#edf0fe; --text:#1f2430; --textMuted:#868e96;
+    --textFaint:#adb5bd; --border:#eaecef; --borderCard:#e9ebee; --bg:#fcfcfd;
+    --surface:#fff; --surface2:#f1f3f5; --danger:#e03131;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    padding:32px 20px; line-height:1.5;
+  }
+  .wrap{max-width:760px; margin:0 auto}
+  h1{font-size:22px; margin:0 0 6px}
+  .lede{color:var(--textMuted); font-size:14px; margin:0 0 28px}
+  .opt{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; margin-bottom:22px; box-shadow:0 1px 2px rgba(20,30,60,.04)}
+  .opt-head{display:flex; align-items:baseline; gap:10px; margin-bottom:4px}
+  .badge{font-size:11px; font-weight:700; letter-spacing:.04em; color:#fff; background:var(--accent); border-radius:999px; padding:3px 9px}
+  .badge.rec{background:#2b8a3e}
+  .badge.muted{background:var(--textFaint)}
+  .opt h2{font-size:16px; margin:0}
+  .opt .desc{color:var(--textMuted); font-size:13px; margin:6px 0 16px}
+  .mock{background:var(--bg); border:1px dashed var(--border); border-radius:10px; padding:14px 12px}
+
+  /* ---- collection header mock ---- */
+  .col{padding:6px 4px; border-radius:10px}
+  .chdr{display:flex; align-items:center; gap:6px; margin-bottom:10px}
+  .ico{width:16px; height:16px; color:var(--textMuted); flex:none}
+  .ico.faint{color:var(--textFaint)}
+  .title{font-weight:700; color:#3b3f46}
+  .count{color:var(--textFaint); font-size:12px}
+  .spacer{margin-left:auto; display:flex; gap:2px}
+  .abtn{width:21px;height:21px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--textMuted)}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px}
+  .card{border:1px solid var(--borderCard); border-radius:9px; background:var(--surface); padding:8px 9px; font-size:12px}
+  .card .ct{font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .card .cd{color:var(--textFaint); font-size:10px; margin-top:3px}
+
+  .grip{display:flex; opacity:0; transition:opacity .12s ease; color:var(--textFaint); cursor:grab}
+  .col:hover .grip{opacity:1}
+  .grab{cursor:grab}
+  .note{font-size:12px; color:var(--textMuted); margin-top:12px; padding-left:2px}
+  .note b{color:var(--text)}
+  .hint{display:inline-block; font-size:11px; color:var(--accent); background:var(--accentWeak); border-radius:6px; padding:1px 7px; margin-left:6px}
+  .pros{display:flex; gap:18px; margin-top:14px; flex-wrap:wrap}
+  .pros div{font-size:12.5px}
+  .pros .k{font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--textFaint); display:block; margin-bottom:3px}
+  .pro{color:#2b8a3e} .con{color:#c2255c}
+  .tipbar{background:var(--accentWeak); color:#2b3a8c; font-size:12.5px; border-radius:8px; padding:10px 12px; margin-bottom:24px}
+  /* title-as-handle: dashed outline on hover to signal grabbable */
+  .t-grab{cursor:grab; user-select:none; border-radius:5px; padding:0 3px; margin:0 -3px}
+  .col:hover .t-grab{box-shadow:inset 0 0 0 1px var(--accentWeak)}
+  /* whole header drag */
+  .hdr-grab{cursor:grab; border-radius:7px; margin:-3px; padding:3px}
+  .col:hover .hdr-grab{background:linear-gradient(0deg,transparent, #f4f6ff)}
+  svg{display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>컬렉션 순서 변경 — 시안 비교</h1>
+  <p class="lede">헤더 위에 마우스를 올려보세요. 호버 시 동작이 시안에 반영됩니다.</p>
+
+  <div class="tipbar">
+    공통 전제 — 드래그는 <b>5px 이상 움직여야</b> 시작돼요. 그래서 같은 요소에서 “그냥 클릭 = 이름 편집 / 잡고 움직임 = 순서 이동”을 구분할 수 있습니다.
+  </div>
+
+  <!-- OPTION 1 -->
+  <div class="opt">
+    <div class="opt-head"><span class="badge rec">안 1 · 권장</span><h2>타이틀을 핸들로</h2></div>
+    <p class="desc">별도 아이콘 0개. 제목을 그대로 잡아 이동. 클릭하면 이름 편집.</p>
+    <div class="mock">
+      <div class="col">
+        <div class="chdr">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="title t-grab">📁 작업 자료</span>
+          <span class="count">3</span>
+          <span class="spacer">
+            <span class="abtn">＋</span><span class="abtn">↗</span><span class="abtn" style="color:var(--danger)">🗑</span>
+          </span>
+        </div>
+        <div class="grid">
+          <div class="card"><div class="ct">디자인 가이드</div><div class="cd">figma.com</div></div>
+          <div class="card"><div class="ct">API 문서</div><div class="cd">docs.supabase.com</div></div>
+          <div class="card"><div class="ct">이슈 트래커</div><div class="cd">github.com</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="note">호버하면 제목에 옅은 테두리가 떠서 “잡을 수 있다”는 걸 알려줘요. <span class="hint">클릭→편집 / 드래그→이동</span></div>
+    <div class="pros">
+      <div><span class="k">좋음</span><span class="pro">아이콘·들여쓰기 0, 가장 깔끔 · 파일 옮기듯 직관적</span></div>
+      <div><span class="k">주의</span><span class="con">“제목을 끌 수 있다”는 발견성이 약함 (테두리·grab 커서로 보완)</span></div>
+    </div>
+  </div>
+
+  <!-- OPTION 2 -->
+  <div class="opt">
+    <div class="opt-head"><span class="badge">안 2</span><h2>핸들을 우측 액션 영역으로</h2></div>
+    <p class="desc">그립을 왼쪽이 아니라 오른쪽 액션 아이콘 묶음에 배치. 왼쪽(접기＋제목)은 그대로 정렬.</p>
+    <div class="mock">
+      <div class="col">
+        <div class="chdr">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="title">📁 작업 자료</span>
+          <span class="count">3</span>
+          <span class="spacer">
+            <span class="grip" title="드래그하여 순서 변경"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+            <span class="abtn">＋</span><span class="abtn">↗</span><span class="abtn" style="color:var(--danger)">🗑</span>
+          </span>
+        </div>
+        <div class="grid">
+          <div class="card"><div class="ct">디자인 가이드</div><div class="cd">figma.com</div></div>
+          <div class="card"><div class="ct">API 문서</div><div class="cd">docs.supabase.com</div></div>
+          <div class="card"><div class="ct">이슈 트래커</div><div class="cd">github.com</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="note">왼쪽 들여쓰기 문제가 사라지고, 핸들은 다른 액션들과 같은 “도구” 그룹에 모여요. 호버 시 노출.</div>
+    <div class="pros">
+      <div><span class="k">좋음</span><span class="pro">왼쪽 깔끔, 명시적 핸들 유지, 발견성 좋음</span></div>
+      <div><span class="k">주의</span><span class="con">우측 아이콘이 4개로 늘어 다소 빽빽</span></div>
+    </div>
+  </div>
+
+  <!-- OPTION 3 -->
+  <div class="opt">
+    <div class="opt-head"><span class="badge">안 3</span><h2>헤더 전체를 드래그</h2></div>
+    <p class="desc">헤더 빈 영역 아무 곳이나 잡아 이동. 버튼·제목 클릭은 그대로.</p>
+    <div class="mock">
+      <div class="col">
+        <div class="chdr hdr-grab">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="title">📁 작업 자료</span>
+          <span class="count">3</span>
+          <span class="spacer">
+            <span class="abtn">＋</span><span class="abtn">↗</span><span class="abtn" style="color:var(--danger)">🗑</span>
+          </span>
+        </div>
+        <div class="grid">
+          <div class="card"><div class="ct">디자인 가이드</div><div class="cd">figma.com</div></div>
+          <div class="card"><div class="ct">API 문서</div><div class="cd">docs.supabase.com</div></div>
+          <div class="card"><div class="ct">이슈 트래커</div><div class="cd">github.com</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="note">호버하면 헤더 전체가 살짝 떠 보이며 잡을 수 있음을 암시해요. 타깃이 가장 큼.</div>
+    <div class="pros">
+      <div><span class="k">좋음</span><span class="pro">잡기 가장 쉬움(큰 타깃), 아이콘 0</span></div>
+      <div><span class="k">주의</span><span class="con">제목 텍스트 선택과 충돌 가능, 의도치 않은 드래그</span></div>
+    </div>
+  </div>
+
+  <!-- baseline -->
+  <div class="opt" style="opacity:.85">
+    <div class="opt-head"><span class="badge muted">현재</span><h2>좌측 그립 (호버 노출)</h2></div>
+    <p class="desc">지금 구현된 상태. 접기 화살표 왼쪽에 그립, 호버 시 노출 + 자리 예약.</p>
+    <div class="mock">
+      <div class="col">
+        <div class="chdr">
+          <span class="grip" title="드래그하여 순서 변경"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="title">📁 작업 자료</span>
+          <span class="count">3</span>
+          <span class="spacer">
+            <span class="abtn">＋</span><span class="abtn">↗</span><span class="abtn" style="color:var(--danger)">🗑</span>
+          </span>
+        </div>
+        <div class="grid">
+          <div class="card"><div class="ct">디자인 가이드</div><div class="cd">figma.com</div></div>
+          <div class="card"><div class="ct">API 문서</div><div class="cd">docs.supabase.com</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="note">호버해도 화살표 왼쪽에 ~15px 들여쓰기가 항상 남아요.</div>
+  </div>
+
+</div>
+</body>
+</html>
