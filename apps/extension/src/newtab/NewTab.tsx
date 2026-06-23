@@ -1,29 +1,36 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   DndContext, DragOverlay, PointerSensor, pointerWithin, MeasuringStrategy, useSensor, useSensors,
   type CollisionDetection, type DragStartEvent, type DragOverEvent, type DragEndEvent,
 } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const collisionDetection: CollisionDetection = (args) => {
+  // 컬렉션 드래그 중에는 컬렉션 정렬 대상(col:)만 후보로 한정.
+  if (args.active?.data?.current?.kind === "collection") {
+    return pointerWithin({
+      ...args,
+      droppableContainers: args.droppableContainers.filter((c) => String(c.id).startsWith("col:")),
+    });
+  }
   const hits = pointerWithin(args);
-  // 카드(탭/링크) > 컨테이너(컬렉션 container:/창 window:) 순으로 우선.
+  // 카드(탭/링크) > 컨테이너(컬렉션 container:/창 window:/컬렉션 정렬 col:) 순으로 우선.
   const cardHit = hits.find((h) => {
     const id = String(h.id);
-    return !id.startsWith("container:") && !id.startsWith("window:");
+    return !id.startsWith("container:") && !id.startsWith("window:") && !id.startsWith("col:");
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, EmptyState, Button, Favicon, theme, Plus } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus } from "@tablign/ui";
 import {
   listSpaces, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
-  updateLink, updateCollection, updateSpace,
+  updateLink, updateCollection, updateSpace, sequentialPositions,
   type Collection, type Link, type Space,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
-import { placeInOrder, sequentialPositions } from "../lib/order";
 import { usePanelState } from "../lib/usePanelState";
 import { useActiveSpace } from "../lib/useActiveSpace";
 import { OpenTabsPanel } from "./OpenTabsPanel";
@@ -46,17 +53,50 @@ function domainOf(url: string): string {
   }
 }
 
-type Active = { type: "tab"; tab: WindowTab } | { type: "link"; link: Link } | null;
+type Active =
+  | { type: "tab"; tab: WindowTab }
+  | { type: "link"; link: Link }
+  | { type: "collection"; collection: Collection }
+  | null;
+
+/** 컬렉션 제목을 드래그 핸들로 쓰는 정렬 래퍼. children에 제목에 연결할 ref/props를 넘긴다. */
+function SortableCollection({
+  collection, children,
+}: {
+  collection: Collection;
+  children: (drag: { ref: (el: HTMLElement | null) => void; props: Record<string, unknown> }) => ReactNode;
+}) {
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+    id: `col:${collection.id}`,
+    data: { kind: "collection", collection },
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="tablign-col">
+      {children({ ref: setActivatorNodeRef, props: { ...attributes, ...listeners } })}
+    </div>
+  );
+}
 
 export function NewTab() {
   const [session, setSession] = useState<Session | null>(null);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const { activeSpaceId, setActiveSpaceId, loaded: spaceLoaded } = useActiveSpace();
   const [collections, setCollections] = useState<Collection[]>([]);
+  // 첫 컬렉션 로드 완료 전에는 EmptyState 대신 스켈레톤을 보여줘 깜빡임을 막는다.
+  const [collectionsLoaded, setCollectionsLoaded] = useState(false);
   const [linksByCol, setLinksByCol] = useState<Record<string, Link[]>>({});
   // 드래그 중 onDragEnd가 최신 상태를 읽도록 ref로 동기 보관(state 배칭 레이스 방지).
   const linksByColRef = useRef<Record<string, Link[]>>({});
   useEffect(() => { linksByColRef.current = linksByCol; }, [linksByCol]);
+  // 컬렉션 드래그: onDragEnd가 최신 순서를 읽도록 ref 보관 + 취소 시 복원용 시작 스냅샷.
+  const collectionsRef = useRef<Collection[]>([]);
+  useEffect(() => { collectionsRef.current = collections; }, [collections]);
+  const collectionsOriginRef = useRef<Collection[]>([]);
   // 드래그 시작 시점의 원래 컬렉션(링크 객체의 collection_id가 드래그 중 갱신되므로 시작값을 보관).
   const dragOriginRef = useRef<string | null>(null);
   // 드래그 중 onDragEnd가 최신 groups를 읽도록 ref로 동기 보관.
@@ -92,13 +132,15 @@ export function NewTab() {
   }, [session, spaceLoaded]);
 
   async function loadCollections() {
-    if (!activeSpaceId) { setCollections([]); setLinksByCol({}); return; }
+    if (!activeSpaceId) { setCollections([]); setLinksByCol({}); setCollectionsLoaded(true); return; }
     const cols = await listCollections(supabase, activeSpaceId);
     setCollections(cols);
     const entries = await Promise.all(cols.map(async (c) => [c.id, await listLinks(supabase, c.id)] as const));
     setLinksByCol(Object.fromEntries(entries));
+    setCollectionsLoaded(true);
   }
-  useEffect(() => { if (session && activeSpaceId) loadCollections(); /* eslint-disable-next-line */ }, [session, activeSpaceId]);
+  // 세션/스페이스가 바뀌면 스켈레톤부터 다시 보여준 뒤 로드한다(재조회 핸들러는 플래그를 건드리지 않음).
+  useEffect(() => { if (session && activeSpaceId) { setCollectionsLoaded(false); loadCollections(); } /* eslint-disable-next-line */ }, [session, activeSpaceId]);
 
   async function reloadCollection(collectionId: string) {
     const links = await listLinks(supabase, collectionId);
@@ -162,6 +204,9 @@ export function NewTab() {
       dragOriginRef.current = null;
       groupsOriginRef.current = groups;
       setActive({ type: "tab", tab: d.tab as WindowTab });
+    } else if (d?.kind === "collection") {
+      collectionsOriginRef.current = collections;
+      setActive({ type: "collection", collection: d.collection as Collection });
     } else {
       setActive(null);
     }
@@ -175,6 +220,21 @@ export function NewTab() {
     const activeId = String(active.id);
     const overId = String(over.id);
     const d = active.data.current;
+
+    // 컬렉션 순서 변경: 다른 컬렉션 위로 끌면 실시간 재정렬.
+    if (d?.kind === "collection") {
+      setDragOverCol(null);
+      if (!overId.startsWith("col:") || overId === activeId) return;
+      setCollections((prev) => {
+        const oldIdx = prev.findIndex((c) => `col:${c.id}` === activeId);
+        const newIdx = prev.findIndex((c) => `col:${c.id}` === overId);
+        if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return prev;
+        const next = arrayMove(prev, oldIdx, newIdx);
+        collectionsRef.current = next;
+        return next;
+      });
+      return;
+    }
 
     // 탭을 "열린 탭" 창 영역 위로 끌면 실제 창 간/내 재배치를 실시간 미리보기.
     if (d?.kind === "tab") {
@@ -323,11 +383,17 @@ export function NewTab() {
       await persistOrder(items.map((l) => l.id));
       reloadCollection(container);
       if (original && original !== container) reloadCollection(original);
+    } else if (d?.kind === "collection") {
+      // onDragOver에서 이미 실시간으로 순서가 반영됨(ref) → 현재 순서로 position 재할당 저장.
+      const ordered = collectionsRef.current.map((c) => c.id);
+      await Promise.all(sequentialPositions(ordered).map((p) => updateCollection(supabase, p.id, { position: p.position })));
+      loadCollections();
     }
   }
 
   function handleDragCancel() {
     if (active?.type === "tab") { setGroups(groupsOriginRef.current); groupsRef.current = groupsOriginRef.current; }
+    if (active?.type === "collection") { setCollections(collectionsOriginRef.current); collectionsRef.current = collectionsOriginRef.current; }
     setActive(null);
     setDragOverCol(null);
     loadCollections();
@@ -371,12 +437,13 @@ export function NewTab() {
 
   const userId = session.user.id;
 
-  // 커서 미리보기(오버레이)용 데이터
-  const preview = active
-    ? active.type === "tab"
+  // 커서 미리보기(오버레이)용 데이터 (탭/링크 카드용. 컬렉션은 별도 칩으로 렌더)
+  const preview =
+    active?.type === "tab"
       ? { label: active.tab.title ?? active.tab.url ?? "", faviconUrl: active.tab.favIconUrl ?? null, domain: domainOf(active.tab.url ?? "") }
-      : { label: active.link.custom_title ?? active.link.title ?? domainOf(active.link.url), faviconUrl: active.link.favicon_url, domain: domainOf(active.link.url) }
-    : null;
+      : active?.type === "link"
+        ? { label: active.link.custom_title ?? active.link.title ?? domainOf(active.link.url), faviconUrl: active.link.favicon_url, domain: domainOf(active.link.url) }
+        : null;
 
   return (
     <DndContext
@@ -414,7 +481,7 @@ export function NewTab() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
               <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
-              <span style={{ color: theme.textFaint }}>· {collections.length} 컬렉션</span>
+              <span style={{ color: theme.textFaint }}>· {collectionsLoaded ? collections.length : "—"} 컬렉션</span>
             </div>
             <Button onClick={addCollection}>
               <Plus size={15} /> 컬렉션
@@ -422,42 +489,59 @@ export function NewTab() {
           </div>
           {(() => {
             const visibleCollections = collections;
-            return visibleCollections.length === 0 ? (
+            return !collectionsLoaded ? (
+              <CollectionSkeleton />
+            ) : visibleCollections.length === 0 ? (
               <EmptyState title="컬렉션이 없어요. ‘＋ 컬렉션’으로 영역을 만든 뒤, 열린 탭을 드래그해 넣어보세요." />
             ) : (
-              visibleCollections.map((c) => {
-              const links = linksByCol[c.id] ?? [];
-              return (
-                <CollectionSection
-                  key={c.id}
-                  collection={c}
-                  links={links}
-                  isOver={dragOverCol === c.id}
-                  autoEditTitle={autoEditId === c.id}
-                  onRenameCollection={async (id, title) => { await updateCollection(supabase, id, { title }); setAutoEditId(null); loadCollections(); }}
-                  onOpenLink={openUrl}
-                  onDeleteLink={async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); }}
-                  onAddLink={async (url) => { await createLink(supabase, { user_id: userId, collection_id: c.id, url }); reloadCollection(c.id); }}
-                  onOpenAll={() => links.forEach((l) => openUrl(l.url))}
-                  onDeleteCollection={async (id) => { await deleteCollection(supabase, id); loadCollections(); }}
-                  linksSlot={
-                    <DndLinkList
-                      collectionId={c.id}
-                      links={links}
-                      onOpenLink={openUrl}
-                      onDeleteLink={async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); }}
-                      onUpdateLink={async (id, patch) => { await updateLink(supabase, id, patch); reloadCollection(c.id); }}
-                    />
-                  }
-                />
-              );
-              })
+              <SortableContext items={visibleCollections.map((c) => `col:${c.id}`)} strategy={verticalListSortingStrategy}>
+                {visibleCollections.map((c) => (
+                <SortableCollection key={c.id} collection={c}>
+                  {(drag) => {
+                    const links = linksByCol[c.id] ?? [];
+                    return (
+                      <CollectionSection
+                        collection={c}
+                        links={links}
+                        isOver={dragOverCol === c.id}
+                        autoEditTitle={autoEditId === c.id}
+                        titleDragRef={drag.ref}
+                        titleDragProps={drag.props}
+                        onRenameCollection={async (id, title) => { await updateCollection(supabase, id, { title }); setAutoEditId(null); loadCollections(); }}
+                        onOpenLink={openUrl}
+                        onDeleteLink={async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); }}
+                        onAddLink={async (url) => { await createLink(supabase, { user_id: userId, collection_id: c.id, url }); reloadCollection(c.id); }}
+                        onOpenAll={() => links.forEach((l) => openUrl(l.url))}
+                        onDeleteCollection={async (id) => { await deleteCollection(supabase, id); loadCollections(); }}
+                        linksSlot={
+                          <DndLinkList
+                            collectionId={c.id}
+                            links={links}
+                            onOpenLink={openUrl}
+                            onDeleteLink={async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); }}
+                            onUpdateLink={async (id, patch) => { await updateLink(supabase, id, patch); reloadCollection(c.id); }}
+                          />
+                        }
+                      />
+                    );
+                  }}
+                </SortableCollection>
+                ))}
+              </SortableContext>
             );
           })()}
         </Board>
       </AppShell>
       <DragOverlay dropAnimation={null}>
-        {preview ? (
+        {active?.type === "collection" ? (
+          <div style={{
+            border: `1px solid ${theme.border}`, borderRadius: theme.radiusCard, padding: "8px 12px",
+            background: "#fff", boxShadow: "0 8px 20px rgba(20,30,60,.22)", cursor: "grabbing",
+            fontWeight: 600, color: theme.text,
+          }}>
+            {active.collection.icon ? `${active.collection.icon} ` : ""}{active.collection.title}
+          </div>
+        ) : preview ? (
           <div style={{
             border: `1px solid ${theme.border}`, borderRadius: theme.radiusCard, padding: "10px 11px",
             background: "#fff", boxShadow: "0 8px 20px rgba(20,30,60,.22)", width: 240, boxSizing: "border-box", cursor: "grabbing",

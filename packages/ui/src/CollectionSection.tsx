@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { Collection, Link } from "@tablign/core";
 import { LinkCard } from "./LinkCard";
 import { InlineInput } from "./InlineInput";
-import { ChevronDown, ChevronRight, ExternalLink, Plus, Trash2 } from "./icons";
+import { ChevronDown, ChevronRight, ExternalLink, Pencil, Plus, Trash2 } from "./icons";
 import { theme } from "./theme";
 
 export interface CollectionSectionProps {
@@ -13,6 +13,9 @@ export interface CollectionSectionProps {
   tagSlot?: ReactNode;
   /** 제공되면 기본 링크 그리드 대신 이 노드를 렌더(확장의 DnD 리스트 주입용) */
   linksSlot?: ReactNode;
+  /** 제공되면 제목을 컬렉션 드래그 핸들로 사용(확장의 정렬용). ref와 dnd 리스너/속성을 제목에 연결한다. */
+  titleDragRef?: (el: HTMLElement | null) => void;
+  titleDragProps?: Record<string, unknown>;
   onOpenLink: (url: string) => void;
   onDeleteLink: (id: string) => void;
   onAddLink: (url: string) => void;
@@ -24,13 +27,14 @@ export interface CollectionSectionProps {
 }
 
 export function CollectionSection({
-  collection, links, collapsed: collapsedProp, isOver, tagSlot, linksSlot,
+  collection, links, collapsed: collapsedProp, isOver, tagSlot, linksSlot, titleDragRef, titleDragProps,
   onOpenLink, onDeleteLink, onAddLink, onOpenAll, onDeleteCollection,
   autoEditTitle, onRenameCollection, onUpdateLink,
 }: CollectionSectionProps) {
   const [collapsed, setCollapsed] = useState(!!collapsedProp);
   const [adding, setAdding] = useState(false);
   const [editingTitle, setEditingTitle] = useState(!!autoEditTitle);
+  const [hover, setHover] = useState(false);
 
   return (
     <section
@@ -42,7 +46,11 @@ export function CollectionSection({
         background: isOver ? theme.accentWeak : "transparent",
       }}
     >
-      <header style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+      <header
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}
+      >
         <button
           type="button"
           title={collapsed ? "섹션 펼치기" : "섹션 접기"}
@@ -55,6 +63,7 @@ export function CollectionSection({
         {editingTitle && onRenameCollection ? (
           <div style={{ flex: 1 }}>
             <InlineInput
+              variant="line"
               placeholder="컬렉션 이름"
               defaultValue={collection.title}
               onSubmit={(name) => { onRenameCollection(collection.id, name); setEditingTitle(false); }}
@@ -62,14 +71,37 @@ export function CollectionSection({
             />
           </div>
         ) : (
-          <strong
-            style={{ color: "#3b3f46", cursor: onRenameCollection ? "text" : "default" }}
-            onClick={() => onRenameCollection && setEditingTitle(true)}
-          >
-            {collection.icon ? `${collection.icon} ` : ""}{collection.title}
-          </strong>
+          <>
+            <strong
+              ref={titleDragProps ? titleDragRef : undefined}
+              // 제목은 드래그 핸들(잡고 움직이면 순서 이동, 5px 활성화). 이름 편집은 호버 시 나오는 연필 버튼으로.
+              style={{
+                color: "#3b3f46",
+                cursor: titleDragProps ? "grab" : "default",
+                userSelect: titleDragProps ? "none" : undefined,
+                touchAction: titleDragProps ? "none" : undefined,
+                outline: "none",
+                borderRadius: 5,
+                padding: "0 3px",
+                margin: "0 -3px",
+              }}
+              {...(titleDragProps ?? {})}
+            >
+              {collection.icon ? `${collection.icon} ` : ""}{collection.title}
+            </strong>
+            {onRenameCollection && hover && (
+              <button
+                type="button"
+                title="이름 수정"
+                aria-label="컬렉션 이름 수정"
+                onClick={() => setEditingTitle(true)}
+                style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3 }}
+              >
+                <Pencil size={13} color={theme.textFaint} />
+              </button>
+            )}
+          </>
         )}
-        <span style={{ color: theme.textFaint, fontSize: 12 }}>{links.length}</span>
         <span style={{ marginLeft: "auto", display: "flex", gap: 2 }}>
           <button type="button" title="링크 추가" aria-label="링크 추가" onClick={() => setAdding(true)} style={iconBtn}>
             <Plus size={15} color={theme.textMuted} />

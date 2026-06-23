@@ -14,13 +14,12 @@ const links: Link[] = [
 function noop() {}
 
 describe("CollectionSection", () => {
-  it("제목과 링크 개수를 보여준다", () => {
+  it("제목을 보여준다", () => {
     render(
       <CollectionSection collection={collection} links={links}
         onOpenLink={noop} onDeleteLink={noop} onAddLink={noop} onOpenAll={noop} onDeleteCollection={noop} />,
     );
     expect(screen.getByText("읽을거리")).toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument();
   });
 
   it("헤더의 접기 버튼을 누르면 링크가 숨겨진다", () => {
@@ -46,14 +45,16 @@ describe("CollectionSection", () => {
     expect(onAddLink).toHaveBeenCalledWith("https://x.com");
   });
 
-  it("제목 클릭 시 인라인 편집되고 Enter로 onRenameCollection을 호출한다", () => {
+  it("호버 시 나오는 수정 버튼으로 인라인 편집되고 Enter로 onRenameCollection을 호출한다", () => {
     const onRename = vi.fn();
     render(
       <CollectionSection collection={collection} links={links}
         onOpenLink={noop} onDeleteLink={noop} onAddLink={noop} onOpenAll={noop} onDeleteCollection={noop}
         onRenameCollection={onRename} />,
     );
-    fireEvent.click(screen.getByText("읽을거리"));
+    // 헤더 호버 시에만 수정(연필) 버튼이 노출된다.
+    fireEvent.mouseEnter(screen.getByText("읽을거리").closest("header")!);
+    fireEvent.click(screen.getByRole("button", { name: "컬렉션 이름 수정" }));
     const input = screen.getByDisplayValue("읽을거리");
     fireEvent.change(input, { target: { value: "새 이름" } });
     fireEvent.keyDown(input, { key: "Enter" });
