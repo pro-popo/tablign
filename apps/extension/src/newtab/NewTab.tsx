@@ -26,12 +26,11 @@ const collisionDetection: CollisionDetection = (args) => {
 import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus } from "@tablign/ui";
 import {
   listSpaces, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
-  updateLink, updateCollection, updateSpace,
+  updateLink, updateCollection, updateSpace, sequentialPositions,
   type Collection, type Link, type Space,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
-import { placeInOrder, sequentialPositions } from "../lib/order";
 import { usePanelState } from "../lib/usePanelState";
 import { useActiveSpace } from "../lib/useActiveSpace";
 import { OpenTabsPanel } from "./OpenTabsPanel";
