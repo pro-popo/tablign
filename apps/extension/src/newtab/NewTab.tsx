@@ -92,6 +92,9 @@ function SortableCollection({
 
 export function NewTab() {
   const [session, setSession] = useState<Session | null>(null);
+  // 세션 복원(getSession)은 비동기라, 끝나기 전 session=null로 로그인 화면이 깜빡인다.
+  // "확인 중"을 별도 상태로 두고 그 동안 렌더를 보류해 깜빡임을 막는다.
+  const [authLoaded, setAuthLoaded] = useState(false);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const { activeSpaceId, setActiveSpaceId, loaded: spaceLoaded } = useActiveSpace();
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -124,7 +127,10 @@ export function NewTab() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthLoaded(true);
+    });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -465,6 +471,10 @@ export function NewTab() {
     if (ids.length) await chrome.tabs.remove(ids);
     const tabs = await chrome.tabs.query({});
     setGroups(groupTabsByWindow(tabs as WindowTab[]));
+  }
+
+  if (!authLoaded) {
+    return null;
   }
 
   if (!session) {
