@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  usePanelState as useShared,
+  PANEL_STATE_KEY,
+  type PanelState,
+  type PanelStateStorage,
+} from "@tablign/ui";
 
-export interface PanelState {
-  left: boolean;
-  right: boolean;
-}
-
-const KEY = "tablign.panels";
 const DEFAULT: PanelState = { left: true, right: true };
 
 export function readPanelState(storage: Pick<Storage, "getItem">): PanelState {
   try {
-    const raw = storage.getItem(KEY);
+    const raw = storage.getItem(PANEL_STATE_KEY);
     if (!raw) return DEFAULT;
     const parsed = JSON.parse(raw);
     if (typeof parsed?.left === "boolean" && typeof parsed?.right === "boolean") {
@@ -26,26 +25,19 @@ export function readPanelState(storage: Pick<Storage, "getItem">): PanelState {
 
 export function writePanelState(storage: Pick<Storage, "setItem">, state: PanelState): void {
   try {
-    storage.setItem(KEY, JSON.stringify(state));
+    storage.setItem(PANEL_STATE_KEY, JSON.stringify(state));
   } catch {
     /* ignore */
   }
 }
 
+const adapter: PanelStateStorage = {
+  read: (cb) => cb(readPanelState(window.localStorage)),
+  write: (state) => writePanelState(window.localStorage, state),
+};
+
 export function usePanelState() {
-  const [state, setState] = useState<PanelState>(DEFAULT);
-
-  useEffect(() => {
-    setState(readPanelState(window.localStorage));
-  }, []);
-
-  function toggle(key: keyof PanelState) {
-    setState((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      writePanelState(window.localStorage, next);
-      return next;
-    });
-  }
-
-  return { state, toggleLeft: () => toggle("left"), toggleRight: () => toggle("right") };
+  return useShared(adapter);
 }
+
+export type { PanelState };
