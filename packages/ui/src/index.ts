@@ -4,6 +4,7 @@ export * from "./Logo";
 export * from "./Button";
 export * from "./Card";
 export * from "./EmptyState";
+export * from "./CollectionSkeleton";
 export * from "./InlineInput";
 export * from "./Favicon";
 export * from "./LinkCard";

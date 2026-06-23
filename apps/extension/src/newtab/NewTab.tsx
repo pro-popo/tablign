@@ -15,7 +15,7 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, EmptyState, Button, Favicon, theme, Plus } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus } from "@tablign/ui";
 import {
   listSpaces, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace,
@@ -53,6 +53,8 @@ export function NewTab() {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const { activeSpaceId, setActiveSpaceId, loaded: spaceLoaded } = useActiveSpace();
   const [collections, setCollections] = useState<Collection[]>([]);
+  // 첫 컬렉션 로드 완료 전에는 EmptyState 대신 스켈레톤을 보여줘 깜빡임을 막는다.
+  const [collectionsLoaded, setCollectionsLoaded] = useState(false);
   const [linksByCol, setLinksByCol] = useState<Record<string, Link[]>>({});
   // 드래그 중 onDragEnd가 최신 상태를 읽도록 ref로 동기 보관(state 배칭 레이스 방지).
   const linksByColRef = useRef<Record<string, Link[]>>({});
@@ -92,13 +94,15 @@ export function NewTab() {
   }, [session, spaceLoaded]);
 
   async function loadCollections() {
-    if (!activeSpaceId) { setCollections([]); setLinksByCol({}); return; }
+    if (!activeSpaceId) { setCollections([]); setLinksByCol({}); setCollectionsLoaded(true); return; }
     const cols = await listCollections(supabase, activeSpaceId);
     setCollections(cols);
     const entries = await Promise.all(cols.map(async (c) => [c.id, await listLinks(supabase, c.id)] as const));
     setLinksByCol(Object.fromEntries(entries));
+    setCollectionsLoaded(true);
   }
-  useEffect(() => { if (session && activeSpaceId) loadCollections(); /* eslint-disable-next-line */ }, [session, activeSpaceId]);
+  // 세션/스페이스가 바뀌면 스켈레톤부터 다시 보여준 뒤 로드한다(재조회 핸들러는 플래그를 건드리지 않음).
+  useEffect(() => { if (session && activeSpaceId) { setCollectionsLoaded(false); loadCollections(); } /* eslint-disable-next-line */ }, [session, activeSpaceId]);
 
   async function reloadCollection(collectionId: string) {
     const links = await listLinks(supabase, collectionId);
@@ -414,7 +418,7 @@ export function NewTab() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
               <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
-              <span style={{ color: theme.textFaint }}>· {collections.length} 컬렉션</span>
+              <span style={{ color: theme.textFaint }}>· {collectionsLoaded ? collections.length : "—"} 컬렉션</span>
             </div>
             <Button onClick={addCollection}>
               <Plus size={15} /> 컬렉션
@@ -422,7 +426,9 @@ export function NewTab() {
           </div>
           {(() => {
             const visibleCollections = collections;
-            return visibleCollections.length === 0 ? (
+            return !collectionsLoaded ? (
+              <CollectionSkeleton />
+            ) : visibleCollections.length === 0 ? (
               <EmptyState title="컬렉션이 없어요. ‘＋ 컬렉션’으로 영역을 만든 뒤, 열린 탭을 드래그해 넣어보세요." />
             ) : (
               visibleCollections.map((c) => {
