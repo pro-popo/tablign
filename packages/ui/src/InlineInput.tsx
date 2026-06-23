@@ -7,9 +7,11 @@ export interface InlineInputProps {
   onCancel: () => void;
   autoFocus?: boolean;
   defaultValue?: string;
+  /** "box"(기본): 테두리 박스 / "line": 밑줄만 있는 인라인 입력 */
+  variant?: "box" | "line";
 }
 
-export function InlineInput({ placeholder, onSubmit, onCancel, autoFocus = true, defaultValue = "" }: InlineInputProps) {
+export function InlineInput({ placeholder, onSubmit, onCancel, autoFocus = true, defaultValue = "", variant = "box" }: InlineInputProps) {
   const [value, setValue] = useState(defaultValue);
 
   function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -31,15 +33,29 @@ export function InlineInput({ placeholder, onSubmit, onCancel, autoFocus = true,
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKey}
       onBlur={onCancel}
-      style={{
-        width: "100%",
-        padding: "7px 9px",
-        border: `1px solid ${theme.accent}`,
-        borderRadius: theme.radiusBtn,
-        fontSize: 13,
-        outline: "none",
-        boxSizing: "border-box",
-      }}
+      style={
+        variant === "line"
+          ? {
+              width: "100%",
+              padding: "3px 1px",
+              border: "none",
+              borderBottom: `1.5px solid ${theme.accent}`,
+              borderRadius: 0,
+              fontSize: 13,
+              outline: "none",
+              boxSizing: "border-box",
+              background: "transparent",
+            }
+          : {
+              width: "100%",
+              padding: "7px 9px",
+              border: `1px solid ${theme.accent}`,
+              borderRadius: theme.radiusBtn,
+              fontSize: 13,
+              outline: "none",
+              boxSizing: "border-box",
+            }
+      }
     />
   );
 }
