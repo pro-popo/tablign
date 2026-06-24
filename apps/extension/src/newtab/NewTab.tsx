@@ -15,11 +15,18 @@ const collisionDetection: CollisionDetection = (args) => {
       droppableContainers: args.droppableContainers.filter((c) => String(c.id).startsWith("col:")),
     });
   }
+  // 스페이스 드래그 중에는 스페이스 정렬 대상(space:)만 후보로 한정.
+  if (args.active?.data?.current?.kind === "space") {
+    return pointerWithin({
+      ...args,
+      droppableContainers: args.droppableContainers.filter((c) => String(c.id).startsWith("space:")),
+    });
+  }
   const hits = pointerWithin(args);
-  // 카드(탭/링크) > 컨테이너(컬렉션 container:/창 window:/컬렉션 정렬 col:) 순으로 우선.
+  // 카드(탭/링크) > 컨테이너(컬렉션 container:/창 window:/컬렉션 정렬 col:/스페이스 정렬 space:) 순으로 우선.
   const cardHit = hits.find((h) => {
     const id = String(h.id);
-    return !id.startsWith("container:") && !id.startsWith("window:") && !id.startsWith("col:");
+    return !id.startsWith("container:") && !id.startsWith("window:") && !id.startsWith("col:") && !id.startsWith("space:");
   });
   return cardHit ? [cardHit] : hits;
 };
@@ -57,6 +64,7 @@ type Active =
   | { type: "tab"; tab: WindowTab }
   | { type: "link"; link: Link }
   | { type: "collection"; collection: Collection }
+  | { type: "space"; space: Space }
   | null;
 
 /** 컬렉션 제목을 드래그 핸들로 쓰는 정렬 래퍼. children에 제목에 연결할 ref/props를 넘긴다. */
@@ -97,6 +105,10 @@ export function NewTab() {
   const collectionsRef = useRef<Collection[]>([]);
   useEffect(() => { collectionsRef.current = collections; }, [collections]);
   const collectionsOriginRef = useRef<Collection[]>([]);
+  // 스페이스 드래그: onDragEnd가 최신 순서를 읽도록 ref 보관 + 취소 시 복원용 시작 스냅샷.
+  const spacesRef = useRef<Space[]>([]);
+  useEffect(() => { spacesRef.current = spaces; }, [spaces]);
+  const spacesOriginRef = useRef<Space[]>([]);
   // 드래그 시작 시점의 원래 컬렉션(링크 객체의 collection_id가 드래그 중 갱신되므로 시작값을 보관).
   const dragOriginRef = useRef<string | null>(null);
   // 드래그 중 onDragEnd가 최신 groups를 읽도록 ref로 동기 보관.
@@ -207,6 +219,9 @@ export function NewTab() {
     } else if (d?.kind === "collection") {
       collectionsOriginRef.current = collections;
       setActive({ type: "collection", collection: d.collection as Collection });
+    } else if (d?.kind === "space") {
+      spacesOriginRef.current = spaces;
+      setActive({ type: "space", space: d.space as Space });
     } else {
       setActive(null);
     }
@@ -231,6 +246,20 @@ export function NewTab() {
         if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return prev;
         const next = arrayMove(prev, oldIdx, newIdx);
         collectionsRef.current = next;
+        return next;
+      });
+      return;
+    }
+
+    // 스페이스 순서 변경: 다른 스페이스 위로 끌면 실시간 재정렬.
+    if (d?.kind === "space") {
+      if (!overId.startsWith("space:") || overId === activeId) return;
+      setSpaces((prev) => {
+        const oldIdx = prev.findIndex((s) => `space:${s.id}` === activeId);
+        const newIdx = prev.findIndex((s) => `space:${s.id}` === overId);
+        if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return prev;
+        const next = arrayMove(prev, oldIdx, newIdx);
+        spacesRef.current = next;
         return next;
       });
       return;
@@ -340,6 +369,7 @@ export function NewTab() {
     setDragOverCol(null);
     if (!over || !session) {
       if (d?.kind === "tab") { setGroups(groupsOriginRef.current); groupsRef.current = groupsOriginRef.current; }
+      if (d?.kind === "space") { setSpaces(spacesOriginRef.current); spacesRef.current = spacesOriginRef.current; }
       loadCollections();
       return;
     }
@@ -388,12 +418,18 @@ export function NewTab() {
       const ordered = collectionsRef.current.map((c) => c.id);
       await Promise.all(sequentialPositions(ordered).map((p) => updateCollection(supabase, p.id, { position: p.position })));
       loadCollections();
+    } else if (d?.kind === "space") {
+      // onDragOver에서 이미 실시간으로 순서가 반영됨(ref) → 현재 순서로 position 재할당 저장.
+      // 로컬 spaces 순서는 이미 최신이라 재조회 없이 position만 저장한다.
+      const ordered = spacesRef.current.map((s) => s.id);
+      await Promise.all(sequentialPositions(ordered).map((p) => updateSpace(supabase, p.id, { position: p.position })));
     }
   }
 
   function handleDragCancel() {
     if (active?.type === "tab") { setGroups(groupsOriginRef.current); groupsRef.current = groupsOriginRef.current; }
     if (active?.type === "collection") { setCollections(collectionsOriginRef.current); collectionsRef.current = collectionsOriginRef.current; }
+    if (active?.type === "space") { setSpaces(spacesOriginRef.current); spacesRef.current = spacesOriginRef.current; }
     setActive(null);
     setDragOverCol(null);
     loadCollections();
@@ -540,6 +576,14 @@ export function NewTab() {
             fontWeight: 600, color: theme.text,
           }}>
             {active.collection.icon ? `${active.collection.icon} ` : ""}{active.collection.title}
+          </div>
+        ) : active?.type === "space" ? (
+          <div style={{
+            border: `1px solid ${theme.border}`, borderRadius: theme.radiusCard, padding: "7px 12px",
+            background: "#fff", boxShadow: "0 8px 20px rgba(20,30,60,.22)", cursor: "grabbing",
+            fontWeight: 600, color: theme.text, fontSize: 12.5,
+          }}>
+            {active.space.icon ? `${active.space.icon} ` : ""}{active.space.name}
           </div>
         ) : preview ? (
           <div style={{
