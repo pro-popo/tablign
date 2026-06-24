@@ -75,6 +75,7 @@ export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, on
             editingId === s.id ? (
               <div key={s.id} style={{ padding: "2px 6px" }}>
                 <InlineInput
+                  variant="line"
                   placeholder="스페이스 이름"
                   defaultValue={s.name}
                   onSubmit={(name) => { onRenameSpace(s.id, name); setEditingId(null); }}
@@ -94,7 +95,7 @@ export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, on
         </SortableContext>
         {adding ? (
           <div style={{ padding: "2px 6px" }}>
-            <InlineInput placeholder="스페이스 이름" onSubmit={(v) => { onAddSpace(v); setAdding(false); }} onCancel={() => setAdding(false)} />
+            <InlineInput variant="line" placeholder="스페이스 이름" onSubmit={(v) => { onAddSpace(v); setAdding(false); }} onCancel={() => setAdding(false)} />
           </div>
         ) : (
           <button type="button" onClick={() => setAdding(true)}
