@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { Space } from "@tablign/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Hash, Plus, Pencil, PanelLeftClose, LogOut, InlineInput, theme, Logo } from "@tablign/ui";
 
 export interface ExtSidebarProps {
@@ -14,10 +16,47 @@ export interface ExtSidebarProps {
   searchSlot: ReactNode;
 }
 
+/** 스페이스 행을 드래그로 재정렬할 수 있게 감싸는 sortable 래퍼.
+ *  선택 버튼을 드래그 activator로 쓴다. distance:5 제약 덕에 클릭=선택, 5px 이상 이동=재정렬. */
+function SortableSpace({ space, active, onSelect, onStartEdit }: {
+  space: Space;
+  active: boolean;
+  onSelect: () => void;
+  onStartEdit: () => void;
+}) {
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+    id: `space:${space.id}`,
+    data: { kind: "space", space },
+  });
+  const [hover, setHover] = useState(false);
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+  };
+  return (
+    <div ref={setNodeRef} style={style} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <button type="button" ref={setActivatorNodeRef} {...attributes} {...listeners} onClick={onSelect}
+        style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 8, border: "none", cursor: "pointer", textAlign: "left",
+          background: active ? theme.accentWeak : "transparent", color: active ? theme.accent : "#495057", fontWeight: active ? 600 : 400 }}>
+        <Hash size={15} /> {space.name}
+      </button>
+      {hover && (
+        <button type="button" title="이름 수정" aria-label="스페이스 이름 수정" onClick={onStartEdit}
+          style={{ position: "absolute", right: 8, border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 3 }}>
+          <Pencil size={13} color={theme.textFaint} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, onAddSpace, onRenameSpace, onCollapse, onSignOut, searchSlot }: ExtSidebarProps) {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [hoverId, setHoverId] = useState<string | null>(null);
   return (
     <>
       <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${theme.border}` }}>
@@ -31,39 +70,32 @@ export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, on
 
       <div style={{ padding: "4px 14px", fontSize: 10, letterSpacing: 1, color: theme.textFaint }}>SPACES</div>
       <div style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-        {spaces.map((s) => {
-          const active = s.id === activeSpaceId;
-          if (editingId === s.id) {
-            return (
+        <SortableContext items={spaces.map((s) => `space:${s.id}`)} strategy={verticalListSortingStrategy}>
+          {spaces.map((s) =>
+            editingId === s.id ? (
               <div key={s.id} style={{ padding: "2px 6px" }}>
                 <InlineInput
+                  variant="line"
                   placeholder="스페이스 이름"
                   defaultValue={s.name}
                   onSubmit={(name) => { onRenameSpace(s.id, name); setEditingId(null); }}
                   onCancel={() => setEditingId(null)}
                 />
               </div>
-            );
-          }
-          return (
-            <div key={s.id} onMouseEnter={() => setHoverId(s.id)} onMouseLeave={() => setHoverId(null)} style={{ position: "relative", display: "flex", alignItems: "center" }}>
-              <button type="button" onClick={() => onSelectSpace(s.id)}
-                style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 8, border: "none", cursor: "pointer", textAlign: "left",
-                  background: active ? theme.accentWeak : "transparent", color: active ? theme.accent : "#495057", fontWeight: active ? 600 : 400 }}>
-                <Hash size={15} /> {s.name}
-              </button>
-              {hoverId === s.id && (
-                <button type="button" title="이름 수정" aria-label="스페이스 이름 수정" onClick={() => setEditingId(s.id)}
-                  style={{ position: "absolute", right: 8, border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 3 }}>
-                  <Pencil size={13} color={theme.textFaint} />
-                </button>
-              )}
-            </div>
-          );
-        })}
+            ) : (
+              <SortableSpace
+                key={s.id}
+                space={s}
+                active={s.id === activeSpaceId}
+                onSelect={() => onSelectSpace(s.id)}
+                onStartEdit={() => setEditingId(s.id)}
+              />
+            ),
+          )}
+        </SortableContext>
         {adding ? (
           <div style={{ padding: "2px 6px" }}>
-            <InlineInput placeholder="스페이스 이름" onSubmit={(v) => { onAddSpace(v); setAdding(false); }} onCancel={() => setAdding(false)} />
+            <InlineInput variant="line" placeholder="스페이스 이름" onSubmit={(v) => { onAddSpace(v); setAdding(false); }} onCancel={() => setAdding(false)} />
           </div>
         ) : (
           <button type="button" onClick={() => setAdding(true)}
