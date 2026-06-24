@@ -30,7 +30,8 @@ describe("LinkCard", () => {
   it("카드를 클릭하면 onOpen(url)이 호출된다", () => {
     const onOpen = vi.fn();
     render(<LinkCard link={baseLink} onOpen={onOpen} onDelete={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /예시 제목/ }));
+    // 제목 영역을 클릭하면 카드 onClick으로 버블링되어 onOpen이 호출된다.
+    fireEvent.click(screen.getByText("예시 제목"));
     expect(onOpen).toHaveBeenCalledWith("https://example.com/page");
   });
 
