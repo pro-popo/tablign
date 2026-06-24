@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Link } from "@tablign/core";
 import { Favicon } from "./Favicon";
-import { ExternalLink, Pencil, Trash2 } from "./icons";
+import { Pencil, Trash2 } from "./icons";
 import { theme } from "./theme";
 
 export interface LinkCardProps {
@@ -78,18 +78,15 @@ export function LinkCard({ link, onOpen, onDelete, onUpdate, dragging }: LinkCar
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{ position: "relative", background: theme.surface, border: `1px solid ${theme.borderCard}`, borderRadius: theme.radiusCard, padding: "10px 11px" }}
+      onClick={() => onOpen(link.url)}
+      style={{ position: "relative", background: theme.surface, border: `1px solid ${theme.borderCard}`, borderRadius: theme.radiusCard, padding: "10px 11px", cursor: "pointer" }}
     >
-      <button
-        type="button"
-        onClick={() => onOpen(link.url)}
-        style={{ all: "unset", cursor: "pointer", display: "flex", gap: 8, alignItems: "center", width: "100%" }}
-      >
+      <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
         <Favicon url={link.favicon_url} />
         <span style={{ fontWeight: 600, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {label}
         </span>
-      </button>
+      </div>
       {(() => {
         // 부제는 항상 한 줄로 고정(카드 높이 통일). "메모 | 주소" 형태(메모 없으면 주소만).
         const dom = domainOf(link.url);
@@ -102,15 +99,12 @@ export function LinkCard({ link, onOpen, onDelete, onUpdate, dragging }: LinkCar
         );
       })()}
       <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 2, opacity: showActions ? 1 : 0, pointerEvents: showActions ? "auto" : "none", transition: "opacity .12s" }}>
-        <button type="button" title="열기" aria-label="열기" onClick={() => onOpen(link.url)} style={actionBtn}>
-          <ExternalLink size={14} color={theme.textMuted} />
-        </button>
         {onUpdate && (
-          <button type="button" title="편집" aria-label="편집" onPointerDown={(e) => e.stopPropagation()} onClick={openEdit} style={actionBtn}>
+          <button type="button" title="편집" aria-label="편집" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); openEdit(); }} style={actionBtn}>
             <Pencil size={14} color={theme.textMuted} />
           </button>
         )}
-        <button type="button" title="삭제" aria-label="삭제" onClick={() => onDelete(link.id)} style={actionBtn}>
+        <button type="button" title="삭제" aria-label="삭제" onClick={(e) => { e.stopPropagation(); onDelete(link.id); }} style={actionBtn}>
           <Trash2 size={14} color={theme.danger} />
         </button>
       </div>
