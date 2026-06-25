@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMetadata } from "./parse-metadata";
+import { parseMetadata } from "../metadata";
 
 const html = `
 <html><head>

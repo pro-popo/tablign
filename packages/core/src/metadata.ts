@@ -17,6 +17,10 @@ function toAbsolute(href: string, base: string): string {
   }
 }
 
+/**
+ * 페이지 HTML에서 제목·썸네일·파비콘을 추출한다.
+ * HTML을 가져오는 책임은 호출자에게 있다(웹은 서버 라우트, 익스텐션은 직접 fetch 등).
+ */
 export function parseMetadata(html: string, pageUrl: string): ParsedMetadata {
   const ogTitle = matchAttr(
     html,
