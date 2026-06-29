@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { Space } from "@tablign/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Hash, Plus, Pencil, PanelLeftClose, LogOut, InlineInput, theme, Logo } from "@tablign/ui";
+import { Hash, Plus, Pencil, Trash2, PanelLeftClose, LogOut, InlineInput, ConfirmDialog, theme, Logo } from "@tablign/ui";
 
 export interface ExtSidebarProps {
   spaces: Space[];
@@ -11,6 +11,7 @@ export interface ExtSidebarProps {
   onSelectSpace: (id: string) => void;
   onAddSpace: (name: string) => void;
   onRenameSpace: (id: string, name: string) => void;
+  onDeleteSpace: (id: string) => void;
   onCollapse: () => void;
   onSignOut: () => void;
   searchSlot: ReactNode;
@@ -18,11 +19,12 @@ export interface ExtSidebarProps {
 
 /** 스페이스 행을 드래그로 재정렬할 수 있게 감싸는 sortable 래퍼.
  *  선택 버튼을 드래그 activator로 쓴다. distance:5 제약 덕에 클릭=선택, 5px 이상 이동=재정렬. */
-function SortableSpace({ space, active, onSelect, onStartEdit }: {
+function SortableSpace({ space, active, onSelect, onStartEdit, onDelete }: {
   space: Space;
   active: boolean;
   onSelect: () => void;
   onStartEdit: () => void;
+  onDelete: () => void;
 }) {
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: `space:${space.id}`,
@@ -45,18 +47,25 @@ function SortableSpace({ space, active, onSelect, onStartEdit }: {
         <Hash size={15} /> {space.name}
       </button>
       {hover && (
-        <button type="button" title="이름 수정" aria-label="스페이스 이름 수정" onClick={onStartEdit}
-          style={{ position: "absolute", right: 8, border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 3 }}>
-          <Pencil size={13} color={theme.textFaint} />
-        </button>
+        <div style={{ position: "absolute", right: 6, display: "flex", alignItems: "center", gap: 2 }}>
+          <button type="button" title="이름 수정" aria-label="스페이스 이름 수정" onClick={onStartEdit}
+            style={{ border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 3 }}>
+            <Pencil size={13} color={theme.textFaint} />
+          </button>
+          <button type="button" title="스페이스 삭제" aria-label="스페이스 삭제" onClick={onDelete}
+            style={{ border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 3 }}>
+            <Trash2 size={13} color={theme.textFaint} />
+          </button>
+        </div>
       )}
     </div>
   );
 }
 
-export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, onAddSpace, onRenameSpace, onCollapse, onSignOut, searchSlot }: ExtSidebarProps) {
+export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, onAddSpace, onRenameSpace, onDeleteSpace, onCollapse, onSignOut, searchSlot }: ExtSidebarProps) {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Space | null>(null);
   return (
     <>
       <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${theme.border}` }}>
@@ -89,6 +98,7 @@ export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, on
                 active={s.id === activeSpaceId}
                 onSelect={() => onSelectSpace(s.id)}
                 onStartEdit={() => setEditingId(s.id)}
+                onDelete={() => setPendingDelete(s)}
               />
             ),
           )}
@@ -113,6 +123,16 @@ export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, on
           <LogOut size={15} color={theme.textFaint} />
         </button>
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        danger
+        title="스페이스 삭제"
+        message={<>'{pendingDelete?.name}' 스페이스를 삭제할까요?<br />연관된 컬렉션과 탭 모두 삭제되며 되돌릴 수 없습니다.</>}
+        confirmLabel="삭제"
+        onConfirm={() => { if (pendingDelete) onDeleteSpace(pendingDelete.id); setPendingDelete(null); }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </>
   );
 }

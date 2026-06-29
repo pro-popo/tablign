@@ -33,7 +33,7 @@ const collisionDetection: CollisionDetection = (args) => {
 import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus } from "@tablign/ui";
 import {
   listSpaces, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
-  updateLink, updateCollection, updateSpace, sequentialPositions,
+  updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions,
   type Collection, type Link, type Space,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
@@ -185,6 +185,14 @@ export function NewTab() {
   async function renameSpace(id: string, name: string) {
     await updateSpace(supabase, id, { name });
     setSpaces((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)));
+  }
+
+  async function deleteSpace(id: string) {
+    await apiDeleteSpace(supabase, id);
+    const remaining = spaces.filter((s) => s.id !== id);
+    setSpaces(remaining);
+    // 활성 스페이스를 지웠다면 남은 첫 스페이스로 전환한다(없으면 비활성).
+    if (activeSpaceId === id) setActiveSpaceId(remaining[0]?.id ?? null);
   }
 
   async function addCollection() {
@@ -514,6 +522,7 @@ export function NewTab() {
             onSelectSpace={(id) => { setActiveSpaceId(id); }}
             onAddSpace={addSpace}
             onRenameSpace={renameSpace}
+            onDeleteSpace={deleteSpace}
             onSignOut={async () => { await supabase.auth.signOut(); }}
             onCollapse={toggleLeft}
             searchSlot={<ExtSearchBar />}
