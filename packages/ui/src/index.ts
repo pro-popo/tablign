@@ -13,4 +13,5 @@ export * from "./Board";
 export * from "./SidePanel";
 export * from "./AppShell";
 export * from "./Toast";
+export * from "./ConfirmDialog";
 export * from "./usePanelState";
