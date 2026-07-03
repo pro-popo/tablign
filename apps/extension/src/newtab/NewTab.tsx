@@ -200,16 +200,24 @@ export function NewTab() {
 
   // 이동: 현재 스페이스 목록에서 사라지므로 재조회. 복사: 다른 스페이스에 생기므로 재조회 불필요.
   async function moveCollectionTo(collection: Collection, targetSpaceId: string) {
-    await moveCollectionToSpace(supabase, collection.id, targetSpaceId);
-    const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
-    toast.show(`'${collection.title}' 컬렉션을 '${name}' 스페이스로 이동했어요`);
-    loadCollections();
+    try {
+      await moveCollectionToSpace(supabase, collection.id, targetSpaceId);
+      const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
+      toast.show(`'${collection.title}' 컬렉션을 '${name}' 스페이스로 이동했어요`);
+      loadCollections();
+    } catch {
+      toast.show("이동에 실패했어요. 다시 시도해 주세요.");
+    }
   }
 
   async function copyCollectionTo(collection: Collection, targetSpaceId: string) {
-    await copyCollection(supabase, collection.id, targetSpaceId);
-    const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
-    toast.show(`'${collection.title}' 컬렉션을 '${name}' 스페이스에 복사했어요`);
+    try {
+      await copyCollection(supabase, collection.id, targetSpaceId);
+      const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
+      toast.show(`'${collection.title}' 컬렉션을 '${name}' 스페이스에 복사했어요`);
+    } catch {
+      toast.show("복사에 실패했어요. 다시 시도해 주세요.");
+    }
   }
 
   async function addCollection() {
