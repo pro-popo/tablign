@@ -205,7 +205,8 @@ export function NewTab() {
       const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
       toast.show(`'${collection.title}' 컬렉션을 '${name}' 스페이스로 이동했어요`);
       loadCollections();
-    } catch {
+    } catch (e) {
+      console.error(e);
       toast.show("이동에 실패했어요. 다시 시도해 주세요.");
     }
   }
@@ -215,7 +216,8 @@ export function NewTab() {
       await copyCollection(supabase, collection.id, targetSpaceId);
       const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
       toast.show(`'${collection.title}' 컬렉션을 '${name}' 스페이스에 복사했어요`);
-    } catch {
+    } catch (e) {
+      console.error(e);
       toast.show("복사에 실패했어요. 다시 시도해 주세요.");
     }
   }
