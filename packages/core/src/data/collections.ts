@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Collection } from "../types";
+import { GAP } from "../position";
 
 export interface CreateCollectionInput {
   user_id: string;
@@ -68,4 +69,35 @@ export async function deleteCollection(
 ): Promise<void> {
   const { error } = await client.from("collections").delete().eq("id", id);
   if (error) throw error;
+}
+
+/** 컬렉션을 대상 스페이스로 딥카피(링크 포함, 태그 제외)하고 새 컬렉션 id를 반환한다. */
+export async function copyCollection(
+  client: SupabaseClient,
+  collectionId: string,
+  targetSpaceId: string,
+): Promise<string> {
+  const { data, error } = await client.rpc("copy_collection", {
+    p_collection_id: collectionId,
+    p_target_space_id: targetSpaceId,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+/** 컬렉션을 대상 스페이스 맨 아래로 이동한다(링크는 collection_id 기준이라 자동으로 따라감). */
+export async function moveCollectionToSpace(
+  client: SupabaseClient,
+  collectionId: string,
+  targetSpaceId: string,
+): Promise<Collection> {
+  const { data: last, error } = await client
+    .from("collections")
+    .select("position")
+    .eq("space_id", targetSpaceId)
+    .order("position", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  const position = (last?.[0]?.position ?? 0) + GAP;
+  return updateCollection(client, collectionId, { space_id: targetSpaceId, position });
 }

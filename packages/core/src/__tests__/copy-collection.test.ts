@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ws from "ws";
+import { copyCollection, moveCollectionToSpace } from "../data/collections";
 
 // .env.test 로드 (간단 파서)
 const envText = readFileSync(resolve(__dirname, "../../.env.test"), "utf8");
@@ -37,38 +38,40 @@ async function makeUser(email: string): Promise<{ client: SupabaseClient; id: st
   return { client, id: created.user!.id };
 }
 
+// Fixture variables shared by both describe blocks
+let alice: { client: SupabaseClient; id: string };
+let bob: { client: SupabaseClient; id: string };
+let srcSpaceId: string;   // alice의 원본 스페이스
+let dstSpaceId: string;   // alice의 대상 스페이스
+let srcColId: string;     // 링크 2개를 가진 원본 컬렉션
+let bobSpaceId: string;   // bob의 스페이스
+
+beforeAll(async () => {
+  alice = await makeUser(`copy-alice-${Date.now()}@test.local`);
+  bob = await makeUser(`copy-bob-${Date.now()}@test.local`);
+
+  const { data: s1 } = await alice.client.from("spaces")
+    .insert({ user_id: alice.id, name: "원본" }).select().single();
+  const { data: s2 } = await alice.client.from("spaces")
+    .insert({ user_id: alice.id, name: "대상" }).select().single();
+  srcSpaceId = s1!.id; dstSpaceId = s2!.id;
+
+  const { data: c } = await alice.client.from("collections")
+    .insert({ user_id: alice.id, space_id: srcSpaceId, title: "읽을거리", icon: "📚", note: "메모" })
+    .select().single();
+  srcColId = c!.id;
+
+  await alice.client.from("links").insert([
+    { user_id: alice.id, collection_id: srcColId, url: "https://a.com", title: "A", position: 1000 },
+    { user_id: alice.id, collection_id: srcColId, url: "https://b.com", title: "B", note: "b메모", position: 2000 },
+  ]);
+
+  const { data: bs } = await bob.client.from("spaces")
+    .insert({ user_id: bob.id, name: "Bob 스페이스" }).select().single();
+  bobSpaceId = bs!.id;
+});
+
 describe("copy_collection RPC", () => {
-  let alice: { client: SupabaseClient; id: string };
-  let bob: { client: SupabaseClient; id: string };
-  let srcSpaceId: string;   // alice의 원본 스페이스
-  let dstSpaceId: string;   // alice의 대상 스페이스
-  let srcColId: string;     // 링크 2개를 가진 원본 컬렉션
-  let bobSpaceId: string;   // bob의 스페이스
-
-  beforeAll(async () => {
-    alice = await makeUser(`copy-alice-${Date.now()}@test.local`);
-    bob = await makeUser(`copy-bob-${Date.now()}@test.local`);
-
-    const { data: s1 } = await alice.client.from("spaces")
-      .insert({ user_id: alice.id, name: "원본" }).select().single();
-    const { data: s2 } = await alice.client.from("spaces")
-      .insert({ user_id: alice.id, name: "대상" }).select().single();
-    srcSpaceId = s1!.id; dstSpaceId = s2!.id;
-
-    const { data: c } = await alice.client.from("collections")
-      .insert({ user_id: alice.id, space_id: srcSpaceId, title: "읽을거리", icon: "📚", note: "메모" })
-      .select().single();
-    srcColId = c!.id;
-
-    await alice.client.from("links").insert([
-      { user_id: alice.id, collection_id: srcColId, url: "https://a.com", title: "A", position: 1000 },
-      { user_id: alice.id, collection_id: srcColId, url: "https://b.com", title: "B", note: "b메모", position: 2000 },
-    ]);
-
-    const { data: bs } = await bob.client.from("spaces")
-      .insert({ user_id: bob.id, name: "Bob 스페이스" }).select().single();
-    bobSpaceId = bs!.id;
-  });
 
   it("컬렉션과 링크를 대상 스페이스로 딥카피하고 새 id를 반환한다", async () => {
     const { data: newId, error } = await alice.client.rpc("copy_collection", {
@@ -123,5 +126,36 @@ describe("copy_collection RPC", () => {
       p_collection_id: srcColId, p_target_space_id: bobSpaceId,
     });
     expect(error).not.toBeNull();
+  });
+});
+
+describe("copyCollection / moveCollectionToSpace (core)", () => {
+  it("copyCollection이 새 컬렉션 id를 반환한다", async () => {
+    const newId = await copyCollection(alice.client, srcColId, dstSpaceId);
+    expect(typeof newId).toBe("string");
+    const { data } = await alice.client.from("collections").select().eq("id", newId).single();
+    expect(data!.space_id).toBe(dstSpaceId);
+  });
+
+  it("moveCollectionToSpace가 컬렉션을 대상 스페이스 맨 아래로 옮긴다", async () => {
+    // 이동용 컬렉션을 원본 스페이스에 새로 만든다 (srcColId는 다른 테스트가 쓰므로 건드리지 않음)
+    const { data: c } = await alice.client.from("collections")
+      .insert({ user_id: alice.id, space_id: srcSpaceId, title: "이동할 것", position: 1000 })
+      .select().single();
+    // 대상 스페이스의 현재 최대 position 파악
+    const { data: before } = await alice.client.from("collections")
+      .select("position").eq("space_id", dstSpaceId)
+      .order("position", { ascending: false }).limit(1);
+    const maxBefore = before?.[0]?.position ?? 0;
+
+    const moved = await moveCollectionToSpace(alice.client, c!.id, dstSpaceId);
+    expect(moved.space_id).toBe(dstSpaceId);
+    expect(moved.position).toBeGreaterThan(maxBefore);
+
+    // 원본 스페이스에서는 사라진다
+    const { data: remain } = await alice.client.from("collections")
+      .select().eq("space_id", srcSpaceId).eq("id", c!.id);
+    expect(remain).toHaveLength(0);
+    // 링크는 컬렉션을 따라간다 (collection_id 불변이므로 자동)
   });
 });
