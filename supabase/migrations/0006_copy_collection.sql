@@ -9,7 +9,6 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_new_id uuid;
-  v_next_pos double precision;
 begin
   if v_uid is null then
     raise exception 'not authenticated';
@@ -30,12 +29,10 @@ begin
     raise exception 'target space not found or not editable';
   end if;
 
-  -- 대상 스페이스 맨 아래 position (기존 GAP=1000 규칙)
-  select coalesce(max(position), 0) + 1000 into v_next_pos
-  from collections where space_id = p_target_space_id;
-
+  -- 대상 스페이스 맨 아래 position (기존 GAP=1000 규칙, 서브쿼리로 경합 회피)
   insert into collections (space_id, user_id, title, icon, note, position)
-  select p_target_space_id, v_uid, title, icon, note, v_next_pos
+  select p_target_space_id, v_uid, title, icon, note,
+         (select coalesce(max(position), 0) + 1000 from collections where space_id = p_target_space_id)
   from collections where id = p_collection_id
   returning id into v_new_id;
 

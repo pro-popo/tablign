@@ -99,7 +99,7 @@ describe("copy_collection RPC", () => {
       p_collection_id: srcColId, p_target_space_id: dstSpaceId,
     });
     const { data: copied } = await alice.client.from("collections").select().eq("id", newId).single();
-    expect(copied!.position).toBeGreaterThan(5000);
+    expect(copied!.position).toBe(6000);
   });
 
   it("복사본을 수정해도 원본은 바뀌지 않는다", async () => {
