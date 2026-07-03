@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Collection } from "../types";
-import { GAP } from "../position";
 
 export interface CreateCollectionInput {
   user_id: string;
@@ -85,19 +84,15 @@ export async function copyCollection(
   return data as string;
 }
 
-/** 컬렉션을 대상 스페이스 맨 아래로 이동한다(링크는 collection_id 기준이라 자동으로 따라감). */
+/** 컬렉션을 대상 스페이스 맨 아래로 이동한다(원본·대상 소유권은 RPC가 검증). */
 export async function moveCollectionToSpace(
   client: SupabaseClient,
   collectionId: string,
   targetSpaceId: string,
-): Promise<Collection> {
-  const { data: last, error } = await client
-    .from("collections")
-    .select("position")
-    .eq("space_id", targetSpaceId)
-    .order("position", { ascending: false })
-    .limit(1);
+): Promise<void> {
+  const { error } = await client.rpc("move_collection", {
+    p_collection_id: collectionId,
+    p_target_space_id: targetSpaceId,
+  });
   if (error) throw error;
-  const position = (last?.[0]?.position ?? 0) + GAP;
-  return updateCollection(client, collectionId, { space_id: targetSpaceId, position });
 }

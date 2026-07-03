@@ -127,6 +127,35 @@ describe("copy_collection RPC", () => {
     });
     expect(error).not.toBeNull();
   });
+
+  it("링크 없는 컬렉션도 복사된다", async () => {
+    // 링크가 0개인 컬렉션을 별도로 만들어 복사한다
+    const { data: emptyCol } = await alice.client.from("collections")
+      .insert({ user_id: alice.id, space_id: srcSpaceId, title: "빈 컬렉션", position: 9000 })
+      .select().single();
+    const { data: newId, error } = await alice.client.rpc("copy_collection", {
+      p_collection_id: emptyCol!.id, p_target_space_id: dstSpaceId,
+    });
+    expect(error).toBeNull();
+    expect(newId).toBeTruthy();
+    const { data: copied } = await alice.client.from("collections").select().eq("id", newId).single();
+    expect(copied!.space_id).toBe(dstSpaceId);
+    const { data: links } = await alice.client.from("links").select().eq("collection_id", newId);
+    expect(links).toHaveLength(0);
+  });
+
+  it("빈 스페이스로 복사하면 position 1000을 받는다", async () => {
+    // 완전히 새로운 빈 스페이스를 만들어 복사한다 — 기존 dstSpaceId와 독립
+    const { data: emptySpace } = await alice.client.from("spaces")
+      .insert({ user_id: alice.id, name: "빈 스페이스" }).select().single();
+    const emptySpaceId = emptySpace!.id;
+    const { data: newId, error } = await alice.client.rpc("copy_collection", {
+      p_collection_id: srcColId, p_target_space_id: emptySpaceId,
+    });
+    expect(error).toBeNull();
+    const { data: copied } = await alice.client.from("collections").select().eq("id", newId).single();
+    expect(copied!.position).toBe(1000);
+  });
 });
 
 describe("copyCollection / moveCollectionToSpace (core)", () => {
@@ -148,14 +177,32 @@ describe("copyCollection / moveCollectionToSpace (core)", () => {
       .order("position", { ascending: false }).limit(1);
     const maxBefore = before?.[0]?.position ?? 0;
 
-    const moved = await moveCollectionToSpace(alice.client, c!.id, dstSpaceId);
-    expect(moved.space_id).toBe(dstSpaceId);
-    expect(moved.position).toBeGreaterThan(maxBefore);
+    await moveCollectionToSpace(alice.client, c!.id, dstSpaceId);
+
+    // 이동된 컬렉션을 직접 조회해 검증
+    const { data: moved } = await alice.client.from("collections").select().eq("id", c!.id).single();
+    expect(moved!.space_id).toBe(dstSpaceId);
+    expect(moved!.position).toBeGreaterThan(maxBefore);
 
     // 원본 스페이스에서는 사라진다
     const { data: remain } = await alice.client.from("collections")
       .select().eq("space_id", srcSpaceId).eq("id", c!.id);
     expect(remain).toHaveLength(0);
     // 링크는 컬렉션을 따라간다 (collection_id 불변이므로 자동)
+  });
+
+  it("남의 스페이스로는 이동할 수 없다", async () => {
+    // alice의 컬렉션을 bob의 스페이스로 이동 시도 → 거부되어야 한다
+    const { data: c } = await alice.client.from("collections")
+      .insert({ user_id: alice.id, space_id: srcSpaceId, title: "이동 거부 테스트", position: 2000 })
+      .select().single();
+    const thatId = c!.id;
+
+    await expect(moveCollectionToSpace(alice.client, thatId, bobSpaceId)).rejects.toBeTruthy();
+
+    // 이동 실패 후 컬렉션은 여전히 원본 스페이스에 있어야 한다
+    const { data: check } = await alice.client.from("collections")
+      .select().eq("id", thatId).single();
+    expect(check!.space_id).toBe(srcSpaceId);
   });
 });
