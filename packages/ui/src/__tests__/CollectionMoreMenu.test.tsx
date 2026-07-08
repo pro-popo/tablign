@@ -43,4 +43,20 @@ describe("CollectionMoreMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "뒤로" }));
     expect(screen.getByText("다른 스페이스에 복사")).toBeInTheDocument();
   });
+
+  it("onShare가 있으면 '공유 코드' 항목이 보이고 클릭 시 호출된다", () => {
+    const onShare = vi.fn();
+    render(<CollectionMoreMenu spaces={spaces} onMove={noop} onCopy={noop} onShare={onShare} />);
+    fireEvent.click(screen.getByRole("button", { name: "컬렉션 메뉴" }));
+    fireEvent.click(screen.getByText("공유 코드"));
+    expect(onShare).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("공유 코드")).not.toBeInTheDocument(); // 팝오버 닫힘
+  });
+
+  it("다른 스페이스가 없어도 onShare만으로 메뉴가 뜬다", () => {
+    render(<CollectionMoreMenu spaces={[]} onMove={noop} onCopy={noop} onShare={noop} />);
+    fireEvent.click(screen.getByRole("button", { name: "컬렉션 메뉴" }));
+    expect(screen.getByText("공유 코드")).toBeInTheDocument();
+    expect(screen.queryByText("다른 스페이스로 이동")).not.toBeInTheDocument();
+  });
 });

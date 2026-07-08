@@ -14,6 +14,8 @@ export * from "./SidePanel";
 export * from "./AppShell";
 export * from "./Toast";
 export * from "./ConfirmDialog";
+export * from "./ShareCodeDialog";
+export * from "./ImportCodeDialog";
 export * from "./usePanelState";
 export * from "./CollectionMoreMenu";
 export * from "./SpaceOnboarding";
