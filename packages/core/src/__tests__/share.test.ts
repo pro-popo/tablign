@@ -125,3 +125,87 @@ describe("create_collection_share_code RPC", () => {
     expect(error).not.toBeNull();
   });
 });
+
+describe("get_share_code_info / import_collection_by_code RPC", () => {
+  let activeCode: string;
+
+  beforeAll(async () => {
+    // 이전 테스트가 회수했을 수 있으므로 새 활성 코드를 확보
+    const { data } = await alice.client.rpc("create_collection_share_code", { p_collection_id: aliceColId });
+    activeCode = data![0].code;
+  });
+
+  it("발급자가 아니어도 코드로 미리보기 정보를 얻는다", async () => {
+    const { data, error } = await bob.client.rpc("get_share_code_info", { p_code: activeCode });
+    expect(error).toBeNull();
+    const info = data![0];
+    expect(info.title).toBe("공유할 자료");
+    expect(info.icon).toBe("📌");
+    expect(Number(info.link_count)).toBe(2);
+    expect(typeof info.shared_by === "string" || info.shared_by === null).toBe(true);
+  });
+
+  it("존재하지 않는 코드는 에러", async () => {
+    const { error } = await bob.client.rpc("get_share_code_info", { p_code: "XXXXXXXX" });
+    expect(error).not.toBeNull();
+  });
+
+  it("코드로 자기 스페이스에 컬렉션을 가져온다 (링크 포함, 소유자는 가져간 사람)", async () => {
+    const { data: newId, error } = await bob.client.rpc("import_collection_by_code", {
+      p_code: activeCode, p_target_space_id: bobSpaceId,
+    });
+    expect(error).toBeNull();
+    const { data: copied } = await bob.client.from("collections").select().eq("id", newId).single();
+    expect(copied!.title).toBe("공유할 자료");
+    expect(copied!.space_id).toBe(bobSpaceId);
+    expect(copied!.user_id).toBe(bob.id);
+    const { data: links } = await bob.client.from("links")
+      .select().eq("collection_id", newId).order("position");
+    expect(links!.map((l) => l.url)).toEqual(["https://a.com", "https://b.com"]);
+    // 원본은 그대로
+    const { data: original } = await alice.client.from("links").select().eq("collection_id", aliceColId);
+    expect(original).toHaveLength(2);
+  });
+
+  it("남의 스페이스로는 가져올 수 없다", async () => {
+    const { error } = await bob.client.rpc("import_collection_by_code", {
+      p_code: activeCode, p_target_space_id: aliceSpaceId,
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it("회수된 코드는 조회·가져오기 모두 에러", async () => {
+    await alice.client.from("collection_share_codes")
+      .update({ revoked_at: new Date().toISOString() }).eq("code", activeCode);
+    const { error: infoErr } = await bob.client.rpc("get_share_code_info", { p_code: activeCode });
+    expect(infoErr).not.toBeNull();
+    const { error: impErr } = await bob.client.rpc("import_collection_by_code", {
+      p_code: activeCode, p_target_space_id: bobSpaceId,
+    });
+    expect(impErr).not.toBeNull();
+  });
+
+  it("만료된 코드는 가져올 수 없다", async () => {
+    // p_expires_in_days = 0 → 발급 즉시 만료
+    const { data } = await alice.client.rpc("create_collection_share_code", {
+      p_collection_id: aliceColId, p_expires_in_days: 0,
+    });
+    const expired = data![0].code;
+    const { error } = await bob.client.rpc("import_collection_by_code", {
+      p_code: expired, p_target_space_id: bobSpaceId,
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it("발급자 본인도 코드로 가져올 수 있다 (내 스페이스 간 복사와 동일 효과)", async () => {
+    // 만료 코드 정리 후 새 활성 코드 발급
+    await alice.client.from("collection_share_codes")
+      .update({ revoked_at: new Date().toISOString() }).eq("collection_id", aliceColId);
+    const { data } = await alice.client.rpc("create_collection_share_code", { p_collection_id: aliceColId });
+    const { data: newId, error } = await alice.client.rpc("import_collection_by_code", {
+      p_code: data![0].code, p_target_space_id: aliceSpaceId,
+    });
+    expect(error).toBeNull();
+    expect(newId).not.toBe(aliceColId);
+  });
+});
