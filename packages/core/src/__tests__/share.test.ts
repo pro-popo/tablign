@@ -240,4 +240,11 @@ describe("share 데이터 함수 (core)", () => {
     const issued = await createCollectionShareCode(alice.client, aliceColId, null);
     expect(issued.expires_at).toBeNull();
   });
+
+  it("발급자가 아니면 회수가 에러로 실패한다", async () => {
+    await alice.client.from("collection_share_codes")
+      .update({ revoked_at: new Date().toISOString() }).eq("collection_id", aliceColId);
+    const issued = await createCollectionShareCode(alice.client, aliceColId);
+    await expect(revokeCollectionShareCode(bob.client, issued.code)).rejects.toBeTruthy();
+  });
 });

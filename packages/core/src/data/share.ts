@@ -26,13 +26,14 @@ export async function createCollectionShareCode(
   return (data as ShareCode[])[0];
 }
 
-/** 발급자가 코드를 회수한다(이후 조회·가져오기 불가). */
+/** 발급자가 코드를 회수한다(이후 조회·가져오기 불가). 대상이 없으면(오타·권한 없음) 에러. */
 export async function revokeCollectionShareCode(client: SupabaseClient, code: string): Promise<void> {
-  const { error } = await client
+  const { error, count } = await client
     .from("collection_share_codes")
-    .update({ revoked_at: new Date().toISOString() })
+    .update({ revoked_at: new Date().toISOString() }, { count: "exact" })
     .eq("code", code);
   if (error) throw error;
+  if (!count) throw new Error("share code not found");
 }
 
 /** 코드의 미리보기 정보(컬렉션 이름·링크 수·공유한 사람). 만료·회수·미존재면 throw. */
