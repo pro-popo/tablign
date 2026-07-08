@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 창 스택 + 탭 대기열 시안</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accent-weak:#edf0fe; --ink:#1f2430; --muted:#868e96;
+    --faint:#adb5bd; --border:#eaecef; --bg:#fcfcfd; --surface:#fff;
+    --surface2:#f1f3f5; --lavender:#c9d4ff;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:#eef0f4; color:var(--ink); padding:28px 20px 60px;
+  }
+  h1{font-size:16px; font-weight:740; letter-spacing:-.02em; margin-bottom:4px}
+  .note{font-size:12.5px; color:var(--muted); margin-bottom:18px}
+  .toolbar{display:flex; gap:6px; margin-bottom:14px; max-width:960px}
+  .replay{
+    margin-left:auto; border:1px solid var(--border); background:var(--surface); color:var(--accent);
+    padding:7px 13px; border-radius:8px; font-size:13px; cursor:pointer; font-weight:700;
+  }
+  .caption{font-size:12.5px; color:var(--muted); margin:10px 2px 0; line-height:1.6; max-width:960px}
+  .caption b{color:var(--ink)}
+
+  .frame{
+    max-width:960px; background:var(--bg); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden; box-shadow:0 10px 30px rgba(20,30,60,.08);
+    display:flex; min-height:500px;
+  }
+  .side{
+    width:168px; border-right:1px solid var(--border); background:var(--surface);
+    padding:14px 12px; flex:none; display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{display:flex; align-items:center; gap:7px; font-weight:740; letter-spacing:-.03em; font-size:14px}
+  .brand .lign{color:var(--accent)}
+  .side .label{font-size:10.5px; color:var(--faint); font-weight:700; letter-spacing:.06em; margin-top:8px}
+  .side .ghostrow{height:26px; border-radius:7px; background:var(--surface2); opacity:.55}
+  .board{flex:1; padding:26px 30px; display:flex; align-items:center; justify-content:center}
+  .center{text-align:center; max-width:420px; margin-bottom:40px}
+  .h{font-size:19px; font-weight:740; letter-spacing:-.02em; margin:26px 0 4px}
+  .sub{font-size:13.5px; color:var(--muted); line-height:1.5}
+  .cta{
+    margin-top:18px; display:inline-flex; align-items:center; gap:7px;
+    background:var(--accent); color:#fff; border:none; border-radius:9px;
+    padding:9px 16px; font-size:13.5px; font-weight:700; cursor:pointer;
+    box-shadow:0 4px 14px rgba(59,91,219,.28);
+  }
+
+  /* 스테이지 (구현본과 동일 좌표계, 16s 사이클) */
+  .stage{width:290px; height:196px; margin:0 auto; position:relative; text-align:left}
+  .act{position:absolute; inset:0}
+  .act1{animation:act1 16s ease infinite}
+  .act2{animation:act2 16s ease infinite}
+  @keyframes act1{0%,38%{opacity:1} 48%,84%{opacity:0} 94%,100%{opacity:1}}
+  @keyframes act2{0%,40%{opacity:0} 50%,79%{opacity:1} 89%,100%{opacity:0}}
+
+  /* ── 1막: 뒤에 겹친 창들 + 메인 창 ── */
+  .winwrap{position:absolute; left:20px; top:26px; width:250px; height:141px}
+  .gwin{
+    position:absolute; border:1px solid var(--border); border-radius:11px; background:var(--surface);
+    box-shadow:0 6px 16px rgba(20,30,60,.05);
+  }
+  .gwin .gbar{height:16px; background:var(--surface2); border-radius:10px 10px 0 0;
+    display:flex; align-items:center; gap:3px; padding:0 7px}
+  .gwin .gdot{width:5px; height:5px; border-radius:50%; background:#d6dae0}
+  .gw1{left:-16px; top:-14px; width:230px; height:120px; transform:rotate(-1.6deg); opacity:.6}
+  .gw2{left:34px; top:-8px; width:230px; height:120px; transform:rotate(1.2deg); opacity:.75}
+  .win{position:absolute; left:0; top:0; width:250px; height:132px; border:1px solid var(--border); border-radius:11px;
+    background:var(--surface); box-shadow:0 8px 22px rgba(20,30,60,.09); overflow:hidden}
+  .winbar{height:22px; background:var(--surface2); display:flex; align-items:center; gap:4px; padding:0 9px}
+  .dot{width:7px; height:7px; border-radius:50%; background:#d6dae0}
+  .tabstrip{display:flex; padding:7px 8px 0}
+  .mtab{
+    width:42px; height:17px; border-radius:6px 6px 0 0; background:var(--surface2);
+    border:1px solid var(--border); border-bottom:none; margin-right:-14px; flex:none;
+    display:flex; align-items:center; padding-left:5px; transform-origin:bottom center; position:relative;
+  }
+  .mtab i{width:7px; height:7px; border-radius:2px; background:var(--lavender); flex:none}
+  .mtab:nth-child(3n) i{background:var(--accent)}
+  .mtab:nth-child(3n+1) i{background:#f4c66a}
+  .winbody{border-top:1px solid var(--border); height:100%; background:var(--bg); padding:9px}
+  .winbody .ln{height:8px; border-radius:4px; background:var(--surface2); margin-bottom:6px}
+  .cur{position:absolute; width:14px; height:14px; z-index:5; left:0; top:0}
+  .q{
+    position:absolute; left:112px; top:8px; width:20px; height:20px; border-radius:10px 10px 10px 3px;
+    background:var(--ink); color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center;
+    justify-content:center; opacity:0; z-index:4; animation:q 16s ease infinite;
+  }
+  @keyframes q{0%,27%{opacity:0} 29%,46%{opacity:1} 50%,100%{opacity:0}}
+  .act1 .cur{animation:cur1 16s ease-in-out infinite}
+  @keyframes cur1{
+    0%,3%{transform:translate(30px,96px)} 7%,10%{transform:translate(47px,34px)}
+    14%,17%{transform:translate(131px,34px)} 22%,25%{transform:translate(187px,34px)}
+    28%,33%{transform:translate(103px,34px)} 48%{transform:translate(103px,34px)}
+    66%,100%{transform:translate(30px,96px)}
+  }
+  .act1 .mtab:nth-child(2){animation:t2 16s ease infinite}
+  .act1 .mtab:nth-child(5){animation:t5 16s ease infinite}
+  .act1 .mtab:nth-child(7){animation:t7 16s ease infinite}
+  @keyframes t2{0%,5%,12%,100%{transform:none; background:var(--surface2)} 7%,10%{transform:translateY(-3px); background:var(--accent-weak)}}
+  @keyframes t5{0%,12%,19%,100%{transform:none; background:var(--surface2)} 14%,17%{transform:translateY(-3px); background:var(--accent-weak)}}
+  @keyframes t7{0%,20%,27%,100%{transform:none; background:var(--surface2)} 22%,25%{transform:translateY(-3px); background:var(--accent-weak)}}
+
+  /* ── 2막: 탭 대기열 + 슬롯 ── */
+  .demo{position:absolute; left:6px; top:24px; width:278px; height:150px}
+  .slot{position:absolute; right:0; top:26px; width:110px; height:92px; border-radius:11px;
+    border:1.5px dashed var(--faint); background:var(--surface); animation:slot 16s ease infinite}
+  .slot .st{width:50px; height:8px; border-radius:4px; background:var(--surface2); margin:10px auto 0}
+  @keyframes slot{
+    0%,51%,99%,100%{border:1.5px dashed var(--faint); background:var(--surface)}
+    54%,60.5%{border:1.5px dashed var(--accent); background:var(--accent-weak)}
+    62.5%{border:1.5px solid var(--accent); background:#d9e2fc}
+    64.5%,96%{border:1.5px solid #aebdf0; background:var(--accent-weak)}
+  }
+  .qcard{
+    position:absolute; left:0; width:102px; height:36px; border-radius:9px;
+    background:var(--surface); border:1px solid var(--border); box-shadow:0 4px 12px rgba(20,30,60,.1);
+    display:flex; align-items:center; gap:7px; padding:0 9px;
+  }
+  .qcard i{width:13px; height:13px; border-radius:4px; flex:none}
+  .qcard s{height:8px; border-radius:4px; background:var(--surface2); text-decoration:none}
+  /* 대기열: 위(집을 것), 중간, 아래 */
+  .qc1{top:18px; animation:card 16s cubic-bezier(.45,.05,.35,1) infinite; z-index:3}
+  .qc1 i{background:var(--accent)} .qc1 s{width:48px}
+  .qc2{top:62px; animation:adv2 16s ease infinite}
+  .qc2 i{background:#f4c66a} .qc2 s{width:38px}
+  .qc3{top:106px; animation:adv3 16s ease infinite}
+  .qc3 i{background:#7bc47f} .qc3 s{width:56px}
+  /* 드래그: (0,18) → 슬롯 안착 (172,56) = translate(172,38) */
+  @keyframes card{
+    0%,52%{transform:translate(0,0); box-shadow:0 4px 12px rgba(20,30,60,.1)}
+    53.5%{transform:translate(3px,-5px) rotate(-2deg) scale(1.04); box-shadow:0 12px 24px rgba(20,30,60,.18)}
+    58%{transform:translate(145px,8px) rotate(-2.5deg) scale(1.04); box-shadow:0 12px 24px rgba(20,30,60,.18)}
+    60%{transform:translate(168px,26px) rotate(-1deg) scale(1.04); box-shadow:0 12px 24px rgba(20,30,60,.18)}
+    62%{transform:translate(172px,39px) rotate(0) scale(.995); box-shadow:0 3px 8px rgba(20,30,60,.1)}
+    63.5%,96%{transform:translate(172px,38px) scale(.97); box-shadow:0 2px 6px rgba(20,30,60,.08)}
+    98%,100%{transform:translate(0,0); box-shadow:0 4px 12px rgba(20,30,60,.1)}
+  }
+  /* 대기열 전진: 드롭 후 나머지가 한 칸씩 올라온다 */
+  @keyframes adv2{0%,66%{transform:translateY(0)} 70%,96%{transform:translateY(-44px)} 99%,100%{transform:translateY(0)}}
+  @keyframes adv3{0%,67%{transform:translateY(0)} 71%,96%{transform:translateY(-44px)} 99%,100%{transform:translateY(0)}}
+  /* 커서: 그립(70,42) → 드롭(242,81) → 물러남(250,104) — 구현본과 동일한 드롭 지점 */
+  .act2 .cur{animation:cur2 16s cubic-bezier(.45,.05,.35,1) infinite}
+  @keyframes cur2{
+    0%,52%{transform:translate(70px,42px)}
+    52.7%{transform:translate(70px,42px) scale(.8)}
+    53.5%{transform:translate(73px,37px) scale(1)}
+    58%{transform:translate(215px,50px)}
+    60%{transform:translate(238px,68px)}
+    62%{transform:translate(242px,81px) scale(.8)}
+    63.5%{transform:translate(242px,81px) scale(1)}
+    66.5%,96%{transform:translate(250px,104px)}
+    98%,100%{transform:translate(70px,42px)}
+  }
+  .thumb{
+    position:absolute; left:259px; top:78px; width:20px; height:20px; border-radius:10px 10px 10px 3px;
+    background:var(--ink); font-size:10px; line-height:1; display:flex; align-items:center; justify-content:center;
+    opacity:0; z-index:4; animation:thumb 16s ease infinite;
+  }
+  @keyframes thumb{0%,70%{opacity:0; transform:translateY(3px)} 72.5%,92%{opacity:1; transform:none} 96%,100%{opacity:0}}
+
+  @media (prefers-reduced-motion: reduce){
+    .act,.cur,.q,.mtab,.qcard,.slot,.thumb{animation:none !important}
+    .act2{opacity:0 !important}
+  }
+</style>
+</head>
+<body>
+  <h1>시안 — 1막: 겹친 브라우저 창들 / 2막: 탭 대기열</h1>
+  <p class="note">+17 배지 대신 뒤에 창 2개가 겹쳐 보이고, 2막은 탭 카드 3장 대기열에서 맨 위 것을 집어 정리합니다. 타이밍은 현재 구현본과 동일(16초).</p>
+
+  <div class="toolbar"><button class="replay" id="replay">↺ 다시 재생</button></div>
+
+  <div class="frame" id="scene">
+    <aside class="side"><div class="brand"><svg width="20" height="20" viewBox="0 0 48 48"><rect x="4" y="4" width="24" height="24" rx="6" fill="#3b5bdb"/><rect x="32" y="4" width="12" height="12" rx="4" fill="#1f2430"/><rect x="32" y="20" width="12" height="24" rx="4" fill="#c9d4ff"/><rect x="4" y="32" width="24" height="12" rx="4" fill="#c9d4ff"/></svg>tab<span class="lign">lign</span></div><div class="label">SPACES</div><div class="ghostrow"></div></aside>
+    <main class="board">
+      <div class="center">
+        <div class="stage" aria-hidden="true">
+          <!-- 1막 -->
+          <div class="act act1">
+            <div class="winwrap">
+              <div class="gwin gw1"><div class="gbar"><span class="gdot"></span><span class="gdot"></span><span class="gdot"></span></div></div>
+              <div class="gwin gw2"><div class="gbar"><span class="gdot"></span><span class="gdot"></span><span class="gdot"></span></div></div>
+              <div class="win">
+                <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <div class="tabstrip">
+                  <div class="mtab"><i></i></div><div class="mtab"><i></i></div><div class="mtab"><i></i></div>
+                  <div class="mtab"><i></i></div><div class="mtab"><i></i></div><div class="mtab"><i></i></div>
+                  <div class="mtab"><i></i></div><div class="mtab"><i></i></div><div class="mtab"><i></i></div>
+                </div>
+                <div class="winbody"><div class="ln" style="width:70%"></div><div class="ln" style="width:45%"></div></div>
+              </div>
+              <div class="q">?</div>
+              <svg class="cur" viewBox="0 0 24 24" fill="none"><path d="M5 3l14 8-6.5 1.5L9 19 5 3z" fill="#1f2430" stroke="#fff" stroke-width="1.4"/></svg>
+            </div>
+          </div>
+          <!-- 2막 -->
+          <div class="act act2">
+            <div class="demo">
+              <div class="slot"><div class="st"></div></div>
+              <div class="qcard qc1"><i></i><s></s></div>
+              <div class="qcard qc2"><i></i><s></s></div>
+              <div class="qcard qc3"><i></i><s></s></div>
+              <div class="thumb">👍</div>
+              <svg class="cur" viewBox="0 0 24 24" fill="none"><path d="M5 3l14 8-6.5 1.5L9 19 5 3z" fill="#1f2430" stroke="#fff" stroke-width="1.4"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="h">매일 여는 탭, 매번 찾고 있나요?</div>
+        <p class="sub">자주 쓰는 탭은 스페이스에 담아두세요.<br/>필요할 때 한 번에 다시 열 수 있어요.</p>
+        <button class="cta">＋ 첫 스페이스 만들기</button>
+      </div>
+    </main>
+  </div>
+
+  <p class="caption">
+    <b>1막 — 겹친 창들:</b> 메인 창 뒤로 창 2개가 비스듬히 겹쳐 "창까지 여러 개"인 상황을 숫자 없이 보여줘요. 배지(+17)는 제거.<br/>
+    <b>2막 — 탭 대기열:</b> 왼쪽에 탭 카드 3장이 줄 서 있고, 커서가 맨 위 카드를 슬롯에 정리하면 <b>나머지가 한 칸씩 올라와요</b> — "하나씩 정리하면 된다"는 반복 가능성을 암시. 드롭 지점·👍 타이밍은 구현본과 동일.
+  </p>
+
+<script>
+  document.getElementById('replay').addEventListener('click', () => {
+    const s = document.getElementById('scene');
+    s.innerHTML = s.innerHTML;
+  });
+</script>
+</body>
+</html>

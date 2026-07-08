@@ -16,3 +16,4 @@ export * from "./Toast";
 export * from "./ConfirmDialog";
 export * from "./usePanelState";
 export * from "./CollectionMoreMenu";
+export * from "./SpaceOnboarding";

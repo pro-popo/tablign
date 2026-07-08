@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 스페이스 0개 온보딩 시안</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accent-weak:#edf0fe; --ink:#1f2430; --muted:#868e96;
+    --faint:#adb5bd; --border:#eaecef; --bg:#fcfcfd; --surface:#fff;
+    --surface2:#f1f3f5; --lavender:#c9d4ff;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:#eef0f4; color:var(--ink); padding:28px 20px 60px;
+  }
+  h1{font-size:16px; font-weight:740; letter-spacing:-.02em; margin-bottom:4px}
+  .note{font-size:12.5px; color:var(--muted); margin-bottom:18px}
+  /* 변안 탭 */
+  .tabs{display:flex; gap:6px; margin-bottom:14px}
+  .tabs button{
+    border:1px solid var(--border); background:var(--surface); color:var(--muted);
+    padding:7px 13px; border-radius:8px; font-size:13px; cursor:pointer; font-weight:600;
+  }
+  .tabs button[aria-selected="true"]{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .tabs button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .variant{display:none}
+  .variant.on{display:block}
+  .caption{font-size:12.5px; color:var(--muted); margin:10px 2px 0; line-height:1.6}
+  .caption b{color:var(--ink)}
+
+  /* ── 새 탭 프레임(컨텍스트용 목업) ───────────────── */
+  .frame{
+    max-width:960px; background:var(--bg); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden; box-shadow:0 10px 30px rgba(20,30,60,.08);
+    display:flex; min-height:480px;
+  }
+  .side{
+    width:168px; border-right:1px solid var(--border); background:var(--surface);
+    padding:14px 12px; flex:none; display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{display:flex; align-items:center; gap:7px; font-weight:740; letter-spacing:-.03em; font-size:14px}
+  .brand .lign{color:var(--accent)}
+  .side .label{font-size:10.5px; color:var(--faint); font-weight:700; letter-spacing:.06em; margin-top:8px}
+  .side .ghostrow{height:26px; border-radius:7px; background:var(--surface2); opacity:.55}
+  .board{flex:1; padding:26px 30px; display:flex; align-items:center; justify-content:center; position:relative}
+
+  /* 공통 요소 */
+  .h{font-size:19px; font-weight:740; letter-spacing:-.02em; margin:18px 0 7px}
+  .sub{font-size:13.5px; color:var(--muted); line-height:1.65}
+  .cta{
+    margin-top:18px; display:inline-flex; align-items:center; gap:7px;
+    background:var(--accent); color:#fff; border:none; border-radius:9px;
+    padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer;
+    box-shadow:0 4px 14px rgba(59,91,219,.28); transition:transform .15s, box-shadow .15s;
+  }
+  .cta:hover{transform:translateY(-1px); box-shadow:0 7px 18px rgba(59,91,219,.34)}
+  .cta:focus-visible{outline:2px solid var(--ink); outline-offset:2px}
+  .hint{margin-top:13px; font-size:12px; color:var(--faint)}
+  .hint kbd{
+    border:1px solid var(--border); background:var(--surface); border-radius:5px;
+    padding:1px 6px; font-family:inherit; font-size:11px; color:var(--muted);
+  }
+  .center{text-align:center; max-width:400px}
+
+  /* ── A안: 벤토 조립 ───────────────────────────── */
+  .bento{
+    width:150px; height:150px; margin:0 auto; position:relative;
+  }
+  .cell{position:absolute; border-radius:14px; opacity:0; animation:drop .5s cubic-bezier(.2,.9,.3,1.2) forwards}
+  .c1{left:0; top:0; width:88px; height:88px; background:var(--accent); animation-delay:.1s}
+  .c2{right:0; top:0; width:46px; height:46px; background:var(--ink); border-radius:10px; animation-delay:.28s}
+  .c3{right:0; top:56px; width:46px; height:94px; background:var(--lavender); border-radius:10px; animation-delay:.42s}
+  .c4{left:0; bottom:0; width:88px; height:46px; background:var(--lavender); border-radius:10px; animation-delay:.56s}
+  /* 큰 칸에 링크 카드가 담기는 연출 */
+  .c1 .chip{
+    position:absolute; left:10px; height:14px; border-radius:4px; background:rgba(255,255,255,.92);
+    opacity:0; animation:slotIn .35s ease forwards;
+  }
+  .c1 .chip:nth-child(1){top:12px; width:56px; animation-delay:.9s}
+  .c1 .chip:nth-child(2){top:32px; width:44px; animation-delay:1.05s}
+  .c1 .chip:nth-child(3){top:52px; width:62px; animation-delay:1.2s}
+  @keyframes drop{from{opacity:0; transform:translateY(-14px) scale(.92)} to{opacity:1; transform:none}}
+  @keyframes slotIn{from{opacity:0; transform:translateX(-8px)} to{opacity:1; transform:none}}
+  @media (prefers-reduced-motion: reduce){
+    .cell,.c1 .chip{animation:none; opacity:1; transform:none}
+  }
+
+  /* ── B안: 고스트 보드 ─────────────────────────── */
+  .ghostboard{position:absolute; inset:26px 30px; display:flex; flex-direction:column; gap:18px; pointer-events:none}
+  .gcol .gtitle{width:110px; height:13px; border-radius:5px; background:var(--surface2); margin-bottom:10px}
+  .gcards{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:9px}
+  .gcard{height:52px; border-radius:9px; border:1.5px dashed var(--border); background:var(--surface)}
+  .fadeveil{position:absolute; inset:0; background:linear-gradient(180deg, rgba(252,252,253,.25), rgba(252,252,253,.92) 62%)}
+  .overcard{
+    position:relative; z-index:1; background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:30px 36px; box-shadow:0 12px 34px rgba(20,30,60,.10); text-align:center; max-width:380px;
+  }
+
+  /* ── C안: 3단계 스텝 ─────────────────────────── */
+  .steps{display:flex; gap:12px; margin:20px 0 4px}
+  .step{
+    flex:1; background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:16px 14px 14px; text-align:left; position:relative;
+  }
+  .step .no{
+    width:20px; height:20px; border-radius:6px; background:var(--accent-weak); color:var(--accent);
+    font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-bottom:10px;
+  }
+  .step .t{font-size:13px; font-weight:700; margin-bottom:3px}
+  .step .d{font-size:11.5px; color:var(--muted); line-height:1.55}
+  .step .pic{height:44px; border-radius:8px; background:var(--surface2); margin-bottom:11px; position:relative; overflow:hidden}
+  .step .pic i{position:absolute; border-radius:4px}
+  /* step1 pic: 빈 보드 + 플러스 */
+  .p1 i.b{left:8px; top:8px; width:38px; height:28px; border:1.5px dashed var(--faint); background:transparent}
+  .p1 i.plus{left:52px; top:14px; width:16px; height:16px; background:var(--accent); border-radius:5px}
+  .p1 i.plus::before{content:"+"; color:#fff; font-size:12px; font-weight:800; position:absolute; left:4px; top:-1px}
+  /* step2 pic: 탭이 끌려오는 모습 */
+  .p2 i.tab{left:8px; top:8px; width:34px; height:12px; background:var(--lavender)}
+  .p2 i.arrow{left:48px; top:10px; width:22px; height:2px; background:var(--faint)}
+  .p2 i.slot{left:76px; top:6px; width:40px; height:30px; border:1.5px dashed var(--accent); background:var(--accent-weak)}
+  /* step3 pic: 채워진 벤토 */
+  .p3 i{background:var(--lavender)}
+  .p3 i:nth-child(1){left:8px; top:7px; width:26px; height:30px; background:var(--accent)}
+  .p3 i:nth-child(2){left:38px; top:7px; width:20px; height:13px; background:var(--ink)}
+  .p3 i:nth-child(3){left:38px; top:24px; width:20px; height:13px}
+  .p3 i:nth-child(4){left:62px; top:7px; width:26px; height:30px}
+</style>
+</head>
+<body>
+  <h1>스페이스 0개 온보딩 — 시안 3종</h1>
+  <p class="note">신규 가입 직후 / 스페이스 전부 삭제 시 보드 영역. 좌측 사이드바는 컨텍스트용 목업.</p>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-v="a">A. 벤토 조립 (추천)</button>
+    <button role="tab" aria-selected="false" data-v="b">B. 고스트 보드</button>
+    <button role="tab" aria-selected="false" data-v="c">C. 3단계 스텝</button>
+  </div>
+
+  <!-- A안 -->
+  <section class="variant on" id="v-a">
+    <div class="frame">
+      <aside class="side">
+        <div class="brand"><svg width="20" height="20" viewBox="0 0 48 48"><rect x="4" y="4" width="24" height="24" rx="6" fill="#3b5bdb"/><rect x="32" y="4" width="12" height="12" rx="4" fill="#1f2430"/><rect x="32" y="20" width="12" height="24" rx="4" fill="#c9d4ff"/><rect x="4" y="32" width="24" height="12" rx="4" fill="#c9d4ff"/></svg>tab<span class="lign">lign</span></div>
+        <div class="label">SPACES</div>
+        <div class="ghostrow"></div>
+      </aside>
+      <main class="board">
+        <div class="center">
+          <div class="bento" aria-hidden="true">
+            <div class="cell c1"><i class="chip"></i><i class="chip"></i><i class="chip"></i></div>
+            <div class="cell c2"></div>
+            <div class="cell c3"></div>
+            <div class="cell c4"></div>
+          </div>
+          <div class="h">첫 스페이스를 만들어보세요</div>
+          <p class="sub">스페이스는 컬렉션과 링크를 담는 나만의 보드예요.<br/>만든 뒤에는 열린 탭을 끌어다 놓기만 하면 돼요.</p>
+          <button class="cta">＋ 첫 스페이스 만들기</button>
+          <p class="hint">예: <kbd>개인</kbd> <kbd>업무</kbd> <kbd>스터디</kbd></p>
+        </div>
+      </main>
+    </div>
+    <p class="caption"><b>시그니처:</b> Bento 로고의 4칸이 순서대로 조립되고, 큰 칸에 링크 카드가 담기는 로드 애니메이션 1회. "탭이 보드에 정리된다"는 제품의 핵심 그림을 브랜드 마크 그대로 보여줘요. <code>prefers-reduced-motion</code> 시 정지 상태로 표시.</p>
+  </section>
+
+  <!-- B안 -->
+  <section class="variant" id="v-b">
+    <div class="frame">
+      <aside class="side">
+        <div class="brand"><svg width="20" height="20" viewBox="0 0 48 48"><rect x="4" y="4" width="24" height="24" rx="6" fill="#3b5bdb"/><rect x="32" y="4" width="12" height="12" rx="4" fill="#1f2430"/><rect x="32" y="20" width="12" height="24" rx="4" fill="#c9d4ff"/><rect x="4" y="32" width="24" height="12" rx="4" fill="#c9d4ff"/></svg>tab<span class="lign">lign</span></div>
+        <div class="label">SPACES</div>
+        <div class="ghostrow"></div>
+      </aside>
+      <main class="board">
+        <div class="ghostboard" aria-hidden="true">
+          <div class="gcol"><div class="gtitle"></div><div class="gcards"><div class="gcard"></div><div class="gcard"></div><div class="gcard"></div></div></div>
+          <div class="gcol"><div class="gtitle"></div><div class="gcards"><div class="gcard"></div><div class="gcard"></div></div></div>
+        </div>
+        <div class="fadeveil" aria-hidden="true"></div>
+        <div class="overcard">
+          <div class="h" style="margin-top:0">여기가 곧 이렇게 채워져요</div>
+          <p class="sub">스페이스를 만들면 컬렉션과 링크가<br/>이 보드에 정리돼요.</p>
+          <button class="cta">＋ 첫 스페이스 만들기</button>
+        </div>
+      </main>
+    </div>
+    <p class="caption"><b>컨셉:</b> 채워진 보드의 점선 고스트를 배경에 깔아 "완성된 모습"을 미리 보여주는 안. 결과를 상상시키는 힘은 세지만, 빈 화면치고 요소가 많아 A보다 소란스러울 수 있어요.</p>
+  </section>
+
+  <!-- C안 -->
+  <section class="variant" id="v-c">
+    <div class="frame">
+      <aside class="side">
+        <div class="brand"><svg width="20" height="20" viewBox="0 0 48 48"><rect x="4" y="4" width="24" height="24" rx="6" fill="#3b5bdb"/><rect x="32" y="4" width="12" height="12" rx="4" fill="#1f2430"/><rect x="32" y="20" width="12" height="24" rx="4" fill="#c9d4ff"/><rect x="4" y="32" width="24" height="12" rx="4" fill="#c9d4ff"/></svg>tab<span class="lign">lign</span></div>
+        <div class="label">SPACES</div>
+        <div class="ghostrow"></div>
+      </aside>
+      <main class="board">
+        <div class="center" style="max-width:520px">
+          <div class="h" style="margin-top:0">탭 정리, 세 걸음이면 돼요</div>
+          <div class="steps">
+            <div class="step">
+              <div class="no">1</div>
+              <div class="pic p1"><i class="b"></i><i class="plus"></i></div>
+              <div class="t">스페이스 만들기</div>
+              <div class="d">용도별 보드를 하나 만들어요.</div>
+            </div>
+            <div class="step">
+              <div class="no">2</div>
+              <div class="pic p2"><i class="tab"></i><i class="arrow"></i><i class="slot"></i></div>
+              <div class="t">열린 탭 드래그</div>
+              <div class="d">오른쪽 패널의 탭을 끌어다 놓아요.</div>
+            </div>
+            <div class="step">
+              <div class="no">3</div>
+              <div class="pic p3"><i></i><i></i><i></i><i></i></div>
+              <div class="t">언제든 다시 열기</div>
+              <div class="d">정리된 링크를 한 번에 열어요.</div>
+            </div>
+          </div>
+          <button class="cta">＋ 첫 스페이스 만들기</button>
+        </div>
+      </main>
+    </div>
+    <p class="caption"><b>컨셉:</b> 사용 흐름이 실제 순서이므로 번호가 정보를 담는 안. 학습 효과는 가장 크지만 첫 화면부터 읽을 것이 많고, 톤이 "설명서"에 가까워져요.</p>
+  </section>
+
+<script>
+  const tabs = document.querySelectorAll('.tabs button');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.setAttribute('aria-selected', String(x === t)));
+    document.querySelectorAll('.variant').forEach(v => v.classList.remove('on'));
+    const on = document.getElementById('v-' + t.dataset.v);
+    on.classList.add('on');
+    // A안 재생: 애니메이션 리셋
+    if (t.dataset.v === 'a') { const b = on.querySelector('.bento'); const c = b.innerHTML; b.innerHTML = c; }
+  }));
+</script>
+</body>
+</html>

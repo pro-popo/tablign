@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 3연속 드롭(좌2+우1) 시안</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accent-weak:#edf0fe; --ink:#1f2430; --muted:#868e96;
+    --faint:#adb5bd; --border:#eaecef; --bg:#fcfcfd; --surface:#fff;
+    --surface2:#f1f3f5; --lavender:#c9d4ff;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:#eef0f4; color:var(--ink); padding:28px 20px 60px;
+  }
+  h1{font-size:16px; font-weight:740; letter-spacing:-.02em; margin-bottom:4px}
+  .note{font-size:12.5px; color:var(--muted); margin-bottom:18px}
+  .toolbar{display:flex; gap:6px; margin-bottom:14px; max-width:960px}
+  .replay{
+    margin-left:auto; border:1px solid var(--border); background:var(--surface); color:var(--accent);
+    padding:7px 13px; border-radius:8px; font-size:13px; cursor:pointer; font-weight:700;
+  }
+  .caption{font-size:12.5px; color:var(--muted); margin:10px 2px 0; line-height:1.6; max-width:960px}
+  .caption b{color:var(--ink)}
+
+  .frame{
+    max-width:960px; background:var(--bg); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden; box-shadow:0 10px 30px rgba(20,30,60,.08);
+    display:flex; min-height:500px;
+  }
+  .side{
+    width:168px; border-right:1px solid var(--border); background:var(--surface);
+    padding:14px 12px; flex:none; display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{display:flex; align-items:center; gap:7px; font-weight:740; letter-spacing:-.03em; font-size:14px}
+  .brand .lign{color:var(--accent)}
+  .side .label{font-size:10.5px; color:var(--faint); font-weight:700; letter-spacing:.06em; margin-top:8px}
+  .side .ghostrow{height:26px; border-radius:7px; background:var(--surface2); opacity:.55}
+  .board{flex:1; padding:26px 30px; display:flex; align-items:center; justify-content:center}
+  .center{text-align:center; max-width:420px; margin-bottom:40px}
+  .h{font-size:19px; font-weight:740; letter-spacing:-.02em; margin:26px 0 4px}
+  .sub{font-size:13.5px; color:var(--muted); line-height:1.5}
+  .cta{
+    margin-top:18px; display:inline-flex; align-items:center; gap:7px;
+    background:var(--accent); color:#fff; border:none; border-radius:9px;
+    padding:9px 16px; font-size:13.5px; font-weight:700; cursor:pointer;
+    box-shadow:0 4px 14px rgba(59,91,219,.28);
+  }
+
+  .stage{width:290px; height:196px; margin:0 auto; position:relative; text-align:left}
+  .act{position:absolute; inset:0}
+  .act1{animation:act1 18s ease infinite}
+  .act2{animation:act2 18s ease infinite}
+  /* 18s 사이클: 1막 유지(?)까지 40%, 2막은 3연속 드롭 후 86%까지 머묾 */
+  @keyframes act1{0%,40%{opacity:1} 49%,90%{opacity:0} 99%,100%{opacity:1}}
+  @keyframes act2{0%,41%{opacity:0} 50%,86%{opacity:1} 94%,100%{opacity:0}}
+
+  /* ── 1막: 창 2개 확산 (c2 확정 배치) ── */
+  .winwrap{position:absolute; left:20px; top:42px; width:250px; height:141px}
+  .gwin{
+    position:absolute; border:1px solid var(--border); border-radius:10px; background:var(--surface);
+    box-shadow:0 6px 16px rgba(20,30,60,.05);
+  }
+  .gwin .gbar{height:14px; background:var(--surface2); border-radius:9px 9px 0 0;
+    display:flex; align-items:center; gap:3px; padding:0 6px}
+  .gwin .gdot{width:4.5px; height:4.5px; border-radius:50%; background:#d6dae0}
+  .gw1{left:-24px; top:-36px; width:215px; height:105px; transform:rotate(-3.2deg); opacity:.35}
+  .gw2{left:66px; top:-18px; width:215px; height:105px; transform:rotate(2.6deg); opacity:.6}
+  .win{position:absolute; left:0; top:0; width:250px; height:132px; border:1px solid var(--border); border-radius:11px;
+    background:var(--surface); box-shadow:0 10px 26px rgba(20,30,60,.11); overflow:hidden}
+  .winbar{height:22px; background:var(--surface2); display:flex; align-items:center; gap:4px; padding:0 9px}
+  .dot{width:7px; height:7px; border-radius:50%; background:#d6dae0}
+  .tabstrip{display:flex; padding:7px 8px 0}
+  .mtab{
+    width:42px; height:17px; border-radius:6px 6px 0 0; background:var(--surface2);
+    border:1px solid var(--border); border-bottom:none; margin-right:-14px; flex:none;
+    display:flex; align-items:center; padding-left:5px; transform-origin:bottom center; position:relative;
+  }
+  .mtab i{width:7px; height:7px; border-radius:2px; background:var(--lavender); flex:none}
+  .mtab:nth-child(3n) i{background:var(--accent)}
+  .mtab:nth-child(3n+1) i{background:#f4c66a}
+  .winbody{border-top:1px solid var(--border); height:100%; background:var(--bg); padding:9px}
+  .winbody .ln{height:8px; border-radius:4px; background:var(--surface2); margin-bottom:6px}
+  /* 단일 커서: 두 막 어디에도 속하지 않고 무대 위에 상주 — 장면이 바뀌어도 끊기지 않고 이어서 움직인다 */
+  .cur{position:absolute; width:14px; height:14px; z-index:10; left:0; top:0; animation:curx 18s ease-in-out infinite}
+  .q{
+    position:absolute; left:110px; top:13px; width:20px; height:20px; border-radius:10px 10px 10px 3px;
+    background:var(--ink); color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center;
+    justify-content:center; opacity:0; z-index:4; animation:q 18s ease infinite;
+  }
+  @keyframes q{0%,32%{opacity:0} 34%,47%{opacity:1} 51%,100%{opacity:0}}
+  /* 통합 커서 경로(무대 좌표): 1막 방황 → (전환 중 글라이드) → 2막 3연속 드롭 → 물러남 → (전환 중 복귀) */
+  @keyframes curx{
+    0%,3%{transform:translate(50px,138px)}
+    6%,9%{transform:translate(67px,76px)}
+    12.5%,15%{transform:translate(151px,76px)}
+    19.5%,22%{transform:translate(207px,76px)}
+    25%,29.5%{transform:translate(123px,76px)}
+    45%{transform:translate(123px,76px); animation-timing-function:ease-in-out}
+    51%{transform:translate(64px,64px); animation-timing-function:ease-out}
+    51.4%{transform:translate(64px,64px) scale(.8); animation-timing-function:ease-out}
+    52%{transform:translate(68px,57px) scale(1); animation-timing-function:cubic-bezier(.4,.05,.2,1)}
+    56.5%{transform:translate(159px,66px); animation-timing-function:ease-out}
+    57.7%{transform:translate(161px,76px) scale(.8); animation-timing-function:ease-out}
+    58.4%{transform:translate(161px,76px) scale(1); animation-timing-function:ease-in-out}
+    61%{transform:translate(70px,112px); animation-timing-function:ease-out}
+    61.4%{transform:translate(70px,112px) scale(.8); animation-timing-function:ease-out}
+    62.2%{transform:translate(74px,105px) scale(1); animation-timing-function:cubic-bezier(.4,.05,.2,1)}
+    66.5%{transform:translate(159px,104px); animation-timing-function:ease-out}
+    67.7%{transform:translate(161px,114px) scale(.8); animation-timing-function:ease-out}
+    68.4%{transform:translate(161px,114px) scale(1); animation-timing-function:ease-in-out}
+    70.4%{transform:translate(258px,132px); animation-timing-function:ease-out}
+    70.8%{transform:translate(258px,132px) scale(.8); animation-timing-function:ease-out}
+    71.6%{transform:translate(255px,126px) scale(1); animation-timing-function:cubic-bezier(.4,.05,.2,1)}
+    74.3%{transform:translate(163px,142px); animation-timing-function:ease-out}
+    75.4%{transform:translate(161px,152px) scale(.8); animation-timing-function:ease-out}
+    76.1%{transform:translate(161px,152px) scale(1); animation-timing-function:ease-in-out}
+    78.5%,89%{transform:translate(218px,160px); animation-timing-function:ease-in-out}
+    96%,100%{transform:translate(50px,138px)}
+  }
+  .act1 .mtab:nth-child(2){animation:t2 18s ease infinite}
+  .act1 .mtab:nth-child(5){animation:t5 18s ease infinite}
+  .act1 .mtab:nth-child(7){animation:t7 18s ease infinite}
+  @keyframes t2{0%,4.5%,10.5%,100%{transform:none; background:var(--surface2)} 6%,9%{transform:translateY(-3px); background:var(--accent-weak)}}
+  @keyframes t5{0%,11%,16.5%,100%{transform:none; background:var(--surface2)} 12.5%,15%{transform:translateY(-3px); background:var(--accent-weak)}}
+  @keyframes t7{0%,18%,23.5%,100%{transform:none; background:var(--surface2)} 19.5%,22%{transform:translateY(-3px); background:var(--accent-weak)}}
+
+  /* ── 2막: 가운데 슬롯, 좌2 + 우1 → 3연속 정렬 ── */
+  .demo{position:absolute; left:6px; top:24px; width:278px; height:150px}
+  .slot{position:absolute; left:87px; top:4px; width:104px; height:142px; border-radius:12px;
+    border:1.5px dashed var(--faint); background:var(--surface); animation:slot 18s ease infinite}
+  .slot .st{width:50px; height:8px; border-radius:4px; background:var(--surface2); margin:8px auto 0;
+    animation:st 18s ease infinite}
+  @keyframes st{0%,52%,99%,100%{background:var(--surface2)} 54.5%,96%{background:#ccd6f4}}
+  @keyframes slot{
+    0%,52%,99%,100%{border:1.5px dashed var(--faint); background:var(--surface)}
+    54.5%,57%{border:1.5px dashed var(--accent); background:var(--accent-weak)}
+    58.2%{border:1.5px solid var(--accent); background:#d9e2fc}
+    60%,66.8%{border:1.5px solid #aebdf0; background:var(--accent-weak)}
+    68.2%{border:1.5px solid var(--accent); background:#d9e2fc}
+    70%,74.6%{border:1.5px solid #aebdf0; background:var(--accent-weak)}
+    76%{border:1.5px solid var(--accent); background:#d9e2fc}
+    77.5%,96%{border:1.5px solid #aebdf0; background:var(--accent-weak)}
+  }
+  .qcard{
+    position:absolute; width:84px; height:36px; border-radius:9px;
+    background:var(--surface); border:1px solid var(--border); box-shadow:0 4px 12px rgba(20,30,60,.1);
+    display:flex; align-items:center; gap:6px; padding:0 8px;
+  }
+  .qcard i{width:12px; height:12px; border-radius:3.5px; flex:none}
+  .qcard s{height:8px; border-radius:4px; background:var(--surface2); text-decoration:none}
+  /* 배치: 슬롯 왼쪽에 파랑·노랑, 슬롯 오른쪽에 초록 */
+  .ca{left:0px; top:16px; animation:ca 18s cubic-bezier(.45,.05,.35,1) infinite; z-index:3}
+  .ca i{background:var(--accent)} .ca s{width:42px}
+  .cb{left:6px; top:64px; animation:cb 18s cubic-bezier(.45,.05,.35,1) infinite; z-index:2}
+  .cb i{background:#f4c66a} .cb s{width:34px}
+  .cc{left:194px; top:84px; animation:cc 18s cubic-bezier(.45,.05,.35,1) infinite}
+  .cc i{background:#7bc47f} .cc s{width:46px}
+  /* 1번(파랑): (0,16,-4°) → 슬롯 1칸 (97,28) = translate(97,12) */
+  @keyframes ca{
+    0%,51%{transform:rotate(-4deg); box-shadow:0 4px 12px rgba(20,30,60,.1); animation-timing-function:ease-out}
+    52%{transform:translate(4px,-7px) rotate(-2deg) scale(1.04); box-shadow:0 12px 24px rgba(20,30,60,.18); animation-timing-function:cubic-bezier(.4,.05,.2,1)}
+    56.5%{transform:translate(95px,2px) rotate(-1deg) scale(1.04); box-shadow:0 10px 20px rgba(20,30,60,.16); animation-timing-function:ease-out}
+    57.7%{transform:translate(97px,13px) rotate(0) scale(1); box-shadow:0 3px 8px rgba(20,30,60,.1); animation-timing-function:ease-out}
+    58.4%,96%{transform:translate(97px,12px) scale(.97); box-shadow:0 2px 6px rgba(20,30,60,.08)}
+    98%,100%{transform:rotate(-4deg); box-shadow:0 4px 12px rgba(20,30,60,.1)}
+  }
+  /* 2번(노랑): (6,64,3°) → 슬롯 2칸 (97,66) = translate(91,2) */
+  @keyframes cb{
+    0%,61.3%{transform:rotate(3deg); box-shadow:0 4px 12px rgba(20,30,60,.1); animation-timing-function:ease-out}
+    62.2%{transform:translate(4px,-7px) rotate(1deg) scale(1.04); box-shadow:0 12px 24px rgba(20,30,60,.18); animation-timing-function:cubic-bezier(.4,.05,.2,1)}
+    66.5%{transform:translate(89px,-8px) rotate(1deg) scale(1.04); box-shadow:0 10px 20px rgba(20,30,60,.16); animation-timing-function:ease-out}
+    67.7%{transform:translate(91px,3px) rotate(0) scale(1); box-shadow:0 3px 8px rgba(20,30,60,.1); animation-timing-function:ease-out}
+    68.4%,96%{transform:translate(91px,2px) scale(.97); box-shadow:0 2px 6px rgba(20,30,60,.08)}
+    98%,100%{transform:rotate(3deg); box-shadow:0 4px 12px rgba(20,30,60,.1)}
+  }
+  /* 3번(초록): (194,84,-2°) → 슬롯 3칸 (97,104) = translate(-97,20). 오른쪽에서 왼쪽으로 담긴다 */
+  @keyframes cc{
+    0%,70.8%{transform:rotate(-2deg); box-shadow:0 4px 12px rgba(20,30,60,.1); animation-timing-function:ease-out}
+    71.6%{transform:translate(-3px,-6px) rotate(-1deg) scale(1.04); box-shadow:0 12px 24px rgba(20,30,60,.18); animation-timing-function:cubic-bezier(.4,.05,.2,1)}
+    74.3%{transform:translate(-95px,10px) rotate(0) scale(1.04); box-shadow:0 10px 20px rgba(20,30,60,.16); animation-timing-function:ease-out}
+    75.4%{transform:translate(-97px,21px) rotate(0) scale(1); box-shadow:0 3px 8px rgba(20,30,60,.1); animation-timing-function:ease-out}
+    76.1%,96%{transform:translate(-97px,20px) scale(.97); box-shadow:0 2px 6px rgba(20,30,60,.08)}
+    98%,100%{transform:rotate(-2deg); box-shadow:0 4px 12px rgba(20,30,60,.1)}
+  }
+  .thumb{
+    position:absolute; left:217px; top:115px; width:20px; height:20px; border-radius:10px 10px 10px 3px;
+    background:var(--ink); font-size:10px; line-height:1; display:flex; align-items:center; justify-content:center;
+    opacity:0; z-index:4; animation:thumb 18s ease infinite;
+  }
+  @keyframes thumb{0%,81%{opacity:0; transform:translateY(3px)} 83.5%,93%{opacity:1; transform:none} 96%,100%{opacity:0}}
+
+  @media (prefers-reduced-motion: reduce){
+    .act,.cur,.q,.mtab,.qcard,.slot,.slot .st,.thumb{animation:none !important}
+    .act2{opacity:0 !important}
+    .cur{transform:translate(50px,138px) !important}
+  }
+</style>
+</head>
+<body>
+  <h1>시안 v3 — 2막: 좌 2 + 우 1, 슬롯에 3연속 정렬 (18초)</h1>
+  <p class="note">흩어진 탭 3장을 전부 슬롯에 차곡차곡 담아 "정렬 완료"까지 보여줍니다. 드롭마다 슬롯이 반응(3회 플래시).</p>
+
+  <div class="toolbar"><button class="replay" id="replay">↺ 다시 재생</button></div>
+
+  <div class="frame" id="scene">
+    <aside class="side"><div class="brand"><svg width="20" height="20" viewBox="0 0 48 48"><rect x="4" y="4" width="24" height="24" rx="6" fill="#3b5bdb"/><rect x="32" y="4" width="12" height="12" rx="4" fill="#1f2430"/><rect x="32" y="20" width="12" height="24" rx="4" fill="#c9d4ff"/><rect x="4" y="32" width="24" height="12" rx="4" fill="#c9d4ff"/></svg>tab<span class="lign">lign</span></div><div class="label">SPACES</div><div class="ghostrow"></div></aside>
+    <main class="board">
+      <div class="center">
+        <div class="stage" aria-hidden="true">
+          <div class="act act1">
+            <div class="winwrap">
+              <div class="gwin gw1"><div class="gbar"><span class="gdot"></span><span class="gdot"></span><span class="gdot"></span></div></div>
+              <div class="gwin gw2"><div class="gbar"><span class="gdot"></span><span class="gdot"></span><span class="gdot"></span></div></div>
+              <div class="win">
+                <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <div class="tabstrip">
+                  <div class="mtab"><i></i></div><div class="mtab"><i></i></div><div class="mtab"><i></i></div>
+                  <div class="mtab"><i></i></div><div class="mtab"><i></i></div><div class="mtab"><i></i></div>
+                  <div class="mtab"><i></i></div><div class="mtab"><i></i></div><div class="mtab"><i></i></div>
+                </div>
+                <div class="winbody"><div class="ln" style="width:70%"></div><div class="ln" style="width:45%"></div></div>
+              </div>
+              <div class="q">?</div>
+            </div>
+          </div>
+          <div class="act act2">
+            <div class="demo">
+              <div class="slot"><div class="st"></div></div>
+              <div class="qcard ca"><i></i><s></s></div>
+              <div class="qcard cb"><i></i><s></s></div>
+              <div class="qcard cc"><i></i><s></s></div>
+              <div class="thumb">👍</div>
+            </div>
+          </div>
+          <!-- 단일 커서: 무대 레벨에 상주, 장면 전환 중에도 이어서 이동 -->
+          <svg class="cur" viewBox="0 0 24 24" fill="none"><path d="M5 3l14 8-6.5 1.5L9 19 5 3z" fill="#1f2430" stroke="#fff" stroke-width="1.4"/></svg>
+        </div>
+        <div class="h">매일 여는 탭, 매번 찾고 있나요?</div>
+        <p class="sub">자주 쓰는 탭은 스페이스에 담아두세요.<br/>필요할 때 한 번에 다시 열 수 있어요.</p>
+        <button class="cta">＋ 첫 스페이스 만들기</button>
+      </div>
+    </main>
+  </div>
+
+  <p class="caption">
+    <b>배치:</b> <b>슬롯이 가운데</b>, 왼쪽에 파랑·노랑 2장, 오른쪽에 초록 1장. 양쪽 카드가 슬롯 폭에 맞게 살짝 작아졌어요(76px).<br/>
+    <b>동작:</b> 파랑·노랑은 왼쪽에서 →, 초록은 <b>오른쪽에서 ←</b> 방향으로 담겨 "사방의 탭이 한가운데로 모인다"는 그림이 완성돼요. 드롭마다 슬롯 플래시 3회, 전부 담긴 상태로 약 1.9초 머묾(👍 포함). 사이클 18초.
+  </p>
+
+<script>
+  document.getElementById('replay').addEventListener('click', () => {
+    const s = document.getElementById('scene');
+    s.innerHTML = s.innerHTML;
+  });
+</script>
+</body>
+</html>
