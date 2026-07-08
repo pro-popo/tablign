@@ -9,10 +9,11 @@ export interface CollectionMoreMenuProps {
   spaces: SpaceOption[];
   onMove: (spaceId: string) => void;
   onCopy: (spaceId: string) => void;
+  onShare?: () => void;
 }
 
 /** 컬렉션 헤더의 ⋯ 메뉴. 이동/복사 → 스페이스 선택 2단계 팝오버. */
-export function CollectionMoreMenu({ spaces, onMove, onCopy }: CollectionMoreMenuProps) {
+export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare }: CollectionMoreMenuProps) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"move" | "copy" | null>(null);
   const rootRef = useRef<HTMLSpanElement>(null);
@@ -54,8 +55,15 @@ export function CollectionMoreMenu({ spaces, onMove, onCopy }: CollectionMoreMen
         >
           {mode === null ? (
             <>
-              <button type="button" style={itemStyle} onClick={() => setMode("move")}>다른 스페이스로 이동</button>
-              <button type="button" style={itemStyle} onClick={() => setMode("copy")}>다른 스페이스에 복사</button>
+              {spaces.length > 0 && (
+                <>
+                  <button type="button" style={itemStyle} onClick={() => setMode("move")}>다른 스페이스로 이동</button>
+                  <button type="button" style={itemStyle} onClick={() => setMode("copy")}>다른 스페이스에 복사</button>
+                </>
+              )}
+              {onShare && (
+                <button type="button" style={itemStyle} onClick={() => { onShare(); close(); }}>공유 코드</button>
+              )}
             </>
           ) : (
             <>
