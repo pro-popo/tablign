@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 하단 라인(예:) 대체안 비교</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accent-weak:#edf0fe; --ink:#1f2430; --muted:#868e96;
+    --faint:#adb5bd; --border:#eaecef; --bg:#fcfcfd; --surface:#fff;
+    --surface2:#f1f3f5; --lavender:#c9d4ff;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:#eef0f4; color:var(--ink); padding:28px 20px 60px;
+  }
+  h1{font-size:16px; font-weight:740; letter-spacing:-.02em; margin-bottom:4px}
+  .note{font-size:12.5px; color:var(--muted); margin-bottom:18px}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(430px, 1fr)); gap:18px; max-width:1200px}
+  .card{position:relative}
+  .tag{
+    position:absolute; top:-9px; left:14px; z-index:2; background:var(--ink); color:#fff;
+    font-size:11px; font-weight:800; padding:3px 10px; border-radius:9px;
+  }
+  .tag.rec{background:var(--accent)}
+  .frame{
+    background:var(--bg); border:1px solid var(--border); border-radius:14px; overflow:hidden;
+    box-shadow:0 10px 30px rgba(20,30,60,.08); min-height:440px;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .center{text-align:center; max-width:420px}
+  .h{font-size:18px; font-weight:740; letter-spacing:-.02em; margin:22px 0 4px}
+  .sub{font-size:13px; color:var(--muted); line-height:1.5}
+  .cta{
+    margin-top:16px; display:inline-flex; align-items:center; gap:7px;
+    background:var(--accent); color:#fff; border:none; border-radius:9px;
+    padding:9px 16px; font-size:13px; font-weight:700; cursor:pointer;
+    box-shadow:0 4px 14px rgba(59,91,219,.28);
+  }
+  .why{font-size:12px; color:var(--muted); line-height:1.6; margin-top:9px; padding:0 4px}
+  .why b{color:var(--ink)}
+
+  /* 하단 라인 스타일들 */
+  .hintwrap{margin-top:16px; min-height:24px}
+  .hint{font-size:11.5px; color:var(--faint)}
+  /* G1: 클릭형 예시 칩 */
+  .mkchip{
+    display:inline-flex; align-items:center; gap:3px; margin:0 3px;
+    border:1px solid var(--border); background:var(--surface); border-radius:7px;
+    padding:4px 10px; font-size:12px; color:var(--muted); cursor:pointer; font-weight:600;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .mkchip:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-weak)}
+  .mkchip b{font-weight:800; font-size:12px; line-height:1}
+  /* G2: 드래그 팁 */
+  .tip{display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--faint)}
+  .tip svg{flex:none}
+  /* G3: 개인화 카운트 */
+  .count{font-size:12px; color:var(--muted)}
+  .count b{color:var(--accent); font-weight:800}
+
+  /* F2 장면(확정 그래픽) */
+  .stage{width:270px; height:172px; margin:0 auto; position:relative; text-align:left}
+  .act{position:absolute; inset:0}
+  .act1{animation:fa 12s ease infinite}
+  .act2{animation:fb 12s ease infinite}
+  @keyframes fa{0%,42%{opacity:1} 48%,94%{opacity:0} 100%{opacity:1}}
+  @keyframes fb{0%,44%{opacity:0} 50%,92%{opacity:1} 98%,100%{opacity:0}}
+  .win{width:240px; height:126px; border:1px solid var(--border); border-radius:11px;
+    background:var(--surface); box-shadow:0 8px 22px rgba(20,30,60,.07); overflow:hidden}
+  .winbar{height:21px; background:var(--surface2); display:flex; align-items:center; gap:4px; padding:0 9px}
+  .dot{width:6px; height:6px; border-radius:50%; background:#d6dae0}
+  .tabstrip{display:flex; padding:7px 8px 0}
+  .mtab{
+    width:40px; height:16px; border-radius:6px 6px 0 0; background:var(--surface2);
+    border:1px solid var(--border); border-bottom:none; margin-right:-13px; flex:none;
+    display:flex; align-items:center; padding-left:5px; transform-origin:bottom center; position:relative;
+  }
+  .mtab i{width:6px; height:6px; border-radius:2px; background:var(--lavender); flex:none}
+  .mtab:nth-child(3n) i{background:var(--accent)}
+  .mtab:nth-child(3n+1) i{background:#f4c66a}
+  .winbody{border-top:1px solid var(--border); height:100%; background:var(--bg); padding:9px}
+  .winbody .ln{height:8px; border-radius:4px; background:var(--surface2); margin-bottom:6px}
+  .badge{
+    position:absolute; top:-8px; left:206px; width:36px; height:19px; border-radius:10px;
+    background:var(--ink); color:#fff; font-size:10px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 3px 8px rgba(20,30,60,.2); z-index:2;
+  }
+  .cur{position:absolute; width:13px; height:13px; z-index:5; left:0; top:0}
+  .q{
+    position:absolute; left:112px; top:3px; width:19px; height:19px; border-radius:10px 10px 10px 3px;
+    background:var(--ink); color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center;
+    justify-content:center; opacity:0; z-index:4; animation:fq 12s ease infinite;
+  }
+  @keyframes fq{0%,35%{opacity:0} 38%,44%{opacity:1} 48%,100%{opacity:0}}
+  .act1 .cur{animation:fc1 12s ease-in-out infinite}
+  @keyframes fc1{0%,3%{transform:translate(28px,92px)} 9%,13%{transform:translate(44px,29px)}
+    19%,23%{transform:translate(124px,29px)} 29%,33%{transform:translate(178px,29px)}
+    37%,44%{transform:translate(98px,29px)} 100%{transform:translate(98px,29px)}}
+  .act1 .mtab:nth-child(2){animation:ft2 12s ease infinite}
+  .act1 .mtab:nth-child(5){animation:ft5 12s ease infinite}
+  .act1 .mtab:nth-child(7){animation:ft7 12s ease infinite}
+  @keyframes ft2{0%,7%,15%,100%{transform:none; background:var(--surface2)} 9%,13%{transform:translateY(-3px); background:var(--accent-weak)}}
+  @keyframes ft5{0%,17%,25%,100%{transform:none; background:var(--surface2)} 19%,23%{transform:translateY(-3px); background:var(--accent-weak)}}
+  @keyframes ft7{0%,27%,35%,100%{transform:none; background:var(--surface2)} 29%,33%{transform:translateY(-3px); background:var(--accent-weak)}}
+  .demo{position:absolute; left:2px; top:20px; width:266px; height:140px}
+  .dslot{position:absolute; right:0; top:24px; width:104px; height:86px; border-radius:11px;
+    border:1.5px dashed var(--faint); background:var(--surface); animation:fslot 12s ease infinite}
+  .dslot .st{width:46px; height:8px; border-radius:4px; background:var(--surface2); margin:10px auto 0}
+  @keyframes fslot{0%,62%,92%,100%{border-color:var(--faint); background:var(--surface)}
+    70%,86%{border-color:var(--accent); background:var(--accent-weak)}}
+  .dcard{position:absolute; left:0; top:50px; width:96px; height:34px; border-radius:9px;
+    background:var(--surface); border:1px solid var(--border); box-shadow:0 4px 12px rgba(20,30,60,.1);
+    display:flex; align-items:center; gap:7px; padding:0 9px;
+    animation:fcard 12s cubic-bezier(.45,.05,.35,1) infinite}
+  .dcard i{width:12px; height:12px; border-radius:4px; background:var(--accent); flex:none}
+  .dcard s{width:44px; height:8px; border-radius:4px; background:var(--surface2); text-decoration:none}
+  @keyframes fcard{0%,54%{transform:translate(0,0)} 60%{transform:translate(10px,-6px) rotate(-2.5deg)}
+    74%{transform:translate(108px,-12px) rotate(-2.5deg)} 80%,90%{transform:translate(114px,-2px) rotate(0) scale(.97)}
+    96%,100%{transform:translate(0,0)}}
+  .act2 .cur{animation:fc2 12s cubic-bezier(.45,.05,.35,1) infinite}
+  @keyframes fc2{0%,54%{transform:translate(44px,92px)} 60%{transform:translate(54px,86px)}
+    74%{transform:translate(152px,80px)} 80%,90%{transform:translate(158px,90px)} 96%,100%{transform:translate(44px,92px)}}
+  @media (prefers-reduced-motion: reduce){
+    .act,.cur,.q,.mtab,.dcard,.dslot{animation:none !important}
+    .act2{opacity:0 !important}
+  }
+</style>
+</head>
+<body>
+  <h1>하단 라인 대체안 — 4종 (문구·그래픽 확정판 기준)</h1>
+  <p class="note">제목·서브·CTA는 확정안 고정. CTA 아래 마지막 줄만 다릅니다.</p>
+
+  <div class="grid" id="grid"></div>
+
+  <template id="tpl">
+    <div class="card">
+      <span class="tag"></span>
+      <div class="frame">
+        <div class="center">
+          <div class="stage" aria-hidden="true">
+            <div class="act act1">
+              <div class="win">
+                <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <div class="tabstrip">
+                  <div class="mtab"><i></i></div><div class="mtab"><i></i></div><div class="mtab"><i></i></div>
+                  <div class="mtab"><i></i></div><div class="mtab"><i></i></div><div class="mtab"><i></i></div>
+                  <div class="mtab"><i></i></div><div class="mtab"><i></i></div><div class="mtab"><i></i></div>
+                </div>
+                <div class="winbody"><div class="ln" style="width:70%"></div><div class="ln" style="width:45%"></div></div>
+              </div>
+              <div class="badge">+17</div>
+              <div class="q">?</div>
+              <svg class="cur" viewBox="0 0 24 24" fill="none"><path d="M5 3l14 8-6.5 1.5L9 19 5 3z" fill="#1f2430" stroke="#fff" stroke-width="1.4"/></svg>
+            </div>
+            <div class="act act2">
+              <div class="demo">
+                <div class="dslot"><div class="st"></div></div>
+                <div class="dcard"><i></i><s></s></div>
+                <svg class="cur" viewBox="0 0 24 24" fill="none"><path d="M5 3l14 8-6.5 1.5L9 19 5 3z" fill="#1f2430" stroke="#fff" stroke-width="1.4"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="h">매일 여는 탭, 매번 찾고 있나요?</div>
+          <p class="sub">자주 쓰는 탭은 스페이스에 담아두세요.<br/>필요할 때 한 번에 다시 열 수 있어요.</p>
+          <button class="cta">＋ 첫 스페이스 만들기</button>
+          <div class="hintwrap"></div>
+        </div>
+      </div>
+      <p class="why"></p>
+    </div>
+  </template>
+
+<script>
+  const HINTS = [
+    { tag:"G1 바로 만들기 칩 · 추천", rec:true,
+      html:'<button class="mkchip"><b>＋</b> 개인</button><button class="mkchip"><b>＋</b> 업무</button><button class="mkchip"><b>＋</b> 스터디</button>',
+      why:"<b>G1 바로 만들기 칩:</b> 장식이던 '예:'를 기능으로 승격 — 칩을 누르면 그 이름의 스페이스가 즉시 생겨요. 이름 짓기 고민(첫 관문)을 없애서 CTA보다 빠른 지름길이 됩니다. 호버하면 파랗게 반응해요." },
+    { tag:"G2 드래그 팁",
+      html:'<span class="tip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 3l14 8-6.5 1.5L9 19 5 3z" fill="#adb5bd"/></svg>만든 뒤, 오른쪽 ‘열린 탭’ 패널에서 끌어다 놓으면 돼요</span>',
+      why:"<b>G2 드래그 팁:</b> 확정 서브에서 빠진 사용법(드래그) 교육을 이 줄이 대신 담당해요. 그래픽 2막(드래그 데모)과 짝을 이루는 자막 역할 — 정보는 완결되지만 텍스트 줄이 하나 더 생겨요." },
+    { tag:"G3 개인화 카운트",
+      html:'<span class="count">지금 열려 있는 탭 <b>14개</b> — 담아둘 곳부터 만들어볼까요?</span>',
+      why:"<b>G3 개인화 카운트:</b> chrome.tabs로 실제 열린 탭 수를 세서 보여줘요(시안은 14로 가정). 일반론이 아니라 '당신 얘기'가 되는 순간 설득력이 확 올라가요. 다만 탭이 2~3개뿐인 새 사용자에겐 힘이 빠지는 문장이라 개수별 분기(예: 5개 미만이면 숨김)가 필요해요." },
+    { tag:"G4 제거(미니멀)",
+      html:'',
+      why:"<b>G4 제거:</b> 마지막 줄을 없애고 CTA로 끝. 시선 종착지가 버튼이라 가장 깔끔하지만, 이름 짓기 힌트와 사용법 교육을 모두 포기해요." },
+  ];
+  const grid = document.getElementById('grid');
+  const tpl = document.getElementById('tpl');
+  HINTS.forEach(hh => {
+    const node = tpl.content.cloneNode(true);
+    const tag = node.querySelector('.tag');
+    tag.textContent = hh.tag;
+    if (hh.rec) tag.classList.add('rec');
+    node.querySelector('.hintwrap').innerHTML = hh.html;
+    node.querySelector('.why').innerHTML = hh.why;
+    grid.appendChild(node);
+  });
+</script>
+</body>
+</html>
