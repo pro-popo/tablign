@@ -126,6 +126,18 @@ describe("create_collection_share_code RPC", () => {
     const { error } = await alice.client.from("collection_share_codes")
       .update({ collection_id: bobSpaceId }).eq("code", code);
     expect(error).not.toBeNull();
+    expect(error!.message).toMatch(/only revoked_at/);
+  });
+
+  it("회수는 되돌릴 수 없다", async () => {
+    const { data } = await alice.client.rpc("create_collection_share_code", { p_collection_id: aliceColId });
+    const code = data![0].code;
+    await alice.client.from("collection_share_codes")
+      .update({ revoked_at: new Date().toISOString() }).eq("code", code);
+    const { error } = await alice.client.from("collection_share_codes")
+      .update({ revoked_at: null }).eq("code", code);
+    expect(error).not.toBeNull();
+    expect(error!.message).toMatch(/revocation cannot be undone/);
   });
 });
 

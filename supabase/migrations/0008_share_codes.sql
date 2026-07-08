@@ -91,6 +91,12 @@ begin
      or new.expires_at is distinct from old.expires_at then
     raise exception 'only revoked_at can be updated';
   end if;
+
+  -- 회수는 되돌릴 수 없다(활성 코드 1개 불변식 보호)
+  if old.revoked_at is not null and new.revoked_at is null then
+    raise exception 'revocation cannot be undone';
+  end if;
+
   return new;
 end;
 $$;
