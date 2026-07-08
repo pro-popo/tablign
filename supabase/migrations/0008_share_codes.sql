@@ -45,6 +45,9 @@ begin
     raise exception 'collection not found or not accessible';
   end if;
 
+  -- 같은 컬렉션의 동시 발급을 직렬화해 활성 코드 1개 불변식을 지킨다
+  perform pg_advisory_xact_lock(hashtext(p_collection_id::text));
+
   -- 활성 코드(미회수·미만료)가 있으면 그대로 반환 → 컬렉션당 활성 코드 1개 유지
   return query
     select s.code, s.expires_at from collection_share_codes s
@@ -57,7 +60,7 @@ begin
                     else now() + make_interval(days => p_expires_in_days) end;
 
   -- 8자 랜덤 코드 생성. pk 충돌 시 재시도.
-  loop
+  for attempt in 1..20 loop
     v_code := '';
     for i in 1..8 loop
       v_code := v_code || substr(v_alphabet, 1 + floor(random() * length(v_alphabet))::int, 1);
@@ -65,15 +68,36 @@ begin
     begin
       insert into collection_share_codes(code, collection_id, created_by, expires_at)
       values (v_code, p_collection_id, v_uid, v_expires);
-      exit;
+      return query select v_code, v_expires;
+      return;
     exception when unique_violation then
       -- 충돌 확률은 낮지만 재시도
     end;
   end loop;
-
-  return query select v_code, v_expires;
+  raise exception 'failed to generate share code';
 end;
 $$;
+
+-- 발급자 update는 회수(revoked_at)만 허용 — 코드·컬렉션 바꿔치기 방지
+create function public.guard_share_code_update()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.code <> old.code
+     or new.collection_id <> old.collection_id
+     or new.created_by <> old.created_by
+     or new.created_at <> old.created_at
+     or new.expires_at is distinct from old.expires_at then
+    raise exception 'only revoked_at can be updated';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger share_codes_guard_update
+  before update on public.collection_share_codes
+  for each row execute function public.guard_share_code_update();
 
 revoke execute on function public.create_collection_share_code(uuid, int) from public, anon;
 grant execute on function public.create_collection_share_code(uuid, int) to authenticated;

@@ -116,4 +116,12 @@ describe("create_collection_share_code RPC", () => {
     });
     expect(data![0].expires_at).toBeNull();
   });
+
+  it("발급자라도 revoked_at 외의 컬럼은 바꿀 수 없다", async () => {
+    const { data } = await alice.client.rpc("create_collection_share_code", { p_collection_id: aliceColId });
+    const code = data![0].code;
+    const { error } = await alice.client.from("collection_share_codes")
+      .update({ collection_id: bobSpaceId }).eq("code", code);
+    expect(error).not.toBeNull();
+  });
 });
