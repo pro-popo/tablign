@@ -30,7 +30,7 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding } from "@tablign/ui";
 import {
   listSpaces, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions,
@@ -97,6 +97,9 @@ export function NewTab() {
   // "확인 중"을 별도 상태로 두고 그 동안 렌더를 보류해 깜빡임을 막는다.
   const [authLoaded, setAuthLoaded] = useState(false);
   const [spaces, setSpaces] = useState<Space[]>([]);
+  // 스페이스 목록 로드 완료 여부. 0개(신규 가입·전부 삭제)와 "아직 로딩 중"을 구분해
+  // 온보딩 화면과 스켈레톤을 올바르게 가른다.
+  const [spacesLoaded, setSpacesLoaded] = useState(false);
   const { activeSpaceId, setActiveSpaceId, loaded: spaceLoaded } = useActiveSpace();
   const [collections, setCollections] = useState<Collection[]>([]);
   // 첫 컬렉션 로드 완료 전에는 EmptyState 대신 스켈레톤을 보여줘 깜빡임을 막는다.
@@ -144,6 +147,7 @@ export function NewTab() {
     (async () => {
       const sp = await listSpaces(supabase);
       setSpaces(sp);
+      setSpacesLoaded(true);
       const keep = activeSpaceId && sp.some((s) => s.id === activeSpaceId);
       setActiveSpaceId(keep ? activeSpaceId : (sp[0]?.id ?? null));
     })();
@@ -560,6 +564,11 @@ export function NewTab() {
         }
       >
         <Board>
+          {spacesLoaded && spaces.length === 0 ? (
+            // 스페이스 0개(신규 가입 직후 또는 전부 삭제): 온보딩 빈 상태.
+            <SpaceOnboarding onCreate={() => addSpace("개인")} />
+          ) : (
+            <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
               <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
@@ -623,6 +632,8 @@ export function NewTab() {
               </SortableContext>
             );
           })()}
+            </>
+          )}
         </Board>
       </AppShell>
       <DragOverlay dropAnimation={null}>
