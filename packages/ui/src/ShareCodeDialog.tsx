@@ -45,7 +45,7 @@ export function ShareCodeDialog({ open, collectionTitle, issued, onIssue, onRevo
               <code style={{ flex: 1, textAlign: "center", fontSize: 22, fontWeight: 800, letterSpacing: "0.18em", padding: "10px 0", background: theme.surface2, borderRadius: 9, color: theme.text }}>
                 {issued.code}
               </code>
-              <Button onClick={() => navigator.clipboard?.writeText(issued.code)}>복사</Button>
+              <Button onClick={() => navigator.clipboard?.writeText(issued.code).catch(() => {})}>복사</Button>
             </div>
             <p style={{ marginTop: 8, fontSize: 12, color: theme.textFaint }}>
               {issued.expires_at
