@@ -3,6 +3,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ws from "ws";
+import {
+  createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
+} from "../data/share";
 
 // .env.test 로드 (간단 파서)
 const envText = readFileSync(resolve(__dirname, "../../.env.test"), "utf8");
@@ -207,5 +210,34 @@ describe("get_share_code_info / import_collection_by_code RPC", () => {
     });
     expect(error).toBeNull();
     expect(newId).not.toBe(aliceColId);
+  });
+});
+
+describe("share 데이터 함수 (core)", () => {
+  it("발급 → 조회 → 가져오기 → 회수 전체 흐름", async () => {
+    // 남아 있을 수 있는 활성 코드 정리
+    await alice.client.from("collection_share_codes")
+      .update({ revoked_at: new Date().toISOString() }).eq("collection_id", aliceColId);
+
+    const issued = await createCollectionShareCode(alice.client, aliceColId);
+    expect(issued.code).toHaveLength(8);
+    expect(issued.expires_at).not.toBeNull();
+
+    const info = await getShareCodeInfo(bob.client, issued.code);
+    expect(info.title).toBe("공유할 자료");
+    expect(info.link_count).toBe(2);
+
+    const newId = await importCollectionByCode(bob.client, issued.code, bobSpaceId);
+    expect(typeof newId).toBe("string");
+
+    await revokeCollectionShareCode(alice.client, issued.code);
+    await expect(getShareCodeInfo(bob.client, issued.code)).rejects.toBeTruthy();
+  });
+
+  it("무기한 발급 시 expires_at이 null이다", async () => {
+    await alice.client.from("collection_share_codes")
+      .update({ revoked_at: new Date().toISOString() }).eq("collection_id", aliceColId);
+    const issued = await createCollectionShareCode(alice.client, aliceColId, null);
+    expect(issued.expires_at).toBeNull();
   });
 });
