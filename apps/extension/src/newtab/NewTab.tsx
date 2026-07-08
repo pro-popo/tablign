@@ -30,12 +30,13 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, ShareCodeDialog, ImportCodeDialog } from "@tablign/ui";
 import {
   listSpaces, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions,
   copyCollection, moveCollectionToSpace,
-  type Collection, type Link, type Space,
+  createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
+  type Collection, type Link, type Space, type ShareCode,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
@@ -224,6 +225,59 @@ export function NewTab() {
       console.error(e);
       toast.show("복사에 실패했어요. 다시 시도해 주세요.");
     }
+  }
+
+  // 공유 코드: 발급 다이얼로그 대상 컬렉션과 발급 결과
+  const [shareTarget, setShareTarget] = useState<Collection | null>(null);
+  const [issuedCode, setIssuedCode] = useState<ShareCode | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+
+  async function openShareDialog(collection: Collection) {
+    setShareTarget(collection);
+    setIssuedCode(null);
+    // 이미 활성 코드가 있으면 기본 7일 발급 호출이 그 코드를 그대로 반환한다 → 바로 코드 화면
+    // (없으면 사용자가 만료를 고르도록 선택 화면 유지)
+    try {
+      const { data } = await supabase
+        .from("collection_share_codes")
+        .select("code, expires_at")
+        .eq("collection_id", collection.id)
+        .is("revoked_at", null)
+        .or("expires_at.is.null,expires_at.gt." + new Date().toISOString());
+      if (data && data.length > 0) setIssuedCode(data[0] as ShareCode);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function issueShareCode(expiresInDays: number | null) {
+    if (!shareTarget) return;
+    try {
+      setIssuedCode(await createCollectionShareCode(supabase, shareTarget.id, expiresInDays));
+    } catch (e) {
+      console.error(e);
+      toast.show("코드를 만들지 못했어요. 다시 시도해 주세요.");
+    }
+  }
+
+  async function revokeShareCode() {
+    if (!issuedCode) return;
+    try {
+      await revokeCollectionShareCode(supabase, issuedCode.code);
+      toast.show("공유 코드를 회수했어요");
+      setShareTarget(null);
+    } catch (e) {
+      console.error(e);
+      toast.show("회수하지 못했어요. 다시 시도해 주세요.");
+    }
+  }
+
+  async function importByCode(code: string, targetSpaceId: string) {
+    await importCollectionByCode(supabase, code, targetSpaceId);
+    const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
+    toast.show(`'${name}' 스페이스로 가져왔어요`);
+    // 가져온 스페이스로 이동해 결과를 바로 보여준다
+    setActiveSpaceId(targetSpaceId);
   }
 
   async function addCollection() {
@@ -556,6 +610,7 @@ export function NewTab() {
             onDeleteSpace={deleteSpace}
             onSignOut={async () => { await supabase.auth.signOut(); }}
             onCollapse={toggleLeft}
+            onImportCode={() => setImportOpen(true)}
             searchSlot={<ExtSearchBar />}
           />
         }
@@ -614,15 +669,14 @@ export function NewTab() {
                           />
                         }
                         moreMenuSlot={
-                          spaces.some((s) => s.id !== activeSpaceId) ? (
-                            <CollectionMoreMenu
-                              spaces={spaces
-                                .filter((s) => s.id !== activeSpaceId)
-                                .map((s) => ({ id: s.id, name: s.name, icon: s.icon }))}
-                              onMove={(sid) => moveCollectionTo(c, sid)}
-                              onCopy={(sid) => copyCollectionTo(c, sid)}
-                            />
-                          ) : undefined
+                          <CollectionMoreMenu
+                            spaces={spaces
+                              .filter((s) => s.id !== activeSpaceId)
+                              .map((s) => ({ id: s.id, name: s.name, icon: s.icon }))}
+                            onMove={(sid) => moveCollectionTo(c, sid)}
+                            onCopy={(sid) => copyCollectionTo(c, sid)}
+                            onShare={() => openShareDialog(c)}
+                          />
                         }
                       />
                     );
@@ -670,6 +724,21 @@ export function NewTab() {
           </div>
         ) : null}
       </DragOverlay>
+      <ShareCodeDialog
+        open={shareTarget !== null}
+        collectionTitle={shareTarget?.title ?? ""}
+        issued={issuedCode}
+        onIssue={issueShareCode}
+        onRevoke={revokeShareCode}
+        onClose={() => setShareTarget(null)}
+      />
+      <ImportCodeDialog
+        open={importOpen}
+        spaces={spaces.map((s) => ({ id: s.id, name: s.name, icon: s.icon }))}
+        onLookup={(code) => getShareCodeInfo(supabase, code)}
+        onImport={importByCode}
+        onClose={() => setImportOpen(false)}
+      />
     </DndContext>
   );
 }
