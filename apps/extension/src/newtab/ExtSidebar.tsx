@@ -116,9 +116,11 @@ export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, on
         )}
       </div>
 
-      <div style={{ padding: "0 8px" }}>
+      <div style={{ padding: "0 8px", marginTop: "auto" }}>
         <button
           type="button"
+          title="코드로 가져오기"
+          aria-label="코드로 가져오기"
           onClick={onImportCode}
           style={{
             display: "flex", alignItems: "center", gap: 7, width: "100%",

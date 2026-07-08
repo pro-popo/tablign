@@ -231,8 +231,11 @@ export function NewTab() {
   const [shareTarget, setShareTarget] = useState<Collection | null>(null);
   const [issuedCode, setIssuedCode] = useState<ShareCode | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  // 경합 가드: 사전조회 응답이 도착할 때 현재 대상과 다르면 버린다.
+  const shareTargetRef = useRef<string | null>(null);
 
   async function openShareDialog(collection: Collection) {
+    shareTargetRef.current = collection.id;
     setShareTarget(collection);
     setIssuedCode(null);
     // 이미 활성 코드가 있으면 기본 7일 발급 호출이 그 코드를 그대로 반환한다 → 바로 코드 화면
@@ -244,6 +247,7 @@ export function NewTab() {
         .eq("collection_id", collection.id)
         .is("revoked_at", null)
         .or("expires_at.is.null,expires_at.gt." + new Date().toISOString());
+      if (shareTargetRef.current !== collection.id) return;
       if (data && data.length > 0) setIssuedCode(data[0] as ShareCode);
     } catch (e) {
       console.error(e);
