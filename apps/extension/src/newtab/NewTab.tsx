@@ -30,10 +30,11 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast } from "@tablign/ui";
 import {
   listSpaces, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions,
+  copyCollection, moveCollectionToSpace,
   type Collection, type Link, type Space,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
@@ -193,6 +194,32 @@ export function NewTab() {
     setSpaces(remaining);
     // 활성 스페이스를 지웠다면 남은 첫 스페이스로 전환한다(없으면 비활성).
     if (activeSpaceId === id) setActiveSpaceId(remaining[0]?.id ?? null);
+  }
+
+  const toast = useToast();
+
+  // 이동: 현재 스페이스 목록에서 사라지므로 재조회. 복사: 다른 스페이스에 생기므로 재조회 불필요.
+  async function moveCollectionTo(collection: Collection, targetSpaceId: string) {
+    try {
+      await moveCollectionToSpace(supabase, collection.id, targetSpaceId);
+      const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
+      toast.show(`'${collection.title}' 컬렉션을 '${name}' 스페이스로 이동했어요`);
+      loadCollections();
+    } catch (e) {
+      console.error(e);
+      toast.show("이동에 실패했어요. 다시 시도해 주세요.");
+    }
+  }
+
+  async function copyCollectionTo(collection: Collection, targetSpaceId: string) {
+    try {
+      await copyCollection(supabase, collection.id, targetSpaceId);
+      const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
+      toast.show(`'${collection.title}' 컬렉션을 '${name}' 스페이스에 복사했어요`);
+    } catch (e) {
+      console.error(e);
+      toast.show("복사에 실패했어요. 다시 시도해 주세요.");
+    }
   }
 
   async function addCollection() {
@@ -576,6 +603,17 @@ export function NewTab() {
                             onDeleteLink={async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); }}
                             onUpdateLink={async (id, patch) => { await updateLink(supabase, id, patch); reloadCollection(c.id); }}
                           />
+                        }
+                        moreMenuSlot={
+                          spaces.some((s) => s.id !== activeSpaceId) ? (
+                            <CollectionMoreMenu
+                              spaces={spaces
+                                .filter((s) => s.id !== activeSpaceId)
+                                .map((s) => ({ id: s.id, name: s.name, icon: s.icon }))}
+                              onMove={(sid) => moveCollectionTo(c, sid)}
+                              onCopy={(sid) => copyCollectionTo(c, sid)}
+                            />
+                          ) : undefined
                         }
                       />
                     );

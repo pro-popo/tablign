@@ -16,4 +16,6 @@ export {
   Trash2,
   Globe,
   LogOut,
+  MoreHorizontal,
+  ArrowLeft,
 } from "lucide-react";

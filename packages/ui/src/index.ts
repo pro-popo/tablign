@@ -15,3 +15,4 @@ export * from "./AppShell";
 export * from "./Toast";
 export * from "./ConfirmDialog";
 export * from "./usePanelState";
+export * from "./CollectionMoreMenu";

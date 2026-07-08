@@ -13,6 +13,8 @@ export interface CollectionSectionProps {
   tagSlot?: ReactNode;
   /** 제공되면 기본 링크 그리드 대신 이 노드를 렌더(확장의 DnD 리스트 주입용) */
   linksSlot?: ReactNode;
+  /** 제공되면 헤더 우측 버튼 그룹에 ⋯ 메뉴를 렌더(확장의 이동/복사 메뉴 주입용) */
+  moreMenuSlot?: ReactNode;
   /** 제공되면 제목을 컬렉션 드래그 핸들로 사용(확장의 정렬용). ref와 dnd 리스너/속성을 제목에 연결한다. */
   titleDragRef?: (el: HTMLElement | null) => void;
   titleDragProps?: Record<string, unknown>;
@@ -27,7 +29,7 @@ export interface CollectionSectionProps {
 }
 
 export function CollectionSection({
-  collection, links, collapsed: collapsedProp, isOver, tagSlot, linksSlot, titleDragRef, titleDragProps,
+  collection, links, collapsed: collapsedProp, isOver, tagSlot, linksSlot, moreMenuSlot, titleDragRef, titleDragProps,
   onOpenLink, onDeleteLink, onAddLink, onOpenAll, onDeleteCollection,
   autoEditTitle, onRenameCollection, onUpdateLink,
 }: CollectionSectionProps) {
@@ -103,6 +105,7 @@ export function CollectionSection({
           </>
         )}
         <span style={{ marginLeft: "auto", display: "flex", gap: 2 }}>
+          {moreMenuSlot}
           <button type="button" title="링크 추가" aria-label="링크 추가" onClick={() => setAdding(true)} style={iconBtn}>
             <Plus size={15} color={theme.textMuted} />
           </button>
