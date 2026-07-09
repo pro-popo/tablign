@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { ToastProvider } from "@tablign/ui";
 import { NewTab } from "./NewTab";
 
@@ -19,6 +19,10 @@ vi.mock("../lib/supabase", () => ({
 const listSpaces = vi.fn();
 const createSpace = vi.fn();
 const createCollection = vi.fn();
+const listCollections = vi.fn();
+const getShareCodeInfo = vi.fn();
+const deleteCollection = vi.fn();
+const importCollectionByCode = vi.fn();
 vi.mock("@tablign/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tablign/core")>();
   return {
@@ -26,8 +30,11 @@ vi.mock("@tablign/core", async (importOriginal) => {
     listSpaces: (...a: unknown[]) => listSpaces(...a),
     createSpace: (...a: unknown[]) => createSpace(...a),
     createCollection: (...a: unknown[]) => createCollection(...a),
-    listCollections: vi.fn().mockResolvedValue([]),
+    listCollections: (...a: unknown[]) => listCollections(...a),
     listLinks: vi.fn().mockResolvedValue([]),
+    getShareCodeInfo: (...a: unknown[]) => getShareCodeInfo(...a),
+    deleteCollection: (...a: unknown[]) => deleteCollection(...a),
+    importCollectionByCode: (...a: unknown[]) => importCollectionByCode(...a),
   };
 });
 
@@ -35,6 +42,12 @@ beforeEach(() => {
   listSpaces.mockReset();
   createSpace.mockReset();
   createCollection.mockReset();
+  listCollections.mockReset();
+  listCollections.mockResolvedValue([]);
+  getShareCodeInfo.mockReset();
+  deleteCollection.mockReset();
+  deleteCollection.mockResolvedValue(undefined);
+  importCollectionByCode.mockReset();
   // jsdom 전역 chrome 스텁(test-setup)에 tabs API를 보강한다.
   vi.stubGlobal("chrome", {
     ...(globalThis as unknown as { chrome: object }).chrome,
@@ -77,5 +90,54 @@ describe("NewTab — 스페이스가 없을 때", () => {
     // 스페이스 이름이 보드 헤더에 나타나고, 온보딩 문구는 없어야 한다.
     expect((await screen.findAllByText("개인")).length).toBeGreaterThan(0);
     expect(screen.queryByText(/매일 여는 탭, 매번 찾고 있나요/)).not.toBeInTheDocument();
+  });
+});
+
+describe("NewTab — 코드로 가져오기", () => {
+  it("현재 활성 스페이스로 가져오면 보드를 즉시 재조회한다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x" },
+    ]);
+    getShareCodeInfo.mockResolvedValue({ title: "공유 자료", icon: null, link_count: 2, shared_by: "앨리스" });
+    importCollectionByCode.mockResolvedValue("new-col-id");
+    renderNewTab();
+    await screen.findAllByText("개인"); // 보드 로드 완료 대기
+
+    const callsBefore = listCollections.mock.calls.length;
+
+    // 사이드바 진입점 → 코드 입력 → 조회 → (현재와 같은) 스페이스 선택 → 가져오기
+    fireEvent.click(screen.getByRole("button", { name: "코드로 가져오기" }));
+    const dialog = screen.getByRole("dialog", { name: "코드로 가져오기" });
+    fireEvent.change(within(dialog).getByPlaceholderText(/공유 코드/), { target: { value: "ABCD2345" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /조회/ }));
+    fireEvent.click(await within(dialog).findByRole("button", { name: /개인/ }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /가져오기/ }));
+
+    await waitFor(() => expect(importCollectionByCode).toHaveBeenCalledTimes(1));
+    // 같은 스페이스라 activeSpaceId가 안 바뀌어도 보드가 다시 조회되어야 한다
+    await waitFor(() => expect(listCollections.mock.calls.length).toBeGreaterThan(callsBefore));
+  });
+});
+
+describe("NewTab — 컬렉션 삭제", () => {
+  it("삭제 버튼은 확인 다이얼로그를 거쳐야 실제 삭제한다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x" },
+    ]);
+    listCollections.mockResolvedValue([
+      { id: "c1", space_id: "s1", user_id: "u1", title: "읽을거리", icon: null, note: null, position: 1000, created_at: "x" },
+    ]);
+    renderNewTab();
+    await screen.findByText("읽을거리");
+
+    fireEvent.click(screen.getByRole("button", { name: "컬렉션 삭제" }));
+    // 아직 삭제 안 됨 — 확인 다이얼로그가 떠야 한다
+    expect(deleteCollection).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("alertdialog", { name: "컬렉션 삭제" });
+    expect(within(dialog).getByText(/읽을거리/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "삭제" }));
+    await waitFor(() => expect(deleteCollection).toHaveBeenCalledTimes(1));
+    expect(deleteCollection.mock.calls[0][1]).toBe("c1");
   });
 });

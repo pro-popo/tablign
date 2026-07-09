@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { theme } from "./theme";
+import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
 import { Button } from "./Button";
 
 export interface ConfirmDialogProps {
@@ -42,14 +43,15 @@ export function ConfirmDialog({
     <div
       role="presentation"
       onClick={onCancel}
-      style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}
+      style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}
     >
+      <style>{overlayAnimationCss}</style>
       <div
         role="alertdialog"
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        style={{ width: 320, maxWidth: "calc(100vw - 32px)", background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}
+        style={{ width: 320, maxWidth: "calc(100vw - 32px)", animation: panelIn, background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}
       >
         <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{title}</div>
         {message && (
