@@ -280,6 +280,26 @@ describe("초대 RPC", () => {
     expect(error).not.toBeNull();
     await admin.from("space_invitations").delete().eq("id", id);
   });
+
+  it("초대받은 사람은 거절할 수 있고, 거절 후에는 수락할 수 없다", async () => {
+    await admin.from("space_members").delete().eq("space_id", spaceId).eq("user_id", outsider.id);
+    const { data: id } = await owner.client.rpc("invite_to_space", { p_space_id: spaceId, p_email: outsider.email, p_role: "viewer" });
+    const { error: dErr } = await outsider.client.rpc("decline_invitation", { p_invitation_id: id });
+    expect(dErr).toBeNull();
+    const { data: inv } = await admin.from("space_invitations").select("status").eq("id", id).single();
+    expect(inv!.status).toBe("declined");
+    const { error: aErr } = await outsider.client.rpc("accept_invitation", { p_invitation_id: id });
+    expect(aErr).not.toBeNull();
+    await admin.from("space_invitations").delete().eq("id", id);
+  });
+
+  it("viewer는 공유 스페이스 컬렉션에 공유 코드를 발급할 수 없다", async () => {
+    await admin.from("space_members").upsert({ space_id: spaceId, user_id: viewer.id, role: "viewer" });
+    const { data: c } = await admin.from("collections")
+      .insert({ user_id: owner.id, space_id: spaceId, title: "viewer 코드 시도" }).select().single();
+    const { error } = await viewer.client.rpc("create_collection_share_code", { p_collection_id: c!.id });
+    expect(error).not.toBeNull();
+  });
 });
 
 describe("2단계 RPC 공유 스페이스 확장", () => {

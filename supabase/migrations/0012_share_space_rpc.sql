@@ -12,6 +12,7 @@ declare
   v_id uuid;
 begin
   if v_uid is null then raise exception 'not authenticated'; end if;
+  if coalesce(auth.jwt() ->> 'email', '') = '' then raise exception 'caller email required'; end if;
   if p_role not in ('editor', 'viewer') then raise exception 'invalid role'; end if;
   if not public.is_space_owner(p_space_id) then raise exception 'only the owner can invite'; end if;
   if v_email = lower(coalesce(auth.jwt() ->> 'email', '')) then raise exception 'cannot invite yourself'; end if;
@@ -44,6 +45,7 @@ declare
   v_inv record;
 begin
   if v_uid is null then raise exception 'not authenticated'; end if;
+  if coalesce(auth.jwt() ->> 'email', '') = '' then raise exception 'caller email required'; end if;
   select * into v_inv from space_invitations where id = p_invitation_id;
   if v_inv is null or lower(v_inv.invitee_email) <> v_email then
     raise exception 'invitation not found';
@@ -65,9 +67,12 @@ returns void
 language plpgsql security definer set search_path = public
 as $$
 declare
+  v_uid uuid := auth.uid();
   v_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
   v_inv record;
 begin
+  if v_uid is null then raise exception 'not authenticated'; end if;
+  if coalesce(auth.jwt() ->> 'email', '') = '' then raise exception 'caller email required'; end if;
   select * into v_inv from space_invitations where id = p_invitation_id;
   if v_inv is null or lower(v_inv.invitee_email) <> v_email then
     raise exception 'invitation not found';
@@ -90,6 +95,8 @@ begin
   return copy_collection_rows(p_collection_id, p_target_space_id, v_uid);
 end;
 $$;
+revoke execute on function public.copy_collection(uuid, uuid) from public, anon;
+grant execute on function public.copy_collection(uuid, uuid) to authenticated;
 
 create or replace function public.move_collection(p_collection_id uuid, p_target_space_id uuid)
 returns void language plpgsql security definer set search_path = public as $$
@@ -104,6 +111,8 @@ begin
   where id = p_collection_id;
 end;
 $$;
+revoke execute on function public.move_collection(uuid, uuid) from public, anon;
+grant execute on function public.move_collection(uuid, uuid) to authenticated;
 
 create or replace function public.create_collection_share_code(p_collection_id uuid, p_expires_in_days int default 7)
 returns table(code text, expires_at timestamptz)
@@ -139,6 +148,8 @@ begin
   raise exception 'failed to generate share code';
 end;
 $$;
+revoke execute on function public.create_collection_share_code(uuid, int) from public, anon;
+grant execute on function public.create_collection_share_code(uuid, int) to authenticated;
 
 create or replace function public.import_collection_by_code(p_code text, p_target_space_id uuid)
 returns uuid language plpgsql security definer set search_path = public as $$
@@ -154,3 +165,5 @@ begin
   return copy_collection_rows(v_collection_id, p_target_space_id, v_uid);
 end;
 $$;
+revoke execute on function public.import_collection_by_code(text, uuid) from public, anon;
+grant execute on function public.import_collection_by_code(text, uuid) to authenticated;
