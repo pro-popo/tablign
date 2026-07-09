@@ -32,4 +32,16 @@ describe("ShareCodeDialog", () => {
     );
     expect(container.firstChild).toBeNull();
   });
+  it("복사 버튼 클릭 시 클립보드에 쓰고 onCopied를 호출한다", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    const onCopied = vi.fn();
+    render(
+      <ShareCodeDialog open collectionTitle="자료" issued={{ code: "ABCD2345", expires_at: null }}
+        onIssue={noop} onRevoke={noop} onClose={noop} onCopied={onCopied} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /복사/ }));
+    expect(writeText).toHaveBeenCalledWith("ABCD2345");
+    await vi.waitFor(() => expect(onCopied).toHaveBeenCalledTimes(1));
+  });
 });

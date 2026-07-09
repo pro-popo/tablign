@@ -736,6 +736,7 @@ export function NewTab() {
         issued={issuedCode}
         onIssue={issueShareCode}
         onRevoke={revokeShareCode}
+        onCopied={() => toast.show("공유 코드를 복사했어요")}
         onClose={() => setShareTarget(null)}
       />
       <ImportCodeDialog

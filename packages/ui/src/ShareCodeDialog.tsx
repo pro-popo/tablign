@@ -9,11 +9,13 @@ export interface ShareCodeDialogProps {
   issued: { code: string; expires_at: string | null } | null;
   onIssue: (expiresInDays: number | null) => void;
   onRevoke: () => void;
+  /** 코드가 클립보드에 복사됐을 때 호출(토스트 표시용) */
+  onCopied?: () => void;
   onClose: () => void;
 }
 
 /** 컬렉션 공유 코드 발급·표시 다이얼로그. */
-export function ShareCodeDialog({ open, collectionTitle, issued, onIssue, onRevoke, onClose }: ShareCodeDialogProps) {
+export function ShareCodeDialog({ open, collectionTitle, issued, onIssue, onRevoke, onClose, onCopied }: ShareCodeDialogProps) {
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
@@ -45,7 +47,7 @@ export function ShareCodeDialog({ open, collectionTitle, issued, onIssue, onRevo
               <code style={{ flex: 1, textAlign: "center", fontSize: 22, fontWeight: 800, letterSpacing: "0.18em", padding: "10px 0", background: theme.surface2, borderRadius: 9, color: theme.text }}>
                 {issued.code}
               </code>
-              <Button onClick={() => navigator.clipboard?.writeText(issued.code).catch(() => {})}>복사</Button>
+              <Button onClick={() => navigator.clipboard?.writeText(issued.code).then(() => onCopied?.()).catch(() => {})}>복사</Button>
             </div>
             <p style={{ marginTop: 8, fontSize: 12, color: theme.textFaint }}>
               {issued.expires_at
