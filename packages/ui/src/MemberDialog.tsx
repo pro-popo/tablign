@@ -52,10 +52,11 @@ export function MemberDialog({ open, spaceName, members, pendingInvites, onInvit
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="초대할 이메일"
             onKeyDown={(e) => { if (e.key === "Enter") submitInvite(); }}
             style={{ flex: 1, padding: "8px 10px", border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
-          <button type="button" onClick={() => setRole(role === "editor" ? "viewer" : "editor")}
-            style={{ border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 13, padding: "8px 10px", background: theme.surface, cursor: "pointer" }}>
-            {ROLE_LABEL[role]}
-          </button>
+          <select value={role} onChange={(e) => setRole(e.target.value as "editor" | "viewer")}
+            aria-label="역할" style={{ border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 13, padding: "0 6px" }}>
+            <option value="editor">편집자</option>
+            <option value="viewer">뷰어</option>
+          </select>
           <Button onClick={submitInvite}>초대</Button>
         </div>
 
@@ -67,6 +68,11 @@ export function MemberDialog({ open, spaceName, members, pendingInvites, onInvit
                 {!m.avatar_url && (m.display_name?.[0] ?? "?")}
               </div>
               <span style={{ flex: 1, fontSize: 13, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.display_name ?? "이름 없음"}</span>
+              <select value={m.role} onChange={(e) => onChangeRole(m.user_id, e.target.value as "editor" | "viewer")}
+                aria-label="멤버 역할" style={{ border: `1px solid ${theme.border}`, borderRadius: 7, fontSize: 12, padding: "2px 4px" }}>
+                <option value="editor">편집자</option>
+                <option value="viewer">뷰어</option>
+              </select>
               <button type="button" title="멤버 제거" aria-label="멤버 제거" onClick={() => onRemove(m.user_id)}
                 style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3 }}>
                 <X size={14} color={theme.textFaint} />
@@ -77,7 +83,7 @@ export function MemberDialog({ open, spaceName, members, pendingInvites, onInvit
             <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 8, opacity: 0.7 }}>
               <div style={{ width: 26, height: 26, borderRadius: "50%", background: theme.surface2, flexShrink: 0 }} />
               <span style={{ flex: 1, fontSize: 13, color: theme.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.invitee_email}</span>
-              <span style={{ fontSize: 11, color: theme.textFaint }}>대기 중</span>
+              <span style={{ fontSize: 11, color: theme.textFaint }}>{`${ROLE_LABEL[inv.role]} · 대기 중`}</span>
               <button type="button" title="초대 취소" aria-label="초대 취소" onClick={() => onCancelInvite(inv.id)}
                 style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3 }}>
                 <X size={14} color={theme.textFaint} />

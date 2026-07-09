@@ -13,8 +13,9 @@ describe("MemberDialog", () => {
     render(<MemberDialog open spaceName="스터디" members={members} pendingInvites={[{ id: "i1", invitee_email: "p@x.com", role: "viewer" }]}
       onInvite={noop} onChangeRole={noop} onRemove={noop} onCancelInvite={noop} onClose={noop} />);
     expect(screen.getByText("에디터")).toBeInTheDocument();
-    expect(screen.getByText("뷰어")).toBeInTheDocument();
+    expect(screen.getByText("뷰어", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByText("p@x.com")).toBeInTheDocument();
+    expect(screen.getByText("뷰어 · 대기 중")).toBeInTheDocument();
   });
 
   it("이메일 입력 후 초대하면 onInvite를 호출한다", () => {
@@ -32,6 +33,15 @@ describe("MemberDialog", () => {
       onInvite={noop} onChangeRole={noop} onRemove={onRemove} onCancelInvite={noop} onClose={noop} />);
     fireEvent.click(screen.getAllByRole("button", { name: "멤버 제거" })[0]);
     expect(onRemove).toHaveBeenCalledWith("e1");
+  });
+
+  it("멤버 역할을 바꾸면 onChangeRole를 호출한다", () => {
+    const onChangeRole = vi.fn();
+    render(<MemberDialog open spaceName="스터디" members={members} pendingInvites={[]}
+      onInvite={noop} onChangeRole={onChangeRole} onRemove={noop} onCancelInvite={noop} onClose={noop} />);
+    const roleSelects = screen.getAllByRole("combobox", { name: "멤버 역할" });
+    fireEvent.change(roleSelects[0], { target: { value: "viewer" } });
+    expect(onChangeRole).toHaveBeenCalledWith("e1", "viewer");
   });
 
   it("open=false면 렌더하지 않는다", () => {
