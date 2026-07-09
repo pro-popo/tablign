@@ -1,4 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import {
+  listMembers, removeMember, updateMemberRole, updateMemberPosition, leaveSpace, listMyMemberships,
+} from "../data/members";
+import {
+  inviteToSpace, listSpaceInvitations, listMyInvitations, acceptInvitation, declineInvitation, cancelInvitation,
+} from "../data/invitations";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -323,5 +329,45 @@ describe("2단계 RPC 공유 스페이스 확장", () => {
       .insert({ user_id: owner.id, space_id: spaceId, title: "viewer 복사 시도 원본" }).select().single();
     const { error } = await viewer.client.rpc("copy_collection", { p_collection_id: c!.id, p_target_space_id: spaceId });
     expect(error).not.toBeNull();
+  });
+});
+
+describe("core 데이터 함수", () => {
+  it("listMembers는 프로필과 함께 멤버를 돌려준다", async () => {
+    await admin.from("space_members").upsert([
+      { space_id: spaceId, user_id: editor.id, role: "editor" },
+      { space_id: spaceId, user_id: viewer.id, role: "viewer" },
+    ]);
+    const members = await listMembers(owner.client, spaceId);
+    expect(members.length).toBe(2);
+    expect(members[0]).toHaveProperty("display_name");
+    expect(members[0]).toHaveProperty("role");
+  });
+
+  it("오너는 멤버 role을 바꿀 수 있다", async () => {
+    await updateMemberRole(owner.client, spaceId, viewer.id, "editor");
+    const { data } = await admin.from("space_members").select("role").eq("space_id", spaceId).eq("user_id", viewer.id).single();
+    expect(data!.role).toBe("editor");
+    await updateMemberRole(owner.client, spaceId, viewer.id, "viewer"); // 복구
+  });
+
+  it("초대 → 내 초대 목록 → 수락 전체 흐름", async () => {
+    const id = await inviteToSpace(owner.client, spaceId, outsider.email, "viewer");
+    expect(typeof id).toBe("string");
+    const mine = await listMyInvitations(outsider.client);
+    expect(mine.some((i) => i.id === id)).toBe(true);
+    expect(mine.find((i) => i.id === id)!.space_name).toBe("공유 스페이스");
+    await acceptInvitation(outsider.client, id);
+    const memberships = await listMyMemberships(outsider.client);
+    expect(memberships.some((m) => m.space_id === spaceId)).toBe(true);
+    // 정리
+    await leaveSpace(outsider.client, spaceId, outsider.id);
+  });
+
+  it("오너는 대기 중 초대를 취소할 수 있다", async () => {
+    const id = await inviteToSpace(owner.client, spaceId, "tocancel@test.local", "viewer");
+    await cancelInvitation(owner.client, id);
+    const list = await listSpaceInvitations(owner.client, spaceId);
+    expect(list.some((i) => i.id === id)).toBe(false);
   });
 });
