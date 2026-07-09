@@ -21,6 +21,7 @@ const createSpace = vi.fn();
 const createCollection = vi.fn();
 const listCollections = vi.fn();
 const listMyMemberships = vi.fn();
+const listLinks = vi.fn();
 const getShareCodeInfo = vi.fn();
 const deleteCollection = vi.fn();
 const importCollectionByCode = vi.fn();
@@ -33,7 +34,7 @@ vi.mock("@tablign/core", async (importOriginal) => {
     createCollection: (...a: unknown[]) => createCollection(...a),
     listCollections: (...a: unknown[]) => listCollections(...a),
     listMyMemberships: (...a: unknown[]) => listMyMemberships(...a),
-    listLinks: vi.fn().mockResolvedValue([]),
+    listLinks: (...a: unknown[]) => listLinks(...a),
     getShareCodeInfo: (...a: unknown[]) => getShareCodeInfo(...a),
     deleteCollection: (...a: unknown[]) => deleteCollection(...a),
     importCollectionByCode: (...a: unknown[]) => importCollectionByCode(...a),
@@ -48,6 +49,8 @@ beforeEach(() => {
   listCollections.mockResolvedValue([]);
   listMyMemberships.mockReset();
   listMyMemberships.mockResolvedValue([]);
+  listLinks.mockReset();
+  listLinks.mockResolvedValue([]);
   getShareCodeInfo.mockReset();
   deleteCollection.mockReset();
   deleteCollection.mockResolvedValue(undefined);
@@ -171,5 +174,41 @@ describe("NewTab — viewer 모드", () => {
     renderNewTab();
     await screen.findAllByText("공유됨");
     expect(screen.getByRole("button", { name: /컬렉션$/ })).toBeInTheDocument();
+  });
+
+  it("viewer로 연 공유 스페이스에서 링크 삭제 버튼이 렌더되지 않는다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+    ]);
+    listMyMemberships.mockResolvedValue([
+      { space_id: "shared1", user_id: "u1", role: "viewer", position: 1000, created_at: "x" },
+    ]);
+    listCollections.mockResolvedValue([
+      { id: "c1", space_id: "shared1", user_id: "owner-x", title: "공유 컬렉션", icon: null, note: null, position: 1000, created_at: "x" },
+    ]);
+    listLinks.mockResolvedValue([
+      { id: "l1", collection_id: "c1", user_id: "owner-x", url: "https://a.com", title: "A", favicon_url: null, thumbnail_url: null, custom_title: null, note: null, position: 1000, created_at: "x" },
+    ]);
+    renderNewTab();
+    await screen.findByText("A");
+    expect(screen.queryByRole("button", { name: "삭제" })).toBeNull();
+  });
+
+  it("editor로 연 공유 스페이스에서는 링크 삭제 버튼이 렌더된다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+    ]);
+    listMyMemberships.mockResolvedValue([
+      { space_id: "shared1", user_id: "u1", role: "editor", position: 1000, created_at: "x" },
+    ]);
+    listCollections.mockResolvedValue([
+      { id: "c1", space_id: "shared1", user_id: "owner-x", title: "공유 컬렉션", icon: null, note: null, position: 1000, created_at: "x" },
+    ]);
+    listLinks.mockResolvedValue([
+      { id: "l1", collection_id: "c1", user_id: "owner-x", url: "https://a.com", title: "A", favicon_url: null, thumbnail_url: null, custom_title: null, note: null, position: 1000, created_at: "x" },
+    ]);
+    renderNewTab();
+    await screen.findByText("A");
+    expect(screen.queryByRole("button", { name: "삭제" })).not.toBeNull();
   });
 });

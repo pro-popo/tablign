@@ -11,6 +11,8 @@ export interface LinkCardProps {
   onUpdate?: (id: string, patch: { custom_title: string | null; url: string; note: string | null }) => void;
   /** 드래그가 진행 중이면 hover 액션 아이콘을 숨긴다 */
   dragging?: boolean;
+  /** viewer 등 읽기 전용 모드: 삭제·편집 버튼을 렌더하지 않는다 */
+  readOnly?: boolean;
 }
 
 function domainOf(url: string): string {
@@ -28,7 +30,7 @@ const editInput: React.CSSProperties = {
   width: "100%", padding: "6px 8px", border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, outline: "none", boxSizing: "border-box",
 };
 
-export function LinkCard({ link, onOpen, onDelete, onUpdate, dragging }: LinkCardProps) {
+export function LinkCard({ link, onOpen, onDelete, onUpdate, dragging, readOnly }: LinkCardProps) {
   const [hover, setHover] = useState(false);
   const showActions = hover && !dragging;
   const [editing, setEditing] = useState(false);
@@ -98,16 +100,18 @@ export function LinkCard({ link, onOpen, onDelete, onUpdate, dragging }: LinkCar
           </div>
         );
       })()}
-      <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 2, opacity: showActions ? 1 : 0, pointerEvents: showActions ? "auto" : "none", transition: "opacity .12s" }}>
-        {onUpdate && (
-          <button type="button" title="편집" aria-label="편집" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); openEdit(); }} style={actionBtn}>
-            <Pencil size={14} color={theme.textMuted} />
+      {!readOnly && (
+        <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 2, opacity: showActions ? 1 : 0, pointerEvents: showActions ? "auto" : "none", transition: "opacity .12s" }}>
+          {onUpdate && (
+            <button type="button" title="편집" aria-label="편집" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); openEdit(); }} style={actionBtn}>
+              <Pencil size={14} color={theme.textMuted} />
+            </button>
+          )}
+          <button type="button" title="삭제" aria-label="삭제" onClick={(e) => { e.stopPropagation(); onDelete(link.id); }} style={actionBtn}>
+            <Trash2 size={14} color={theme.danger} />
           </button>
-        )}
-        <button type="button" title="삭제" aria-label="삭제" onClick={(e) => { e.stopPropagation(); onDelete(link.id); }} style={actionBtn}>
-          <Trash2 size={14} color={theme.danger} />
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

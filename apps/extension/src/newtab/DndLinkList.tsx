@@ -41,17 +41,49 @@ function SortableCard({
   );
 }
 
+function StaticCard({
+  link, onOpen,
+}: {
+  link: Link;
+  onOpen: (url: string) => void;
+}) {
+  return (
+    <div>
+      <LinkCard link={link} onOpen={onOpen} onDelete={() => {}} readOnly />
+    </div>
+  );
+}
+
 export interface DndLinkListProps {
   collectionId: string;
   links: Link[];
   onOpenLink: (url: string) => void;
   onDeleteLink?: (id: string) => void;
   onUpdateLink?: (id: string, patch: { custom_title: string | null; url: string; note: string | null }) => void;
+  /** viewer 등 읽기 전용 모드: 드래그 센서와 삭제·편집 버튼을 비활성화한다 */
+  readOnly?: boolean;
 }
 
-export function DndLinkList({ collectionId, links, onOpenLink, onDeleteLink, onUpdateLink }: DndLinkListProps) {
+export function DndLinkList({ collectionId, links, onOpenLink, onDeleteLink, onUpdateLink, readOnly }: DndLinkListProps) {
   // 빈 컬렉션에도 드롭할 수 있도록 컨테이너 자체를 droppable로. (강조 점선은 CollectionSection이 담당)
   const { setNodeRef } = useDroppable({ id: `container:${collectionId}`, data: { kind: "container", collectionId } });
+
+  if (readOnly) {
+    return (
+      <div style={GRID}>
+        {links.length === 0 ? (
+          <div style={{ gridColumn: "1 / -1", minHeight: 72, border: `1.5px dashed ${theme.border}`, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", color: theme.textFaint, fontSize: 12 }}>
+            여기로 탭을 드래그해 추가하세요
+          </div>
+        ) : (
+          links.map((l) => (
+            <StaticCard key={l.id} link={l} onOpen={onOpenLink} />
+          ))
+        )}
+      </div>
+    );
+  }
+
   return (
     <SortableContext items={links.map((l) => l.id)} strategy={rectSortingStrategy}>
       <div ref={setNodeRef} style={GRID}>

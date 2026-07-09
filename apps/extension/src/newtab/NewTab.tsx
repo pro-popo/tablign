@@ -698,6 +698,7 @@ export function NewTab() {
                             onOpenLink={openUrl}
                             onDeleteLink={canEdit ? async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); } : undefined}
                             onUpdateLink={canEdit ? async (id, patch) => { await updateLink(supabase, id, patch); reloadCollection(c.id); } : undefined}
+                            readOnly={!canEdit}
                           />
                         }
                         moreMenuSlot={canEdit ? (
