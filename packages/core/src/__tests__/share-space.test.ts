@@ -167,3 +167,69 @@ describe("space_members RLS·트리거", () => {
     await admin.from("space_members").insert({ space_id: spaceId, user_id: editor.id, role: "editor" }); // 후속 테스트 위해 복구
   });
 });
+
+describe("공유 스페이스 접근 매트릭스", () => {
+  let colId: string;
+  let linkId: string;
+
+  beforeAll(async () => {
+    await admin.from("space_members").upsert([
+      { space_id: spaceId, user_id: editor.id, role: "editor" },
+      { space_id: spaceId, user_id: viewer.id, role: "viewer" },
+    ]);
+    const { data: c } = await owner.client.from("collections")
+      .insert({ user_id: owner.id, space_id: spaceId, title: "공유 컬렉션" }).select().single();
+    colId = c!.id;
+    const { data: l } = await owner.client.from("links")
+      .insert({ user_id: owner.id, collection_id: colId, url: "https://a.com", title: "A", position: 1000 }).select().single();
+    linkId = l!.id;
+  });
+
+  it("editor·viewer는 공유 스페이스와 그 컬렉션·링크를 볼 수 있다", async () => {
+    for (const u of [editor, viewer]) {
+      expect((await u.client.from("spaces").select().eq("id", spaceId)).data!.length).toBe(1);
+      expect((await u.client.from("collections").select().eq("id", colId)).data!.length).toBe(1);
+      expect((await u.client.from("links").select().eq("id", linkId)).data!.length).toBe(1);
+    }
+  });
+
+  it("비멤버는 공유 스페이스·컬렉션·링크가 보이지 않는다", async () => {
+    expect((await outsider.client.from("spaces").select().eq("id", spaceId)).data!.length).toBe(0);
+    expect((await outsider.client.from("collections").select().eq("id", colId)).data!.length).toBe(0);
+    expect((await outsider.client.from("links").select().eq("id", linkId)).data!.length).toBe(0);
+  });
+
+  it("editor는 컬렉션·링크를 생성·수정할 수 있다", async () => {
+    const { data: c, error } = await editor.client.from("collections")
+      .insert({ user_id: editor.id, space_id: spaceId, title: "editor 컬렉션" }).select().single();
+    expect(error).toBeNull();
+    const { error: upErr } = await editor.client.from("collections").update({ title: "수정됨" }).eq("id", colId);
+    expect(upErr).toBeNull(); // 다른 멤버가 만든 컬렉션도 편집 가능(협업)
+    await editor.client.from("collections").delete().eq("id", c!.id);
+  });
+
+  it("viewer는 컬렉션·링크를 생성·수정할 수 없다", async () => {
+    const { error: insErr } = await viewer.client.from("collections")
+      .insert({ user_id: viewer.id, space_id: spaceId, title: "viewer 시도" });
+    expect(insErr).not.toBeNull();
+    const { error: upErr } = await viewer.client.from("links").update({ title: "viewer 시도" }).eq("id", linkId);
+    expect(upErr).not.toBeNull();
+  });
+
+  it("editor라도 스페이스 이름은 못 바꾼다(오너만)", async () => {
+    const { error } = await editor.client.from("spaces").update({ name: "탈취" }).eq("id", spaceId);
+    // RLS update 정책이 오너 전용이라 매칭 행이 없어 조용히 0행 — 이름이 안 바뀌었는지로 검증
+    const { data } = await admin.from("spaces").select("name").eq("id", spaceId).single();
+    expect(data!.name).toBe("공유 스페이스");
+  });
+
+  it("멤버끼리 서로의 프로필(display_name)을 볼 수 있다", async () => {
+    const { data } = await editor.client.from("profiles").select().eq("id", owner.id);
+    expect(data!.length).toBe(1);
+  });
+
+  it("비멤버는 남의 프로필이 보이지 않는다", async () => {
+    const { data } = await outsider.client.from("profiles").select().eq("id", owner.id);
+    expect(data!.length).toBe(0);
+  });
+});
