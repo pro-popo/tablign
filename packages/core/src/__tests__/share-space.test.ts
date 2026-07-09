@@ -233,3 +233,75 @@ describe("공유 스페이스 접근 매트릭스", () => {
     expect(data!.length).toBe(0);
   });
 });
+
+describe("초대 RPC", () => {
+  it("오너는 이메일로 초대할 수 있다", async () => {
+    const { data, error } = await owner.client.rpc("invite_to_space", {
+      p_space_id: spaceId, p_email: outsider.email.toUpperCase(), p_role: "viewer",
+    });
+    expect(error).toBeNull();
+    expect(typeof data).toBe("string");
+    // 이메일은 소문자로 정규화 저장
+    const { data: inv } = await admin.from("space_invitations").select().eq("id", data);
+    expect(inv![0].invitee_email).toBe(outsider.email.toLowerCase());
+  });
+
+  it("editor는 초대할 수 없다(오너 전용)", async () => {
+    const { error } = await editor.client.rpc("invite_to_space", {
+      p_space_id: spaceId, p_email: "x@test.local", p_role: "viewer",
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it("이미 멤버인 사람은 초대할 수 없다", async () => {
+    const { error } = await owner.client.rpc("invite_to_space", {
+      p_space_id: spaceId, p_email: editor.email, p_role: "viewer",
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it("초대받은 사람은 목록에서 자기 초대를 보고 수락하면 멤버가 된다", async () => {
+    const { data: seen } = await outsider.client.from("space_invitations").select().eq("space_id", spaceId);
+    expect(seen!.length).toBe(1);
+    const invId = seen![0].id;
+    const { error } = await outsider.client.rpc("accept_invitation", { p_invitation_id: invId });
+    expect(error).toBeNull();
+    const { data: mem } = await admin.from("space_members").select().eq("space_id", spaceId).eq("user_id", outsider.id);
+    expect(mem![0].role).toBe("viewer");
+    const { data: inv } = await admin.from("space_invitations").select("status").eq("id", invId).single();
+    expect(inv!.status).toBe("accepted");
+    // 정리
+    await admin.from("space_members").delete().eq("space_id", spaceId).eq("user_id", outsider.id);
+  });
+
+  it("남의 이메일 초대는 수락할 수 없다", async () => {
+    const { data: id } = await owner.client.rpc("invite_to_space", { p_space_id: spaceId, p_email: "someone@test.local", p_role: "viewer" });
+    const { error } = await outsider.client.rpc("accept_invitation", { p_invitation_id: id });
+    expect(error).not.toBeNull();
+    await admin.from("space_invitations").delete().eq("id", id);
+  });
+});
+
+describe("2단계 RPC 공유 스페이스 확장", () => {
+  it("editor는 공유 스페이스의 컬렉션에 공유 코드를 발급할 수 있다", async () => {
+    const { data: c } = await owner.client.from("collections")
+      .insert({ user_id: owner.id, space_id: spaceId, title: "코드용" }).select().single();
+    const { error } = await editor.client.rpc("create_collection_share_code", { p_collection_id: c!.id });
+    expect(error).toBeNull();
+    await owner.client.from("collections").delete().eq("id", c!.id);
+  });
+
+  it("editor는 공유 스페이스로 컬렉션을 복사할 수 있다", async () => {
+    const { data: myCol } = await editor.client.from("collections")
+      .insert({ user_id: editor.id, space_id: spaceId, title: "editor 원본" }).select().single();
+    const { error } = await editor.client.rpc("copy_collection", { p_collection_id: myCol!.id, p_target_space_id: spaceId });
+    expect(error).toBeNull();
+  });
+
+  it("viewer는 공유 스페이스로 복사할 수 없다(편집권 없음)", async () => {
+    const { data: c } = await admin.from("collections")
+      .insert({ user_id: owner.id, space_id: spaceId, title: "viewer 복사 시도 원본" }).select().single();
+    const { error } = await viewer.client.rpc("copy_collection", { p_collection_id: c!.id, p_target_space_id: spaceId });
+    expect(error).not.toBeNull();
+  });
+});
