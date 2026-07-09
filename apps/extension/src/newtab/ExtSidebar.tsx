@@ -6,12 +6,14 @@ import { Hash, Plus, Pencil, Trash2, PanelLeftClose, LogOut, InlineInput, Confir
 
 export interface ExtSidebarProps {
   spaces: Space[];
+  sharedSpaces: Space[];
   activeSpaceId: string | null;
   userEmail: string;
   onSelectSpace: (id: string) => void;
   onAddSpace: (name: string) => void;
   onRenameSpace: (id: string, name: string) => void;
   onDeleteSpace: (id: string) => void;
+  onLeaveSpace: (id: string) => void;
   onCollapse: () => void;
   onSignOut: () => void;
   onImportCode: () => void;
@@ -63,7 +65,7 @@ function SortableSpace({ space, active, onSelect, onStartEdit, onDelete }: {
   );
 }
 
-export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, onAddSpace, onRenameSpace, onDeleteSpace, onCollapse, onSignOut, onImportCode, searchSlot }: ExtSidebarProps) {
+export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, userEmail, onSelectSpace, onAddSpace, onRenameSpace, onDeleteSpace, onLeaveSpace, onCollapse, onSignOut, onImportCode, searchSlot }: ExtSidebarProps) {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Space | null>(null);
@@ -115,6 +117,28 @@ export function ExtSidebar({ spaces, activeSpaceId, userEmail, onSelectSpace, on
           </button>
         )}
       </div>
+
+      {sharedSpaces.length > 0 && (
+        <>
+          <div style={{ padding: "8px 14px 4px", fontSize: 10, letterSpacing: 1, color: theme.textFaint }}>공유됨</div>
+          {/* 정렬 미구현: 공유됨 섹션은 position 순 표시. DnD는 후속 태스크에서 추가 예정. */}
+          <div style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
+            {sharedSpaces.map((s) => (
+              <div key={s.id} style={{ display: "flex", alignItems: "center" }}>
+                <button type="button" onClick={() => onSelectSpace(s.id)}
+                  style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 8, border: "none", cursor: "pointer", textAlign: "left",
+                    background: s.id === activeSpaceId ? theme.accentWeak : "transparent", color: s.id === activeSpaceId ? theme.accent : "#495057", fontWeight: s.id === activeSpaceId ? 600 : 400 }}>
+                  <Hash size={15} /> {s.name}
+                </button>
+                <button type="button" title="나가기" aria-label="스페이스 나가기" onClick={() => onLeaveSpace(s.id)}
+                  style={{ border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 3 }}>
+                  <LogOut size={13} color={theme.textFaint} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <div style={{ padding: "0 8px", marginTop: "auto" }}>
         <button

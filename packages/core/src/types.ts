@@ -51,3 +51,31 @@ export interface CollectionTag {
   collection_id: string;
   tag_id: string;
 }
+
+export interface SpaceMember {
+  space_id: string;
+  user_id: string;
+  role: "editor" | "viewer";
+  position: number;
+  created_at: string;
+}
+
+export interface MemberWithProfile extends SpaceMember {
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface SpaceInvitation {
+  id: string;
+  space_id: string;
+  inviter_id: string;
+  invitee_email: string;
+  role: "editor" | "viewer";
+  status: "pending" | "accepted" | "declined";
+  created_at: string;
+}
+
+export interface InvitationWithSpace extends SpaceInvitation {
+  space_name: string;
+  inviter_name: string | null;
+}

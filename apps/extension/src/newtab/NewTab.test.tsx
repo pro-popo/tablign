@@ -20,9 +20,16 @@ const listSpaces = vi.fn();
 const createSpace = vi.fn();
 const createCollection = vi.fn();
 const listCollections = vi.fn();
+const listMyMemberships = vi.fn();
+const listLinks = vi.fn();
 const getShareCodeInfo = vi.fn();
 const deleteCollection = vi.fn();
 const importCollectionByCode = vi.fn();
+const listMembers = vi.fn();
+const listSpaceInvitations = vi.fn();
+const inviteToSpace = vi.fn();
+const listMyInvitations = vi.fn();
+const acceptInvitation = vi.fn();
 vi.mock("@tablign/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tablign/core")>();
   return {
@@ -31,10 +38,16 @@ vi.mock("@tablign/core", async (importOriginal) => {
     createSpace: (...a: unknown[]) => createSpace(...a),
     createCollection: (...a: unknown[]) => createCollection(...a),
     listCollections: (...a: unknown[]) => listCollections(...a),
-    listLinks: vi.fn().mockResolvedValue([]),
+    listMyMemberships: (...a: unknown[]) => listMyMemberships(...a),
+    listLinks: (...a: unknown[]) => listLinks(...a),
     getShareCodeInfo: (...a: unknown[]) => getShareCodeInfo(...a),
     deleteCollection: (...a: unknown[]) => deleteCollection(...a),
     importCollectionByCode: (...a: unknown[]) => importCollectionByCode(...a),
+    listMembers: (...a: unknown[]) => listMembers(...a),
+    listSpaceInvitations: (...a: unknown[]) => listSpaceInvitations(...a),
+    inviteToSpace: (...a: unknown[]) => inviteToSpace(...a),
+    listMyInvitations: (...a: unknown[]) => listMyInvitations(...a),
+    acceptInvitation: (...a: unknown[]) => acceptInvitation(...a),
   };
 });
 
@@ -44,10 +57,22 @@ beforeEach(() => {
   createCollection.mockReset();
   listCollections.mockReset();
   listCollections.mockResolvedValue([]);
+  listMyMemberships.mockReset();
+  listMyMemberships.mockResolvedValue([]);
+  listLinks.mockReset();
+  listLinks.mockResolvedValue([]);
   getShareCodeInfo.mockReset();
   deleteCollection.mockReset();
   deleteCollection.mockResolvedValue(undefined);
   importCollectionByCode.mockReset();
+  listMembers.mockReset();
+  listMembers.mockResolvedValue([]);
+  listSpaceInvitations.mockReset();
+  listSpaceInvitations.mockResolvedValue([]);
+  inviteToSpace.mockReset();
+  listMyInvitations.mockReset();
+  listMyInvitations.mockResolvedValue([]);
+  acceptInvitation.mockReset();
   // jsdom 전역 chrome 스텁(test-setup)에 tabs API를 보강한다.
   vi.stubGlobal("chrome", {
     ...(globalThis as unknown as { chrome: object }).chrome,
@@ -139,5 +164,95 @@ describe("NewTab — 컬렉션 삭제", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "삭제" }));
     await waitFor(() => expect(deleteCollection).toHaveBeenCalledTimes(1));
     expect(deleteCollection.mock.calls[0][1]).toBe("c1");
+  });
+});
+
+describe("NewTab — viewer 모드", () => {
+  it("viewer로 연 공유 스페이스에서는 '＋ 컬렉션' 버튼이 숨겨진다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+    ]);
+    listMyMemberships.mockResolvedValue([
+      { space_id: "shared1", user_id: "u1", role: "viewer", position: 1000, created_at: "x" },
+    ]);
+    listCollections.mockResolvedValue([]);
+    renderNewTab();
+    await screen.findAllByText("공유됨");
+    expect(screen.queryByRole("button", { name: /컬렉션$/ })).not.toBeInTheDocument();
+  });
+
+  it("editor로 연 공유 스페이스에서는 '＋ 컬렉션' 버튼이 보인다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+    ]);
+    listMyMemberships.mockResolvedValue([
+      { space_id: "shared1", user_id: "u1", role: "editor", position: 1000, created_at: "x" },
+    ]);
+    listCollections.mockResolvedValue([]);
+    renderNewTab();
+    await screen.findAllByText("공유됨");
+    expect(screen.getByRole("button", { name: /컬렉션$/ })).toBeInTheDocument();
+  });
+
+  it("viewer로 연 공유 스페이스에서 링크 삭제 버튼이 렌더되지 않는다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+    ]);
+    listMyMemberships.mockResolvedValue([
+      { space_id: "shared1", user_id: "u1", role: "viewer", position: 1000, created_at: "x" },
+    ]);
+    listCollections.mockResolvedValue([
+      { id: "c1", space_id: "shared1", user_id: "owner-x", title: "공유 컬렉션", icon: null, note: null, position: 1000, created_at: "x" },
+    ]);
+    listLinks.mockResolvedValue([
+      { id: "l1", collection_id: "c1", user_id: "owner-x", url: "https://a.com", title: "A", favicon_url: null, thumbnail_url: null, custom_title: null, note: null, position: 1000, created_at: "x" },
+    ]);
+    renderNewTab();
+    await screen.findByText("A");
+    expect(screen.queryByRole("button", { name: "삭제" })).toBeNull();
+  });
+
+  it("editor로 연 공유 스페이스에서는 링크 삭제 버튼이 렌더된다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+    ]);
+    listMyMemberships.mockResolvedValue([
+      { space_id: "shared1", user_id: "u1", role: "editor", position: 1000, created_at: "x" },
+    ]);
+    listCollections.mockResolvedValue([
+      { id: "c1", space_id: "shared1", user_id: "owner-x", title: "공유 컬렉션", icon: null, note: null, position: 1000, created_at: "x" },
+    ]);
+    listLinks.mockResolvedValue([
+      { id: "l1", collection_id: "c1", user_id: "owner-x", url: "https://a.com", title: "A", favicon_url: null, thumbnail_url: null, custom_title: null, note: null, position: 1000, created_at: "x" },
+    ]);
+    renderNewTab();
+    await screen.findByText("A");
+    expect(screen.queryByRole("button", { name: "삭제" })).not.toBeNull();
+  });
+});
+
+describe("NewTab — 멤버 관리·초대 알림", () => {
+  it("오너 스페이스에서 멤버 버튼을 누르면 멤버 다이얼로그가 열린다", async () => {
+    listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x" }]);
+    listMyMemberships.mockResolvedValue([]); // 내가 오너
+    listCollections.mockResolvedValue([]);
+    listMembers.mockResolvedValue([]);
+    listSpaceInvitations.mockResolvedValue([]);
+    renderNewTab();
+    await screen.findAllByText("내 스페이스");
+    fireEvent.click(screen.getByRole("button", { name: "멤버" }));
+    expect(await screen.findByRole("dialog", { name: "멤버 관리" })).toBeInTheDocument();
+  });
+
+  it("받은 초대가 있으면 알림 배지가 보이고 수락하면 acceptInvitation을 호출한다", async () => {
+    listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x" }]);
+    listMyMemberships.mockResolvedValue([]);
+    listCollections.mockResolvedValue([]);
+    listMyInvitations.mockResolvedValue([{ id: "inv1", space_id: "s9", inviter_id: "o9", invitee_email: "u1@test.local", role: "viewer", status: "pending", created_at: "x", space_name: "초대된 스페이스", inviter_name: "앨리스" }]);
+    acceptInvitation.mockResolvedValue(undefined);
+    renderNewTab();
+    fireEvent.click(await screen.findByRole("button", { name: /초대/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "수락" }));
+    await waitFor(() => expect(acceptInvitation).toHaveBeenCalledWith(expect.anything(), "inv1"));
   });
 });

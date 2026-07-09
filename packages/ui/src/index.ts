@@ -19,3 +19,6 @@ export * from "./ImportCodeDialog";
 export * from "./usePanelState";
 export * from "./CollectionMoreMenu";
 export * from "./SpaceOnboarding";
+export * from "./MemberAvatars";
+export * from "./MemberDialog";
+export * from "./InvitationList";

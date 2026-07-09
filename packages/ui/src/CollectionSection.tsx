@@ -18,11 +18,13 @@ export interface CollectionSectionProps {
   /** 제공되면 제목을 컬렉션 드래그 핸들로 사용(확장의 정렬용). ref와 dnd 리스너/속성을 제목에 연결한다. */
   titleDragRef?: (el: HTMLElement | null) => void;
   titleDragProps?: Record<string, unknown>;
+  /** true이면 링크 추가·삭제·이름 수정·더 보기 메뉴 등 편집 진입점을 숨긴다 */
+  readOnly?: boolean;
   onOpenLink: (url: string) => void;
-  onDeleteLink: (id: string) => void;
+  onDeleteLink?: (id: string) => void;
   onAddLink: (url: string) => void;
   onOpenAll: (collectionId: string) => void;
-  onDeleteCollection: (collectionId: string) => void;
+  onDeleteCollection?: (collectionId: string) => void;
   autoEditTitle?: boolean;
   onRenameCollection?: (id: string, title: string) => void;
   onUpdateLink?: (id: string, patch: { custom_title: string | null; url: string; note: string | null }) => void;
@@ -30,6 +32,7 @@ export interface CollectionSectionProps {
 
 export function CollectionSection({
   collection, links, collapsed: collapsedProp, isOver, tagSlot, linksSlot, moreMenuSlot, titleDragRef, titleDragProps,
+  readOnly,
   onOpenLink, onDeleteLink, onAddLink, onOpenAll, onDeleteCollection,
   autoEditTitle, onRenameCollection, onUpdateLink,
 }: CollectionSectionProps) {
@@ -91,7 +94,7 @@ export function CollectionSection({
             >
               {collection.icon ? `${collection.icon} ` : ""}{collection.title}
             </strong>
-            {onRenameCollection && hover && (
+            {!readOnly && onRenameCollection && hover && (
               <button
                 type="button"
                 title="이름 수정"
@@ -105,22 +108,26 @@ export function CollectionSection({
           </>
         )}
         <span style={{ marginLeft: "auto", display: "flex", gap: 2 }}>
-          {moreMenuSlot}
-          <button type="button" title="링크 추가" aria-label="링크 추가" onClick={() => setAdding(true)} style={iconBtn}>
-            <Plus size={15} color={theme.textMuted} />
-          </button>
+          {!readOnly && moreMenuSlot}
+          {!readOnly && (
+            <button type="button" title="링크 추가" aria-label="링크 추가" onClick={() => setAdding(true)} style={iconBtn}>
+              <Plus size={15} color={theme.textMuted} />
+            </button>
+          )}
           <button type="button" title="모두 열기" aria-label="모두 열기" onClick={() => onOpenAll(collection.id)} style={iconBtn}>
             <ExternalLink size={15} color={theme.textMuted} />
           </button>
-          <button type="button" title="컬렉션 삭제" aria-label="컬렉션 삭제" onClick={() => onDeleteCollection(collection.id)} style={iconBtn}>
-            <Trash2 size={15} color={theme.danger} />
-          </button>
+          {!readOnly && onDeleteCollection && (
+            <button type="button" title="컬렉션 삭제" aria-label="컬렉션 삭제" onClick={() => onDeleteCollection(collection.id)} style={iconBtn}>
+              <Trash2 size={15} color={theme.danger} />
+            </button>
+          )}
         </span>
       </header>
       {!collapsed && (
         <>
           {tagSlot && <div style={{ marginBottom: 8 }}>{tagSlot}</div>}
-          {adding && (
+          {!readOnly && adding && (
             <div style={{ marginBottom: 8 }}>
               <InlineInput
                 placeholder="URL 붙여넣기"
@@ -132,7 +139,7 @@ export function CollectionSection({
           {linksSlot ?? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 9 }}>
               {links.map((link) => (
-                <LinkCard key={link.id} link={link} onOpen={onOpenLink} onDelete={onDeleteLink} onUpdate={onUpdateLink} />
+                <LinkCard key={link.id} link={link} onOpen={onOpenLink} onDelete={onDeleteLink ?? (() => {})} onUpdate={onUpdateLink} />
               ))}
             </div>
           )}
