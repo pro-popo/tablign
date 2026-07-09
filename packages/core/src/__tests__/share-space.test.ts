@@ -222,6 +222,14 @@ describe("공유 스페이스 접근 매트릭스", () => {
     expect(upErr).not.toBeNull();
   });
 
+  it("viewer는 컬렉션·링크를 삭제할 수 없다", async () => {
+    // delete 정책은 can_edit 게이트 — viewer는 매칭 0행(에러 아님), 행이 그대로 남아야 한다
+    await viewer.client.from("links").delete().eq("id", linkId);
+    expect((await admin.from("links").select().eq("id", linkId)).data!.length).toBe(1);
+    await viewer.client.from("collections").delete().eq("id", colId);
+    expect((await admin.from("collections").select().eq("id", colId)).data!.length).toBe(1);
+  });
+
   it("editor라도 스페이스 이름은 못 바꾼다(오너만)", async () => {
     const { error } = await editor.client.from("spaces").update({ name: "탈취" }).eq("id", spaceId);
     // RLS update 정책이 오너 전용이라 매칭 행이 없어 조용히 0행 — 이름이 안 바뀌었는지로 검증
