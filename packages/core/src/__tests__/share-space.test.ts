@@ -79,6 +79,60 @@ describe("헬퍼 함수", () => {
   });
 });
 
+describe("헬퍼 함수 — 컬렉션·공유 판정", () => {
+  let colId: string;
+  beforeAll(async () => {
+    await admin.from("space_members").upsert([
+      { space_id: spaceId, user_id: editor.id, role: "editor" },
+      { space_id: spaceId, user_id: viewer.id, role: "viewer" },
+    ]);
+    const { data: c } = await owner.client.from("collections")
+      .insert({ user_id: owner.id, space_id: spaceId, title: "헬퍼 테스트 컬렉션" }).select().single();
+    colId = c!.id;
+  });
+  it("has_collection_access: 멤버는 true, 비멤버는 false", async () => {
+    expect((await editor.client.rpc("has_collection_access", { p_collection_id: colId })).data).toBe(true);
+    expect((await viewer.client.rpc("has_collection_access", { p_collection_id: colId })).data).toBe(true);
+    expect((await outsider.client.rpc("has_collection_access", { p_collection_id: colId })).data).toBe(false);
+  });
+  it("can_edit_collection: editor는 true, viewer·비멤버는 false", async () => {
+    expect((await editor.client.rpc("can_edit_collection", { p_collection_id: colId })).data).toBe(true);
+    expect((await viewer.client.rpc("can_edit_collection", { p_collection_id: colId })).data).toBe(false);
+    expect((await outsider.client.rpc("can_edit_collection", { p_collection_id: colId })).data).toBe(false);
+  });
+  it("shares_space_with: 같은 스페이스 멤버끼리 true, 비멤버는 false", async () => {
+    expect((await editor.client.rpc("shares_space_with", { p_other: owner.id })).data).toBe(true);
+    expect((await owner.client.rpc("shares_space_with", { p_other: viewer.id })).data).toBe(true);
+    expect((await outsider.client.rpc("shares_space_with", { p_other: owner.id })).data).toBe(false);
+  });
+});
+
+describe("space_invitations RLS", () => {
+  let invId: string;
+  beforeAll(async () => {
+    // 초대 insert 정책이 없으므로 admin으로 시드 (invitee=outsider)
+    const { data } = await admin.from("space_invitations")
+      .insert({ space_id: spaceId, inviter_id: owner.id, invitee_email: outsider.email, role: "viewer" })
+      .select().single();
+    invId = data!.id;
+  });
+  it("오너와 초대받은 본인은 초대를 볼 수 있다", async () => {
+    expect((await owner.client.from("space_invitations").select().eq("id", invId)).data!.length).toBe(1);
+    expect((await outsider.client.from("space_invitations").select().eq("id", invId)).data!.length).toBe(1);
+  });
+  it("무관한 사용자는 초대가 보이지 않는다", async () => {
+    expect((await editor.client.from("space_invitations").select().eq("id", invId)).data!.length).toBe(0);
+  });
+  it("오너는 초대를 삭제할 수 있고, 초대받은 사람은 삭제할 수 없다", async () => {
+    const { error: e1 } = await outsider.client.from("space_invitations").delete().eq("id", invId);
+    // 초대받은 사람은 delete 정책이 없어 0행(에러는 아님) — 여전히 존재해야 한다
+    expect((await admin.from("space_invitations").select().eq("id", invId)).data!.length).toBe(1);
+    const { error: e2 } = await owner.client.from("space_invitations").delete().eq("id", invId);
+    expect(e2).toBeNull();
+    expect((await admin.from("space_invitations").select().eq("id", invId)).data!.length).toBe(0);
+  });
+});
+
 describe("space_members RLS·트리거", () => {
   it("멤버는 같은 스페이스 멤버 목록을 볼 수 있다", async () => {
     const { data } = await editor.client.from("space_members").select().eq("space_id", spaceId);

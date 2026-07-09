@@ -76,7 +76,10 @@ $$;
 create function public.guard_member_role_update() returns trigger
   language plpgsql set search_path = public as $$
 begin
-  if new.role <> old.role and not public.is_space_owner(new.space_id) then
+  if new.space_id <> old.space_id then
+    raise exception 'space_id cannot be changed';
+  end if;
+  if new.role <> old.role and not public.is_space_owner(old.space_id) then
     raise exception 'only the owner can change member role';
   end if;
   return new;
