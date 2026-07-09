@@ -43,6 +43,6 @@ export async function declineInvitation(client: SupabaseClient, invitationId: st
 
 /** 오너가 대기 중 초대를 취소(delete). */
 export async function cancelInvitation(client: SupabaseClient, invitationId: string): Promise<void> {
-  const { error } = await client.from("space_invitations").delete().eq("id", invitationId);
+  const { error } = await client.from("space_invitations").delete().eq("id", invitationId).eq("status", "pending");
   if (error) throw error;
 }

@@ -15,10 +15,11 @@ export async function listMembers(client: SupabaseClient, spaceId: string): Prom
   if (!members || members.length === 0) return [];
 
   const userIds = members.map((m: SpaceMember) => m.user_id);
-  const { data: profiles } = await client
+  const { data: profiles, error: profilesError } = await client
     .from("profiles")
     .select("id, display_name, avatar_url")
     .in("id", userIds);
+  if (profilesError) throw profilesError;
 
   const profileMap = new Map<string, { display_name: string | null; avatar_url: string | null }>();
   for (const p of profiles ?? []) {
