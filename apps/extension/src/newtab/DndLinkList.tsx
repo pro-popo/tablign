@@ -17,7 +17,7 @@ function SortableCard({
   link: Link;
   onOpen: (url: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, patch: { custom_title: string | null; url: string; note: string | null }) => void;
+  onUpdate?: (id: string, patch: { custom_title: string | null; url: string; note: string | null }) => void;
 }) {
   const isPlaceholder = link.id.startsWith("__");
   const { active } = useDndContext();
@@ -45,8 +45,8 @@ export interface DndLinkListProps {
   collectionId: string;
   links: Link[];
   onOpenLink: (url: string) => void;
-  onDeleteLink: (id: string) => void;
-  onUpdateLink: (id: string, patch: { custom_title: string | null; url: string; note: string | null }) => void;
+  onDeleteLink?: (id: string) => void;
+  onUpdateLink?: (id: string, patch: { custom_title: string | null; url: string; note: string | null }) => void;
 }
 
 export function DndLinkList({ collectionId, links, onOpenLink, onDeleteLink, onUpdateLink }: DndLinkListProps) {
@@ -61,7 +61,7 @@ export function DndLinkList({ collectionId, links, onOpenLink, onDeleteLink, onU
           </div>
         ) : (
           links.map((l) => (
-            <SortableCard key={l.id} link={l} onOpen={onOpenLink} onDelete={onDeleteLink} onUpdate={onUpdateLink} />
+            <SortableCard key={l.id} link={l} onOpen={onOpenLink} onDelete={onDeleteLink ?? (() => {})} onUpdate={onUpdateLink} />
           ))
         )}
       </div>

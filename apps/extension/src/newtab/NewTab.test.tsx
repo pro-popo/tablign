@@ -20,6 +20,7 @@ const listSpaces = vi.fn();
 const createSpace = vi.fn();
 const createCollection = vi.fn();
 const listCollections = vi.fn();
+const listMyMemberships = vi.fn();
 const getShareCodeInfo = vi.fn();
 const deleteCollection = vi.fn();
 const importCollectionByCode = vi.fn();
@@ -31,6 +32,7 @@ vi.mock("@tablign/core", async (importOriginal) => {
     createSpace: (...a: unknown[]) => createSpace(...a),
     createCollection: (...a: unknown[]) => createCollection(...a),
     listCollections: (...a: unknown[]) => listCollections(...a),
+    listMyMemberships: (...a: unknown[]) => listMyMemberships(...a),
     listLinks: vi.fn().mockResolvedValue([]),
     getShareCodeInfo: (...a: unknown[]) => getShareCodeInfo(...a),
     deleteCollection: (...a: unknown[]) => deleteCollection(...a),
@@ -44,6 +46,8 @@ beforeEach(() => {
   createCollection.mockReset();
   listCollections.mockReset();
   listCollections.mockResolvedValue([]);
+  listMyMemberships.mockReset();
+  listMyMemberships.mockResolvedValue([]);
   getShareCodeInfo.mockReset();
   deleteCollection.mockReset();
   deleteCollection.mockResolvedValue(undefined);
@@ -139,5 +143,33 @@ describe("NewTab — 컬렉션 삭제", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "삭제" }));
     await waitFor(() => expect(deleteCollection).toHaveBeenCalledTimes(1));
     expect(deleteCollection.mock.calls[0][1]).toBe("c1");
+  });
+});
+
+describe("NewTab — viewer 모드", () => {
+  it("viewer로 연 공유 스페이스에서는 '＋ 컬렉션' 버튼이 숨겨진다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+    ]);
+    listMyMemberships.mockResolvedValue([
+      { space_id: "shared1", user_id: "u1", role: "viewer", position: 1000, created_at: "x" },
+    ]);
+    listCollections.mockResolvedValue([]);
+    renderNewTab();
+    await screen.findAllByText("공유됨");
+    expect(screen.queryByRole("button", { name: /컬렉션$/ })).not.toBeInTheDocument();
+  });
+
+  it("editor로 연 공유 스페이스에서는 '＋ 컬렉션' 버튼이 보인다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+    ]);
+    listMyMemberships.mockResolvedValue([
+      { space_id: "shared1", user_id: "u1", role: "editor", position: 1000, created_at: "x" },
+    ]);
+    listCollections.mockResolvedValue([]);
+    renderNewTab();
+    await screen.findAllByText("공유됨");
+    expect(screen.getByRole("button", { name: /컬렉션$/ })).toBeInTheDocument();
   });
 });

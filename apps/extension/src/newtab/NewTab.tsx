@@ -32,11 +32,11 @@ const collisionDetection: CollisionDetection = (args) => {
 };
 import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, ShareCodeDialog, ImportCodeDialog, ConfirmDialog } from "@tablign/ui";
 import {
-  listSpaces, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
+  listSpaces, listMyMemberships, leaveSpace, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions,
   copyCollection, moveCollectionToSpace,
   createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
-  type Collection, type Link, type Space, type ShareCode,
+  type Collection, type Link, type Space, type ShareCode, type SpaceMember,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
@@ -98,6 +98,7 @@ export function NewTab() {
   // "확인 중"을 별도 상태로 두고 그 동안 렌더를 보류해 깜빡임을 막는다.
   const [authLoaded, setAuthLoaded] = useState(false);
   const [spaces, setSpaces] = useState<Space[]>([]);
+  const [memberships, setMemberships] = useState<SpaceMember[]>([]);
   // 스페이스 목록 로드 완료 여부. 0개(신규 가입·전부 삭제)와 "아직 로딩 중"을 구분해
   // 온보딩 화면과 스켈레톤을 올바르게 가른다.
   const [spacesLoaded, setSpacesLoaded] = useState(false);
@@ -146,8 +147,9 @@ export function NewTab() {
   useEffect(() => {
     if (!session || !spaceLoaded) return;
     (async () => {
-      const sp = await listSpaces(supabase);
+      const [sp, ms] = await Promise.all([listSpaces(supabase), listMyMemberships(supabase)]);
       setSpaces(sp);
+      setMemberships(ms);
       setSpacesLoaded(true);
       const keep = activeSpaceId && sp.some((s) => s.id === activeSpaceId);
       setActiveSpaceId(keep ? activeSpaceId : (sp[0]?.id ?? null));
@@ -198,6 +200,15 @@ export function NewTab() {
     const remaining = spaces.filter((s) => s.id !== id);
     setSpaces(remaining);
     // 활성 스페이스를 지웠다면 남은 첫 스페이스로 전환한다(없으면 비활성).
+    if (activeSpaceId === id) setActiveSpaceId(remaining[0]?.id ?? null);
+  }
+
+  async function handleLeaveSpace(id: string) {
+    if (!session) return;
+    await leaveSpace(supabase, id, session.user.id);
+    const remaining = spaces.filter((s) => s.id !== id);
+    setSpaces(remaining);
+    setMemberships((prev) => prev.filter((m) => m.space_id !== id));
     if (activeSpaceId === id) setActiveSpaceId(remaining[0]?.id ?? null);
   }
 
@@ -584,6 +595,14 @@ export function NewTab() {
 
   const userId = session.user.id;
 
+  const activeSpace = spaces.find((s) => s.id === activeSpaceId) ?? null;
+  const myMembership = memberships.find((m) => m.space_id === activeSpaceId) ?? null;
+  // 오너(멤버십에 없음)면 편집 가능, 멤버면 editor만 편집 가능
+  const canEdit = activeSpace ? (myMembership ? myMembership.role === "editor" : true) : true;
+
+  const ownedSpaces = spaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
+  const sharedSpaces = spaces.filter((s) => memberships.some((m) => m.space_id === s.id));
+
   // 커서 미리보기(오버레이)용 데이터 (탭/링크 카드용. 컬렉션은 별도 칩으로 렌더)
   const preview =
     active?.type === "tab"
@@ -609,13 +628,15 @@ export function NewTab() {
         onToggleRight={toggleRight}
         left={
           <ExtSidebar
-            spaces={spaces}
+            spaces={ownedSpaces}
+            sharedSpaces={sharedSpaces}
             activeSpaceId={activeSpaceId}
             userEmail={session.user.email ?? ""}
             onSelectSpace={(id) => { setActiveSpaceId(id); }}
             onAddSpace={addSpace}
             onRenameSpace={renameSpace}
             onDeleteSpace={deleteSpace}
+            onLeaveSpace={handleLeaveSpace}
             onSignOut={async () => { await supabase.auth.signOut(); }}
             onCollapse={toggleLeft}
             onImportCode={() => setImportOpen(true)}
@@ -637,9 +658,11 @@ export function NewTab() {
               <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
               <span style={{ color: theme.textFaint }}>· {collectionsLoaded ? collections.length : "—"} 컬렉션</span>
             </div>
-            <Button onClick={addCollection}>
-              <Plus size={15} /> 컬렉션
-            </Button>
+            {canEdit && (
+              <Button onClick={addCollection}>
+                <Plus size={15} /> 컬렉션
+              </Button>
+            )}
           </div>
           {(() => {
             const visibleCollections = collections;
@@ -661,22 +684,23 @@ export function NewTab() {
                         autoEditTitle={autoEditId === c.id}
                         titleDragRef={drag.ref}
                         titleDragProps={drag.props}
-                        onRenameCollection={async (id, title) => { await updateCollection(supabase, id, { title }); setAutoEditId(null); loadCollections(); }}
+                        readOnly={!canEdit}
+                        onRenameCollection={canEdit ? async (id, title) => { await updateCollection(supabase, id, { title }); setAutoEditId(null); loadCollections(); } : undefined}
                         onOpenLink={openUrl}
-                        onDeleteLink={async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); }}
-                        onAddLink={async (url) => { await createLink(supabase, { user_id: userId, collection_id: c.id, url }); reloadCollection(c.id); }}
+                        onDeleteLink={canEdit ? async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); } : undefined}
+                        onAddLink={async (url) => { if (canEdit) { await createLink(supabase, { user_id: userId, collection_id: c.id, url }); reloadCollection(c.id); } }}
                         onOpenAll={() => links.forEach((l) => openUrl(l.url))}
-                        onDeleteCollection={() => setDeleteColTarget(c)}
+                        onDeleteCollection={canEdit ? () => setDeleteColTarget(c) : undefined}
                         linksSlot={
                           <DndLinkList
                             collectionId={c.id}
                             links={links}
                             onOpenLink={openUrl}
-                            onDeleteLink={async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); }}
-                            onUpdateLink={async (id, patch) => { await updateLink(supabase, id, patch); reloadCollection(c.id); }}
+                            onDeleteLink={canEdit ? async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); } : undefined}
+                            onUpdateLink={canEdit ? async (id, patch) => { await updateLink(supabase, id, patch); reloadCollection(c.id); } : undefined}
                           />
                         }
-                        moreMenuSlot={
+                        moreMenuSlot={canEdit ? (
                           <CollectionMoreMenu
                             spaces={spaces
                               .filter((s) => s.id !== activeSpaceId)
@@ -685,7 +709,7 @@ export function NewTab() {
                             onCopy={(sid) => copyCollectionTo(c, sid)}
                             onShare={() => openShareDialog(c)}
                           />
-                        }
+                        ) : undefined}
                       />
                     );
                   }}
