@@ -280,6 +280,8 @@ export function NewTab() {
     await importCollectionByCode(supabase, code, targetSpaceId);
     const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
     toast.show(`'${name}' 스페이스로 가져왔어요`);
+    // 대상이 현재 스페이스면 activeSpaceId가 그대로라 재조회 effect가 돌지 않는다 → 직접 재조회
+    if (targetSpaceId === activeSpaceId) loadCollections();
     // 가져온 스페이스로 이동해 결과를 바로 보여준다
     setActiveSpaceId(targetSpaceId);
   }
