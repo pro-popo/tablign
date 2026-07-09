@@ -30,13 +30,14 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, ShareCodeDialog, ImportCodeDialog, ConfirmDialog } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, ShareCodeDialog, ImportCodeDialog, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users } from "@tablign/ui";
 import {
   listSpaces, listMyMemberships, leaveSpace, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions,
   copyCollection, moveCollectionToSpace,
   createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
-  type Collection, type Link, type Space, type ShareCode, type SpaceMember,
+  listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
+  type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
@@ -181,6 +182,37 @@ export function NewTab() {
     })();
   }, [session]);
 
+  useEffect(() => {
+    if (!session) return;
+    listMyInvitations(supabase).then(setMyInvitations).catch(console.error);
+  }, [session]);
+
+  useEffect(() => {
+    if (!activeSpaceId) { setMembers([]); return; }
+    listMembers(supabase, activeSpaceId).then(setMembers).catch(() => setMembers([]));
+  }, [activeSpaceId]);
+
+  async function openMemberDialog() {
+    if (!activeSpaceId) return;
+    setMemberDialogOpen(true);
+    const [ms, invs] = await Promise.all([listMembers(supabase, activeSpaceId), listSpaceInvitations(supabase, activeSpaceId)]);
+    setMembers(ms); setPendingInvites(invs);
+  }
+  async function reloadMembers() {
+    if (!activeSpaceId) return;
+    const [ms, invs] = await Promise.all([listMembers(supabase, activeSpaceId), listSpaceInvitations(supabase, activeSpaceId)]);
+    setMembers(ms); setPendingInvites(invs);
+  }
+  async function handleInvite(email: string, role: "editor" | "viewer") {
+    try { await inviteToSpace(supabase, activeSpaceId!, email, role); toast.show("초대를 보냈어요"); reloadMembers(); }
+    catch (e) { console.error(e); toast.show("초대하지 못했어요. 이미 멤버이거나 잘못된 이메일일 수 있어요."); }
+  }
+  async function refreshAll() {
+    const [sp, ms, invs] = await Promise.all([listSpaces(supabase), listMyMemberships(supabase), listMyInvitations(supabase)]);
+    setSpaces(sp); setMemberships(ms); setMyInvitations(invs);
+    toast.show("스페이스에 참여했어요");
+  }
+
   async function addSpace(name: string) {
     if (!session) return;
     const s = await createSpace(supabase, { user_id: session.user.id, name });
@@ -244,6 +276,12 @@ export function NewTab() {
   const [importOpen, setImportOpen] = useState(false);
   // 컬렉션 삭제 확인 다이얼로그 대상 (스페이스 삭제와 동일한 2단계 확인)
   const [deleteColTarget, setDeleteColTarget] = useState<Collection | null>(null);
+  // 멤버 관리 다이얼로그 상태
+  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+  const [members, setMembers] = useState<MemberWithProfile[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<SpaceInvitation[]>([]);
+  const [myInvitations, setMyInvitations] = useState<InvitationWithSpace[]>([]);
+  const [inviteOpen, setInviteOpen] = useState(false);
   // 경합 가드: 사전조회 응답이 도착할 때 현재 대상과 다르면 버린다.
   const shareTargetRef = useRef<string | null>(null);
 
@@ -599,6 +637,7 @@ export function NewTab() {
   const myMembership = memberships.find((m) => m.space_id === activeSpaceId) ?? null;
   // 오너(멤버십에 없음)면 편집 가능, 멤버면 editor만 편집 가능
   const canEdit = activeSpace ? (myMembership ? myMembership.role === "editor" : true) : true;
+  const isOwner = activeSpace ? activeSpace.user_id === userId : false;
 
   const ownedSpaces = spaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
   const sharedSpaces = spaces.filter((s) => memberships.some((m) => m.space_id === s.id));
@@ -654,15 +693,31 @@ export function NewTab() {
           ) : (
             <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
-              <span style={{ color: theme.textFaint }}>· {collectionsLoaded ? collections.length : "—"} 컬렉션</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
+                <span style={{ color: theme.textFaint }}>· {collectionsLoaded ? collections.length : "—"} 컬렉션</span>
+              </div>
+              <span style={{ position: "relative" }}>
+                <Button variant="outline" onClick={() => setInviteOpen((v) => !v)}>초대 {myInvitations.length > 0 ? `(${myInvitations.length})` : ""}</Button>
+                {inviteOpen && (
+                  <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 60, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: "0 8px 20px rgba(20,30,60,.14)" }}>
+                    <InvitationList
+                      invitations={myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role }))}
+                      onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
+                      onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
+                    />
+                  </div>
+                )}
+              </span>
             </div>
-            {canEdit && (
-              <Button onClick={addCollection}>
-                <Plus size={15} /> 컬렉션
-              </Button>
-            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {members.length > 0 && <MemberAvatars people={members} />}
+              {isOwner && (
+                <Button variant="outline" onClick={openMemberDialog}><Users size={15} /> 멤버</Button>
+              )}
+              {canEdit && <Button onClick={addCollection}><Plus size={15} /> 컬렉션</Button>}
+            </div>
           </div>
           {(() => {
             const visibleCollections = collections;
@@ -786,6 +841,17 @@ export function NewTab() {
           loadCollections();
         }}
         onCancel={() => setDeleteColTarget(null)}
+      />
+      <MemberDialog
+        open={memberDialogOpen}
+        spaceName={activeSpace?.name ?? ""}
+        members={members.map((m) => ({ user_id: m.user_id, role: m.role, display_name: m.display_name, avatar_url: m.avatar_url }))}
+        pendingInvites={pendingInvites.map((i) => ({ id: i.id, invitee_email: i.invitee_email, role: i.role }))}
+        onInvite={handleInvite}
+        onChangeRole={async (uid, role) => { await updateMemberRole(supabase, activeSpaceId!, uid, role); reloadMembers(); }}
+        onRemove={async (uid) => { await removeMember(supabase, activeSpaceId!, uid); reloadMembers(); }}
+        onCancelInvite={async (id) => { await cancelInvitation(supabase, id); reloadMembers(); }}
+        onClose={() => setMemberDialogOpen(false)}
       />
     </DndContext>
   );
