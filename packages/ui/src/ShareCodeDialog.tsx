@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { theme } from "./theme";
+import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
 import { Button } from "./Button";
 
 export interface ShareCodeDialogProps {
@@ -27,9 +28,10 @@ export function ShareCodeDialog({ open, collectionTitle, issued, onIssue, onRevo
 
   return (
     <div role="presentation" onClick={onClose}
-      style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+      style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+      <style>{overlayAnimationCss}</style>
       <div role="dialog" aria-modal="true" aria-label="컬렉션 공유 코드" onClick={(e) => e.stopPropagation()}
-        style={{ width: 340, maxWidth: "calc(100vw - 32px)", background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}>
+        style={{ width: 340, maxWidth: "calc(100vw - 32px)", animation: panelIn, background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>'{collectionTitle}' 공유 코드</div>
         {issued === null ? (
           <>
