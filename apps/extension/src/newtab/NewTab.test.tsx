@@ -21,6 +21,7 @@ const createSpace = vi.fn();
 const createCollection = vi.fn();
 const listCollections = vi.fn();
 const getShareCodeInfo = vi.fn();
+const deleteCollection = vi.fn();
 const importCollectionByCode = vi.fn();
 vi.mock("@tablign/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tablign/core")>();
@@ -32,6 +33,7 @@ vi.mock("@tablign/core", async (importOriginal) => {
     listCollections: (...a: unknown[]) => listCollections(...a),
     listLinks: vi.fn().mockResolvedValue([]),
     getShareCodeInfo: (...a: unknown[]) => getShareCodeInfo(...a),
+    deleteCollection: (...a: unknown[]) => deleteCollection(...a),
     importCollectionByCode: (...a: unknown[]) => importCollectionByCode(...a),
   };
 });
@@ -43,6 +45,8 @@ beforeEach(() => {
   listCollections.mockReset();
   listCollections.mockResolvedValue([]);
   getShareCodeInfo.mockReset();
+  deleteCollection.mockReset();
+  deleteCollection.mockResolvedValue(undefined);
   importCollectionByCode.mockReset();
   // jsdom 전역 chrome 스텁(test-setup)에 tabs API를 보강한다.
   vi.stubGlobal("chrome", {
@@ -112,5 +116,28 @@ describe("NewTab — 코드로 가져오기", () => {
     await waitFor(() => expect(importCollectionByCode).toHaveBeenCalledTimes(1));
     // 같은 스페이스라 activeSpaceId가 안 바뀌어도 보드가 다시 조회되어야 한다
     await waitFor(() => expect(listCollections.mock.calls.length).toBeGreaterThan(callsBefore));
+  });
+});
+
+describe("NewTab — 컬렉션 삭제", () => {
+  it("삭제 버튼은 확인 다이얼로그를 거쳐야 실제 삭제한다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x" },
+    ]);
+    listCollections.mockResolvedValue([
+      { id: "c1", space_id: "s1", user_id: "u1", title: "읽을거리", icon: null, note: null, position: 1000, created_at: "x" },
+    ]);
+    renderNewTab();
+    await screen.findByText("읽을거리");
+
+    fireEvent.click(screen.getByRole("button", { name: "컬렉션 삭제" }));
+    // 아직 삭제 안 됨 — 확인 다이얼로그가 떠야 한다
+    expect(deleteCollection).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("alertdialog", { name: "컬렉션 삭제" });
+    expect(within(dialog).getByText(/읽을거리/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "삭제" }));
+    await waitFor(() => expect(deleteCollection).toHaveBeenCalledTimes(1));
+    expect(deleteCollection.mock.calls[0][1]).toBe("c1");
   });
 });

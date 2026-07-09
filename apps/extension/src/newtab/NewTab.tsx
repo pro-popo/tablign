@@ -30,7 +30,7 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, ShareCodeDialog, ImportCodeDialog } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, ShareCodeDialog, ImportCodeDialog, ConfirmDialog } from "@tablign/ui";
 import {
   listSpaces, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions,
@@ -231,6 +231,8 @@ export function NewTab() {
   const [shareTarget, setShareTarget] = useState<Collection | null>(null);
   const [issuedCode, setIssuedCode] = useState<ShareCode | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  // 컬렉션 삭제 확인 다이얼로그 대상 (스페이스 삭제와 동일한 2단계 확인)
+  const [deleteColTarget, setDeleteColTarget] = useState<Collection | null>(null);
   // 경합 가드: 사전조회 응답이 도착할 때 현재 대상과 다르면 버린다.
   const shareTargetRef = useRef<string | null>(null);
 
@@ -664,7 +666,7 @@ export function NewTab() {
                         onDeleteLink={async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); }}
                         onAddLink={async (url) => { await createLink(supabase, { user_id: userId, collection_id: c.id, url }); reloadCollection(c.id); }}
                         onOpenAll={() => links.forEach((l) => openUrl(l.url))}
-                        onDeleteCollection={async (id) => { await deleteCollection(supabase, id); loadCollections(); }}
+                        onDeleteCollection={() => setDeleteColTarget(c)}
                         linksSlot={
                           <DndLinkList
                             collectionId={c.id}
@@ -745,6 +747,20 @@ export function NewTab() {
         onLookup={(code) => getShareCodeInfo(supabase, code)}
         onImport={importByCode}
         onClose={() => setImportOpen(false)}
+      />
+      <ConfirmDialog
+        open={deleteColTarget !== null}
+        danger
+        title="컬렉션 삭제"
+        message={<>'{deleteColTarget?.title}' 컬렉션을 삭제할까요?<br />담긴 링크가 모두 삭제되며 되돌릴 수 없습니다.</>}
+        confirmLabel="삭제"
+        onConfirm={async () => {
+          if (!deleteColTarget) return;
+          await deleteCollection(supabase, deleteColTarget.id);
+          setDeleteColTarget(null);
+          loadCollections();
+        }}
+        onCancel={() => setDeleteColTarget(null)}
       />
     </DndContext>
   );
