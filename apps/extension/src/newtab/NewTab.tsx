@@ -284,6 +284,16 @@ export function NewTab() {
   const [inviteOpen, setInviteOpen] = useState(false);
   // 경합 가드: 사전조회 응답이 도착할 때 현재 대상과 다르면 버린다.
   const shareTargetRef = useRef<string | null>(null);
+  const inviteRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!inviteOpen) return;
+    function onDown(e: MouseEvent) {
+      if (inviteRef.current && !inviteRef.current.contains(e.target as Node)) setInviteOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [inviteOpen]);
 
   async function openShareDialog(collection: Collection) {
     shareTargetRef.current = collection.id;
@@ -698,7 +708,7 @@ export function NewTab() {
                 <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
                 <span style={{ color: theme.textFaint }}>· {collectionsLoaded ? collections.length : "—"} 컬렉션</span>
               </div>
-              <span style={{ position: "relative" }}>
+              <span ref={inviteRef} style={{ position: "relative" }}>
                 <Button variant="outline" onClick={() => setInviteOpen((v) => !v)}>초대 {myInvitations.length > 0 ? `(${myInvitations.length})` : ""}</Button>
                 {inviteOpen && (
                   <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 60, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: "0 8px 20px rgba(20,30,60,.14)" }}>
@@ -848,9 +858,9 @@ export function NewTab() {
         members={members.map((m) => ({ user_id: m.user_id, role: m.role, display_name: m.display_name, avatar_url: m.avatar_url }))}
         pendingInvites={pendingInvites.map((i) => ({ id: i.id, invitee_email: i.invitee_email, role: i.role }))}
         onInvite={handleInvite}
-        onChangeRole={async (uid, role) => { await updateMemberRole(supabase, activeSpaceId!, uid, role); reloadMembers(); }}
-        onRemove={async (uid) => { await removeMember(supabase, activeSpaceId!, uid); reloadMembers(); }}
-        onCancelInvite={async (id) => { await cancelInvitation(supabase, id); reloadMembers(); }}
+        onChangeRole={async (uid, role) => { try { await updateMemberRole(supabase, activeSpaceId!, uid, role); reloadMembers(); } catch (e) { console.error(e); toast.show("역할을 변경하지 못했어요."); } }}
+        onRemove={async (uid) => { try { await removeMember(supabase, activeSpaceId!, uid); reloadMembers(); } catch (e) { console.error(e); toast.show("멤버를 제거하지 못했어요."); } }}
+        onCancelInvite={async (id) => { try { await cancelInvitation(supabase, id); reloadMembers(); } catch (e) { console.error(e); toast.show("초대를 취소하지 못했어요."); } }}
         onClose={() => setMemberDialogOpen(false)}
       />
     </DndContext>
