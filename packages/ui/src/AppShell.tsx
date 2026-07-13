@@ -35,11 +35,16 @@ function Rail({ onClick, label, icon }: { onClick: () => void; label: string; ic
 
 /**
  * 패널 내용을 열림 폭으로 고정하는 래퍼. aside가 접히며 좁아질 때 내용이 찌그러지지 않고
- * overflow로 잘려 밀려 사라지게 해, "내용이 먼저 확 사라지는" 느낌 없이 부드럽게 접힌다.
+ * overflow로 잘려 나간다. 동시에 폭 축소와 같은 시간으로 페이드아웃해, 내용이 끝에 한 번에
+ * 사라지지 않고 닫히는 내내 함께 사라진다("너무 늦게 사라지는" 느낌 제거).
  */
-function PanelBody({ width, children }: { width: number; children: ReactNode }) {
+function PanelBody({ width, visible, children }: { width: number; visible: boolean; children: ReactNode }) {
   return (
-    <div style={{ width, height: "100%", flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{
+      width, height: "100%", flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden",
+      opacity: visible ? 1 : 0,
+      transition: `opacity ${PANEL_ANIM_MS}ms ease`,
+    }}>
       {children}
     </div>
   );
@@ -139,7 +144,7 @@ export function AppShell({
       <aside style={panel("left", leftOpen, leftWidth)}>
         {leftCollapsed
           ? <Rail onClick={onToggleLeft} label="사이드바 열기" icon={<PanelLeftOpen size={18} color={theme.textFaint} />} />
-          : <PanelBody width={leftWidth}>{left}</PanelBody>}
+          : <PanelBody width={leftWidth} visible={leftOpen}>{left}</PanelBody>}
         {leftOpen && <ResizeHandle side="left" width={leftWidth} onStart={startDrag} onMove={moveDrag} onEnd={endDrag} />}
       </aside>
       <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }} onPointerMove={moveDrag} onPointerUp={endDrag} onLostPointerCapture={endDrag}>
@@ -149,7 +154,7 @@ export function AppShell({
         <aside style={panel("right", rightOpen, rightWidth)}>
           {rightCollapsed
             ? <Rail onClick={onToggleRight} label="열린 탭 열기" icon={<PanelRightOpen size={18} color={theme.textFaint} />} />
-            : <PanelBody width={rightWidth}>{right}</PanelBody>}
+            : <PanelBody width={rightWidth} visible={rightOpen}>{right}</PanelBody>}
           {rightOpen && <ResizeHandle side="right" width={rightWidth} onStart={startDrag} onMove={moveDrag} onEnd={endDrag} />}
         </aside>
       )}
