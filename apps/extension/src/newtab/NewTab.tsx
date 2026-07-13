@@ -130,7 +130,7 @@ export function NewTab() {
   const [active, setActive] = useState<Active>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const [autoEditId, setAutoEditId] = useState<string | null>(null);
-  const { state: panels, toggleLeft, toggleRight } = usePanelState();
+  const { state: panels, toggleLeft, toggleRight, setLeftWidth, setRightWidth } = usePanelState();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   useEffect(() => {
@@ -675,6 +675,10 @@ export function NewTab() {
         rightOpen={panels.right}
         onToggleLeft={toggleLeft}
         onToggleRight={toggleRight}
+        leftWidth={panels.leftWidth}
+        rightWidth={panels.rightWidth}
+        onResizeLeft={setLeftWidth}
+        onResizeRight={setRightWidth}
         left={
           <ExtSidebar
             spaces={ownedSpaces}
