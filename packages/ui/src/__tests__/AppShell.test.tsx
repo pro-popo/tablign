@@ -33,4 +33,64 @@ describe("AppShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "열린 탭 열기" }));
     expect(onToggleRight).toHaveBeenCalled();
   });
+
+  it("패널이 열리면 리사이즈 핸들이 보이고 닫히면 사라진다", () => {
+    const { rerender } = render(
+      <AppShell
+        leftOpen rightOpen
+        onToggleLeft={() => {}} onToggleRight={() => {}}
+        left={<div>LEFT</div>} right={<div>RIGHT</div>}
+      >
+        <div>CENTER</div>
+      </AppShell>,
+    );
+    expect(screen.getByRole("separator", { name: "왼쪽 패널 크기 조절" })).toBeInTheDocument();
+
+    rerender(
+      <AppShell
+        leftOpen={false} rightOpen
+        onToggleLeft={() => {}} onToggleRight={() => {}}
+        left={<div>LEFT</div>} right={<div>RIGHT</div>}
+      >
+        <div>CENTER</div>
+      </AppShell>,
+    );
+    expect(screen.queryByRole("separator", { name: "왼쪽 패널 크기 조절" })).not.toBeInTheDocument();
+  });
+
+  it("left 핸들 드래그가 onResizeLeft를 시작폭+delta로 호출한다", () => {
+    const onResizeLeft = vi.fn();
+    render(
+      <AppShell
+        leftOpen rightOpen
+        onToggleLeft={() => {}} onToggleRight={() => {}}
+        left={<div>LEFT</div>} right={<div>RIGHT</div>}
+        leftWidth={212} onResizeLeft={onResizeLeft}
+      >
+        <div>CENTER</div>
+      </AppShell>,
+    );
+    const handle = screen.getByRole("separator", { name: "왼쪽 패널 크기 조절" });
+    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 130, pointerId: 1 });
+    expect(onResizeLeft).toHaveBeenCalledWith(242);
+  });
+
+  it("right 핸들 드래그는 왼쪽으로 끌면 폭이 늘어난다", () => {
+    const onResizeRight = vi.fn();
+    render(
+      <AppShell
+        leftOpen rightOpen
+        onToggleLeft={() => {}} onToggleRight={() => {}}
+        left={<div>LEFT</div>} right={<div>RIGHT</div>}
+        rightWidth={272} onResizeRight={onResizeRight}
+      >
+        <div>CENTER</div>
+      </AppShell>,
+    );
+    const handle = screen.getByRole("separator", { name: "오른쪽 패널 크기 조절" });
+    fireEvent.pointerDown(handle, { clientX: 200, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 170, pointerId: 1 });
+    expect(onResizeRight).toHaveBeenCalledWith(302);
+  });
 });
