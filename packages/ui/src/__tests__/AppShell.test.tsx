@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { AppShell } from "../AppShell";
+
+// jsdom은 PointerEvent에 clientX/pointerId를 전달하지 않는다. 이 파일 한정으로
+// 좌표를 실은 이벤트를 직접 디스패치하고, 상태 갱신(setDragging)이 있으므로 act로 감싼다.
+function firePointer(target: Element, type: "pointerdown" | "pointermove" | "pointerup", init: { clientX?: number; pointerId?: number } = {}) {
+  const event = new MouseEvent(type, { bubbles: true, cancelable: true });
+  if (init.clientX !== undefined) Object.defineProperty(event, "clientX", { value: init.clientX });
+  if (init.pointerId !== undefined) Object.defineProperty(event, "pointerId", { value: init.pointerId });
+  act(() => { target.dispatchEvent(event); });
+}
 
 describe("AppShell", () => {
   it("left/center/right 슬롯을 렌더한다", () => {
@@ -71,8 +80,8 @@ describe("AppShell", () => {
       </AppShell>,
     );
     const handle = screen.getByRole("separator", { name: "왼쪽 패널 크기 조절" });
-    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 });
-    fireEvent.pointerMove(handle, { clientX: 130, pointerId: 1 });
+    firePointer(handle, "pointerdown", { clientX: 100, pointerId: 1 });
+    firePointer(handle, "pointermove", { clientX: 130, pointerId: 1 });
     expect(onResizeLeft).toHaveBeenCalledWith(242);
   });
 
@@ -89,8 +98,8 @@ describe("AppShell", () => {
       </AppShell>,
     );
     const handle = screen.getByRole("separator", { name: "오른쪽 패널 크기 조절" });
-    fireEvent.pointerDown(handle, { clientX: 200, pointerId: 1 });
-    fireEvent.pointerMove(handle, { clientX: 170, pointerId: 1 });
+    firePointer(handle, "pointerdown", { clientX: 200, pointerId: 1 });
+    firePointer(handle, "pointermove", { clientX: 170, pointerId: 1 });
     expect(onResizeRight).toHaveBeenCalledWith(302);
   });
 });
