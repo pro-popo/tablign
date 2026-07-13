@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PanelLeftOpen, PanelRightOpen } from "./icons";
 import { theme } from "./theme";
 
@@ -19,6 +19,8 @@ export interface AppShellProps {
 const RAIL = 44;
 const DEFAULT_LEFT_WIDTH = 212;
 const DEFAULT_RIGHT_WIDTH = 272;
+// 폭 전환 시간(ms). CSS transition과 Rail 교체 지연을 같은 값으로 묶는다.
+const PANEL_ANIM_MS = 200;
 
 function Rail({ onClick, label, icon }: { onClick: () => void; label: string; icon: ReactNode }) {
   return (
@@ -29,6 +31,33 @@ function Rail({ onClick, label, icon }: { onClick: () => void; label: string; ic
       </button>
     </div>
   );
+}
+
+/**
+ * 패널 내용을 열림 폭으로 고정하는 래퍼. aside가 접히며 좁아질 때 내용이 찌그러지지 않고
+ * overflow로 잘려 밀려 사라지게 해, "내용이 먼저 확 사라지는" 느낌 없이 부드럽게 접힌다.
+ */
+function PanelBody({ width, children }: { width: number; children: ReactNode }) {
+  return (
+    <div style={{ width, height: "100%", flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * 접힘/펼침 상태를 애니메이션과 맞춰 지연시킨다. 펼칠 땐 즉시 내용을 보이고,
+ * 접을 땐 폭 축소 애니메이션(PANEL_ANIM_MS)이 끝난 뒤에야 Rail로 교체한다.
+ * → 접히는 동안 실제 내용이 남아 함께 밀려 사라진다.
+ */
+function useDeferredCollapse(open: boolean): boolean {
+  const [collapsed, setCollapsed] = useState(!open);
+  useEffect(() => {
+    if (open) { setCollapsed(false); return; }
+    const t = setTimeout(() => setCollapsed(true), PANEL_ANIM_MS);
+    return () => clearTimeout(t);
+  }, [open]);
+  return collapsed;
 }
 
 /** 패널 안쪽 경계의 리사이즈 핸들. 평소 투명, 호버 시 accent 라인. */
@@ -70,6 +99,8 @@ export function AppShell({
 }: AppShellProps) {
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{ startX: number; startWidth: number; side: "left" | "right" } | null>(null);
+  const leftCollapsed = useDeferredCollapse(leftOpen);
+  const rightCollapsed = useDeferredCollapse(rightOpen);
 
   function startDrag(e: React.PointerEvent, width: number, side: "left" | "right") {
     // jsdom 등 환경에서 setPointerCapture 미구현할 수 있어 방어.
@@ -93,7 +124,7 @@ export function AppShell({
     width: open ? openWidth : RAIL,
     flexShrink: 0,
     // 드래그 중에는 폭 애니메이션을 꺼 랙을 없앤다(열기/닫기 때만 부드럽게).
-    transition: dragging ? "none" : "width 0.2s ease",
+    transition: dragging ? "none" : `width ${PANEL_ANIM_MS}ms ease`,
     overflow: "hidden",
     background: theme.surface,
     [side === "left" ? "borderRight" : "borderLeft"]: `1px solid ${theme.border}`,
@@ -106,7 +137,9 @@ export function AppShell({
   return (
     <div style={{ display: "flex", height: "100vh", background: theme.bg, color: theme.text, fontFamily: "-apple-system, system-ui, sans-serif", fontSize: 13 }}>
       <aside style={panel("left", leftOpen, leftWidth)}>
-        {leftOpen ? left : <Rail onClick={onToggleLeft} label="사이드바 열기" icon={<PanelLeftOpen size={18} color={theme.textFaint} />} />}
+        {leftCollapsed
+          ? <Rail onClick={onToggleLeft} label="사이드바 열기" icon={<PanelLeftOpen size={18} color={theme.textFaint} />} />
+          : <PanelBody width={leftWidth}>{left}</PanelBody>}
         {leftOpen && <ResizeHandle side="left" width={leftWidth} onStart={startDrag} onMove={moveDrag} onEnd={endDrag} />}
       </aside>
       <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }} onPointerMove={moveDrag} onPointerUp={endDrag} onLostPointerCapture={endDrag}>
@@ -114,7 +147,9 @@ export function AppShell({
       </main>
       {right && (
         <aside style={panel("right", rightOpen, rightWidth)}>
-          {rightOpen ? right : <Rail onClick={onToggleRight} label="열린 탭 열기" icon={<PanelRightOpen size={18} color={theme.textFaint} />} />}
+          {rightCollapsed
+            ? <Rail onClick={onToggleRight} label="열린 탭 열기" icon={<PanelRightOpen size={18} color={theme.textFaint} />} />
+            : <PanelBody width={rightWidth}>{right}</PanelBody>}
           {rightOpen && <ResizeHandle side="right" width={rightWidth} onStart={startDrag} onMove={moveDrag} onEnd={endDrag} />}
         </aside>
       )}

@@ -43,6 +43,44 @@ describe("AppShell", () => {
     expect(onToggleRight).toHaveBeenCalled();
   });
 
+  it("닫을 때 내용이 즉시 사라지지 않고 접힘 애니메이션(200ms) 후 Rail로 바뀐다", () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(
+        <AppShell
+          leftOpen rightOpen
+          onToggleLeft={() => {}} onToggleRight={() => {}}
+          left={<div>LEFT</div>} right={<div>RIGHT</div>}
+        >
+          <div>CENTER</div>
+        </AppShell>,
+      );
+      expect(screen.getByText("LEFT")).toBeInTheDocument();
+
+      act(() => {
+        rerender(
+          <AppShell
+            leftOpen={false} rightOpen
+            onToggleLeft={() => {}} onToggleRight={() => {}}
+            left={<div>LEFT</div>} right={<div>RIGHT</div>}
+          >
+            <div>CENTER</div>
+          </AppShell>,
+        );
+      });
+      // 닫는 순간: 내용은 아직 남아 있고(함께 밀려 사라지도록) Rail 버튼은 아직 없다.
+      expect(screen.getByText("LEFT")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "사이드바 열기" })).not.toBeInTheDocument();
+
+      // 애니메이션 시간이 지나면 Rail로 교체된다.
+      act(() => { vi.advanceTimersByTime(200); });
+      expect(screen.queryByText("LEFT")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "사이드바 열기" })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("패널이 열리면 리사이즈 핸들이 보이고 닫히면 사라진다", () => {
     const { rerender } = render(
       <AppShell
