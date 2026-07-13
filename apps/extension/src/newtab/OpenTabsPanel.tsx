@@ -5,7 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, ChevronRight, Download, X, PanelRightClose, Favicon, theme } from "@tablign/ui";
 import type { WindowGroup, WindowTab } from "../lib/tabs";
 
-function TabRow({ tab, onCloseTab }: { tab: WindowTab; onCloseTab: (id: number) => void }) {
+function TabRow({ tab, windowId, onCloseTab, onActivateTab }: { tab: WindowTab; windowId: number; onCloseTab: (id: number) => void; onActivateTab: (tabId: number, windowId: number) => void }) {
   const [hover, setHover] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `tab-${tab.id}`,
@@ -21,7 +21,9 @@ function TabRow({ tab, onCloseTab }: { tab: WindowTab; onCloseTab: (id: number) 
     cursor: "grab",
   };
   return (
+    // 클릭(=이동 없는 포인터업)이면 해당 탭으로 전환. 5px 넘게 끌면 PointerSensor가 드래그로 가로채므로 onClick은 안 뜬다.
     <div ref={setNodeRef} style={style} {...listeners} {...attributes}
+      onClick={() => tab.id != null && onActivateTab(tab.id, windowId)}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <Favicon url={tab.favIconUrl ?? null} />
       <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -36,13 +38,14 @@ function TabRow({ tab, onCloseTab }: { tab: WindowTab; onCloseTab: (id: number) 
 }
 
 function WindowGroupView({
-  group, index, onSaveWindow, onCloseWindow, onCloseTab,
+  group, index, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab,
 }: {
   group: WindowGroup;
   index: number;
   onSaveWindow: (windowId: number) => void;
   onCloseWindow: (windowId: number) => void;
   onCloseTab: (tabId: number) => void;
+  onActivateTab: (tabId: number, windowId: number) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   // 빈 창에도 드롭할 수 있도록 탭 목록 컨테이너 자체를 droppable로.
@@ -74,7 +77,7 @@ function WindowGroupView({
       {!collapsed && (
         <SortableContext items={group.tabs.map((t) => `tab-${t.id}`)} strategy={verticalListSortingStrategy}>
           <div ref={setNodeRef} style={{ display: "flex", flexDirection: "column", gap: 6, minHeight: 10 }}>
-            {group.tabs.map((t) => <TabRow key={t.id} tab={t} onCloseTab={onCloseTab} />)}
+            {group.tabs.map((t) => <TabRow key={t.id} tab={t} windowId={group.windowId} onCloseTab={onCloseTab} onActivateTab={onActivateTab} />)}
           </div>
         </SortableContext>
       )}
@@ -87,10 +90,11 @@ export interface OpenTabsPanelProps {
   onSaveWindow: (windowId: number) => void;
   onCloseWindow: (windowId: number) => void;
   onCloseTab: (tabId: number) => void;
+  onActivateTab: (tabId: number, windowId: number) => void;
   onCollapse: () => void;
 }
 
-export function OpenTabsPanel({ groups, onSaveWindow, onCloseWindow, onCloseTab, onCollapse }: OpenTabsPanelProps) {
+export function OpenTabsPanel({ groups, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab, onCollapse }: OpenTabsPanelProps) {
   return (
     <>
       <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${theme.border}` }}>
@@ -102,7 +106,7 @@ export function OpenTabsPanel({ groups, onSaveWindow, onCloseWindow, onCloseTab,
       <div style={{ padding: "11px 13px", overflow: "auto" }}>
         {groups.map((g, i) => (
           <WindowGroupView key={g.windowId} group={g} index={i}
-            onSaveWindow={onSaveWindow} onCloseWindow={onCloseWindow} onCloseTab={onCloseTab} />
+            onSaveWindow={onSaveWindow} onCloseWindow={onCloseWindow} onCloseTab={onCloseTab} onActivateTab={onActivateTab} />
         ))}
       </div>
     </>

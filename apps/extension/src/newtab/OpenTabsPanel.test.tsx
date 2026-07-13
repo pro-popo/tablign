@@ -17,7 +17,7 @@ const groups: WindowGroup[] = [
 function renderPanel(props: Partial<React.ComponentProps<typeof OpenTabsPanel>> = {}) {
   return render(
     <DndContext>
-      <OpenTabsPanel groups={groups} onSaveWindow={() => {}} onCloseWindow={() => {}} onCloseTab={() => {}} onCollapse={() => {}} {...props} />
+      <OpenTabsPanel groups={groups} onSaveWindow={() => {}} onCloseWindow={() => {}} onCloseTab={() => {}} onActivateTab={() => {}} onCollapse={() => {}} {...props} />
     </DndContext>,
   );
 }
@@ -42,6 +42,13 @@ describe("OpenTabsPanel", () => {
     renderPanel({ onCloseTab });
     fireEvent.click(screen.getByRole("button", { name: "탭 A 닫기" }));
     expect(onCloseTab).toHaveBeenCalledWith(1);
+  });
+
+  it("탭 행을 클릭하면 onActivateTab(tabId, windowId)를 호출한다", () => {
+    const onActivateTab = vi.fn();
+    renderPanel({ onActivateTab });
+    fireEvent.click(screen.getByText("탭 A"));
+    expect(onActivateTab).toHaveBeenCalledWith(1, 10);
   });
 
   it("창이 여러 개면 각 창의 탭을 모두 보여준다", () => {
