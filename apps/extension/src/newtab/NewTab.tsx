@@ -625,6 +625,14 @@ export function NewTab() {
     setGroups(groupTabsByWindow(tabs as WindowTab[]));
   }
 
+  // 탭 행 클릭: 해당 탭을 활성화하고 그 창을 앞으로 가져온다.
+  async function activateTab(tabId: number, windowId: number) {
+    try {
+      await chrome.tabs.update(tabId, { active: true });
+      await chrome.windows.update(windowId, { focused: true });
+    } catch (e) { console.error(e); }
+  }
+
   async function closeWindow(windowId: number) {
     const group = groups.find((g) => g.windowId === windowId);
     const ids = (group?.tabs ?? []).map((t) => t.id).filter((id): id is number => id != null);
@@ -697,7 +705,7 @@ export function NewTab() {
           />
         }
         right={
-          <OpenTabsPanel groups={groups} onSaveWindow={saveWindow} onCloseWindow={closeWindow} onCloseTab={closeTab} onCollapse={toggleRight} />
+          <OpenTabsPanel groups={groups} onSaveWindow={saveWindow} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab} onCollapse={toggleRight} />
         }
       >
         <Board>
