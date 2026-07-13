@@ -21,7 +21,8 @@ export interface SpaceOnboardingProps {
 export function SpaceOnboarding({ onCreate }: SpaceOnboardingProps) {
   return (
     // 보드 영역(height 100%) 안에서 수직·수평 가운데 정렬. marginBottom은 광학 보정(정중앙은 살짝 낮아 보임).
-    <div style={{ minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+    // boxSizing: 앱에 전역 border-box 리셋이 없어, 명시하지 않으면 padding(16)만큼 100%를 넘겨 스크롤이 생긴다.
+    <div style={{ boxSizing: "border-box", minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div style={{ textAlign: "center", maxWidth: 420, marginBottom: 40 }}>
         <style>{keyframes}</style>
         <Pantomime />
