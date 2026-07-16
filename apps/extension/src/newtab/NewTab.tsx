@@ -746,18 +746,17 @@ export function NewTab() {
               currentUserId={session.user.id}
               onSelectOrg={selectOrg}
               onCreateOrg={createOrg}
+              onSignOut={async () => { await supabase.auth.signOut(); }}
             />
             <ExtSidebar
               spaces={ownedSpaces}
               sharedSpaces={sharedSpaces}
               activeSpaceId={activeSpaceId}
-              userEmail={session.user.email ?? ""}
               onSelectSpace={(id) => { setActiveSpaceId(id); }}
               onAddSpace={addSpace}
               onRenameSpace={renameSpace}
               onDeleteSpace={deleteSpace}
               onLeaveSpace={handleLeaveSpace}
-              onSignOut={async () => { await supabase.auth.signOut(); }}
               onCollapse={toggleLeft}
               onImportCode={() => setImportOpen(true)}
               searchSlot={<ExtSearchBar />}

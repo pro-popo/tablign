@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Organization, OrganizationMember } from "@tablign/core";
-import { LogoMark, Home, Plus, theme } from "@tablign/ui";
+import { LogoMark, Home, Plus, LogOut, theme } from "@tablign/ui";
 
 export interface OrgRailProps {
   organizations: Organization[];
@@ -10,6 +10,7 @@ export interface OrgRailProps {
   currentUserId: string;
   onSelectOrg: (id: string) => void;
   onCreateOrg: () => void;
+  onSignOut: () => void;
 }
 
 const RAIL_REST = 54;
@@ -20,7 +21,7 @@ function initials(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
-export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, onSelectOrg, onCreateOrg }: OrgRailProps) {
+export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, onSelectOrg, onCreateOrg, onSignOut }: OrgRailProps) {
   const [expanded, setExpanded] = useState(false);
   const personal = organizations.find((o) => o.is_personal) ?? null;
   const teams = organizations.filter((o) => !o.is_personal);
@@ -100,7 +101,18 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
       {/* 계정 */}
       <div style={row(false)} title={userEmail}>
         <span style={{ width: 32, height: 32, borderRadius: "50%", background: "#dfe2ea", flex: "none", border: "2px solid #fff", boxShadow: "0 0 0 1px #e2e5ea", boxSizing: "border-box" }} />
-        <span style={{ ...label(false), overflow: "hidden", textOverflow: "ellipsis" }}>{userEmail}</span>
+        <span style={{ ...label(false), overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>{userEmail}</span>
+        {expanded && (
+          <button
+            type="button"
+            title="로그아웃"
+            aria-label="로그아웃"
+            onClick={(e) => { e.stopPropagation(); onSignOut(); }}
+            style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3, flexShrink: 0, color: theme.textFaint }}
+          >
+            <LogOut size={15} color={theme.textFaint} />
+          </button>
+        )}
       </div>
     </div>
   );
