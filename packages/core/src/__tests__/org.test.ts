@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ws from "ws";
+import { listOrganizations, createOrganization, updateOrganization, listMyOrgMemberships } from "../data/organizations";
 
 const envText = readFileSync(resolve(__dirname, "../../.env.test"), "utf8");
 const env = Object.fromEntries(
@@ -137,5 +138,28 @@ describe("조직 스페이스 접근 매트릭스", () => {
   it("member는 조직 스페이스를 만들 수 없다(생성은 owner/admin)", async () => {
     const { error } = await member.client.from("spaces").insert({ user_id: member.id, name: "member 스페이스", org_id: orgId });
     expect(error).not.toBeNull();
+  });
+});
+
+describe("조직 데이터 계층", () => {
+  it("listOrganizations는 내 개인 조직과 팀 조직을 돌려준다", async () => {
+    const orgs = await listOrganizations(owner.client);
+    expect(orgs.some((o) => o.id === orgId)).toBe(true);
+    expect(orgs.some((o) => o.is_personal)).toBe(true);
+  });
+  it("createOrganization으로 팀 조직을 만들 수 있다(is_personal=false)", async () => {
+    const org = await createOrganization(owner.client, { name: "새 팀", owner_id: owner.id });
+    expect(org.name).toBe("새 팀");
+    expect(org.is_personal).toBe(false);
+    await owner.client.from("organizations").delete().eq("id", org.id);
+  });
+  it("listMyOrgMemberships는 내 멤버십을 돌려준다", async () => {
+    const ms = await listMyOrgMemberships(member.client);
+    expect(ms.some((m) => m.org_id === orgId && m.role === "member")).toBe(true);
+  });
+  it("updateOrganization으로 admin이 이름을 바꾼다", async () => {
+    const updated = await updateOrganization(adminMember.client, orgId, { name: "이름 변경" });
+    expect(updated.name).toBe("이름 변경");
+    await updateOrganization(adminMember.client, orgId, { name: "팀 조직" });
   });
 });

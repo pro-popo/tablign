@@ -6,6 +6,7 @@ export interface CreateSpaceInput {
   name: string;
   icon?: string | null;
   position?: number;
+  org_id?: string;
 }
 
 export async function listSpaces(client: SupabaseClient): Promise<Space[]> {

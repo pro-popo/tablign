@@ -8,6 +8,7 @@ export interface Profile {
 export interface Space {
   id: string;
   user_id: string;
+  org_id: string;
   name: string;
   icon: string | null;
   position: number;
@@ -78,4 +79,32 @@ export interface SpaceInvitation {
 export interface InvitationWithSpace extends SpaceInvitation {
   space_name: string;
   inviter_name: string | null;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  owner_id: string;
+  is_personal: boolean;
+  created_at: string;
+}
+
+export interface OrganizationMember {
+  org_id: string;
+  user_id: string;
+  role: "admin" | "member";
+  position: number;
+  created_at: string;
+}
+
+export interface OrganizationInvitation {
+  id: string;
+  org_id: string;
+  inviter_id: string;
+  invitee_email: string;
+  role: "admin" | "member";
+  status: "pending" | "accepted" | "declined";
+  created_at: string;
 }
