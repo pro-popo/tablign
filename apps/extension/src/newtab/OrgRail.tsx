@@ -76,7 +76,8 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
         );
       })()}
 
-      {/* 팀 조직 (멤버십 position 순, personal은 위) */}
+      {/* 팀 조직: listOrganizations 순서(created_at)대로 렌더. 멤버십 position 정렬은 2단계(초대·멤버 흐름) 과제.
+          memberships·currentUserId prop은 2단계 정렬·권한 표시용 전방 배선(현재 본문 미사용). */}
       {teams.map((o, i) => {
         const active = o.id === activeOrgId;
         return (
