@@ -30,6 +30,9 @@ const listSpaceInvitations = vi.fn();
 const inviteToSpace = vi.fn();
 const listMyInvitations = vi.fn();
 const acceptInvitation = vi.fn();
+const listOrganizations = vi.fn();
+const listMyOrgMemberships = vi.fn();
+const createOrganization = vi.fn();
 vi.mock("@tablign/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tablign/core")>();
   return {
@@ -48,6 +51,9 @@ vi.mock("@tablign/core", async (importOriginal) => {
     inviteToSpace: (...a: unknown[]) => inviteToSpace(...a),
     listMyInvitations: (...a: unknown[]) => listMyInvitations(...a),
     acceptInvitation: (...a: unknown[]) => acceptInvitation(...a),
+    listOrganizations: (...a: unknown[]) => listOrganizations(...a),
+    listMyOrgMemberships: (...a: unknown[]) => listMyOrgMemberships(...a),
+    createOrganization: (...a: unknown[]) => createOrganization(...a),
   };
 });
 
@@ -73,10 +79,25 @@ beforeEach(() => {
   listMyInvitations.mockReset();
   listMyInvitations.mockResolvedValue([]);
   acceptInvitation.mockReset();
-  // jsdom 전역 chrome 스텁(test-setup)에 tabs API를 보강한다.
+  listOrganizations.mockReset();
+  listOrganizations.mockResolvedValue([
+    { id: "org-personal", name: "개인", icon: null, color: null, owner_id: "u1", is_personal: true, created_at: "" },
+  ]);
+  listMyOrgMemberships.mockReset();
+  listMyOrgMemberships.mockResolvedValue([]);
+  createOrganization.mockReset();
+  // jsdom 전역 chrome 스텁(test-setup)에 tabs API를 보강하고,
+  // activeSpace와 동일하게 activeOrg도 저장값 없이 {}를 돌려주게 해 컴포넌트의 개인 조직 폴백을 태운다.
   vi.stubGlobal("chrome", {
     ...(globalThis as unknown as { chrome: object }).chrome,
     tabs: { query: vi.fn().mockResolvedValue([]) },
+    storage: {
+      local: {
+        get: (_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({}),
+        set: (_items: unknown, cb?: () => void) => cb?.(),
+        remove: (_keys: unknown, cb?: () => void) => cb?.(),
+      },
+    },
   });
 });
 
@@ -109,7 +130,7 @@ describe("NewTab — 스페이스가 없을 때", () => {
 
   it("스페이스가 있으면 온보딩 대신 보드를 보여준다", async () => {
     listSpaces.mockResolvedValue([
-      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x" },
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
     renderNewTab();
     // 스페이스 이름이 보드 헤더에 나타나고, 온보딩 문구는 없어야 한다.
@@ -121,7 +142,7 @@ describe("NewTab — 스페이스가 없을 때", () => {
 describe("NewTab — 코드로 가져오기", () => {
   it("현재 활성 스페이스로 가져오면 보드를 즉시 재조회한다", async () => {
     listSpaces.mockResolvedValue([
-      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x" },
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
     getShareCodeInfo.mockResolvedValue({ title: "공유 자료", icon: null, link_count: 2, shared_by: "앨리스" });
     importCollectionByCode.mockResolvedValue("new-col-id");
@@ -147,7 +168,7 @@ describe("NewTab — 코드로 가져오기", () => {
 describe("NewTab — 컬렉션 삭제", () => {
   it("삭제 버튼은 확인 다이얼로그를 거쳐야 실제 삭제한다", async () => {
     listSpaces.mockResolvedValue([
-      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x" },
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
     listCollections.mockResolvedValue([
       { id: "c1", space_id: "s1", user_id: "u1", title: "읽을거리", icon: null, note: null, position: 1000, created_at: "x" },
@@ -170,7 +191,7 @@ describe("NewTab — 컬렉션 삭제", () => {
 describe("NewTab — viewer 모드", () => {
   it("viewer로 연 공유 스페이스에서는 '＋ 컬렉션' 버튼이 숨겨진다", async () => {
     listSpaces.mockResolvedValue([
-      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
     listMyMemberships.mockResolvedValue([
       { space_id: "shared1", user_id: "u1", role: "viewer", position: 1000, created_at: "x" },
@@ -183,7 +204,7 @@ describe("NewTab — viewer 모드", () => {
 
   it("editor로 연 공유 스페이스에서는 '＋ 컬렉션' 버튼이 보인다", async () => {
     listSpaces.mockResolvedValue([
-      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
     listMyMemberships.mockResolvedValue([
       { space_id: "shared1", user_id: "u1", role: "editor", position: 1000, created_at: "x" },
@@ -196,7 +217,7 @@ describe("NewTab — viewer 모드", () => {
 
   it("viewer로 연 공유 스페이스에서 링크 삭제 버튼이 렌더되지 않는다", async () => {
     listSpaces.mockResolvedValue([
-      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
     listMyMemberships.mockResolvedValue([
       { space_id: "shared1", user_id: "u1", role: "viewer", position: 1000, created_at: "x" },
@@ -214,7 +235,7 @@ describe("NewTab — viewer 모드", () => {
 
   it("editor로 연 공유 스페이스에서는 링크 삭제 버튼이 렌더된다", async () => {
     listSpaces.mockResolvedValue([
-      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x" },
+      { id: "shared1", user_id: "owner-x", name: "공유됨", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
     listMyMemberships.mockResolvedValue([
       { space_id: "shared1", user_id: "u1", role: "editor", position: 1000, created_at: "x" },
@@ -233,7 +254,7 @@ describe("NewTab — viewer 모드", () => {
 
 describe("NewTab — 멤버 관리·초대 알림", () => {
   it("오너 스페이스에서 멤버 버튼을 누르면 멤버 다이얼로그가 열린다", async () => {
-    listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x" }]);
+    listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" }]);
     listMyMemberships.mockResolvedValue([]); // 내가 오너
     listCollections.mockResolvedValue([]);
     listMembers.mockResolvedValue([]);
@@ -245,7 +266,7 @@ describe("NewTab — 멤버 관리·초대 알림", () => {
   });
 
   it("받은 초대가 있으면 알림 배지가 보이고 수락하면 acceptInvitation을 호출한다", async () => {
-    listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x" }]);
+    listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" }]);
     listMyMemberships.mockResolvedValue([]);
     listCollections.mockResolvedValue([]);
     listMyInvitations.mockResolvedValue([{ id: "inv1", space_id: "s9", inviter_id: "o9", invitee_email: "u1@test.local", role: "viewer", status: "pending", created_at: "x", space_name: "초대된 스페이스", inviter_name: "앨리스" }]);
