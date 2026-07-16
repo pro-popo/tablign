@@ -141,6 +141,27 @@ describe("조직 스페이스 접근 매트릭스", () => {
   });
 });
 
+describe("organizations 소유권 가드", () => {
+  it("admin은 owner_id를 바꿀 수 없다(트리거 차단)", async () => {
+    const { error } = await adminMember.client.from("organizations")
+      .update({ owner_id: adminMember.id }).eq("id", orgId);
+    expect(error).not.toBeNull();
+    expect((await admin.from("organizations").select("owner_id").eq("id", orgId).single()).data!.owner_id).toBe(owner.id);
+  });
+  it("owner도 is_personal을 바꿀 수 없다(트리거 차단)", async () => {
+    const { error } = await owner.client.from("organizations")
+      .update({ is_personal: true }).eq("id", orgId);
+    expect(error).not.toBeNull();
+    expect((await admin.from("organizations").select("is_personal").eq("id", orgId).single()).data!.is_personal).toBe(false);
+  });
+  it("admin은 여전히 name을 바꿀 수 있다(가드가 과차단하지 않는다)", async () => {
+    const { error } = await adminMember.client.from("organizations").update({ name: "가드 확인용" }).eq("id", orgId);
+    expect(error).toBeNull();
+    expect((await admin.from("organizations").select("name").eq("id", orgId).single()).data!.name).toBe("가드 확인용");
+    await adminMember.client.from("organizations").update({ name: "팀 조직" }).eq("id", orgId); // 복구
+  });
+});
+
 describe("조직 데이터 계층", () => {
   it("listOrganizations는 내 개인 조직과 팀 조직을 돌려준다", async () => {
     const orgs = await listOrganizations(owner.client);
