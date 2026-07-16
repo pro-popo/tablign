@@ -37,14 +37,18 @@ import {
   copyCollection, moveCollectionToSpace,
   createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
+  listOrganizations, createOrganization, listMyOrgMemberships,
   type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
+  type Organization, type OrganizationMember,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
 import { usePanelState } from "../lib/usePanelState";
 import { useActiveSpace } from "../lib/useActiveSpace";
+import { useActiveOrg } from "../lib/useActiveOrg";
 import { OpenTabsPanel } from "./OpenTabsPanel";
 import { ExtSidebar } from "./ExtSidebar";
+import { OrgRail } from "./OrgRail";
 import { ExtSearchBar } from "./ExtSearchBar";
 import { DndLinkList } from "./DndLinkList";
 import { AuthScreen } from "./AuthScreen";
@@ -100,6 +104,9 @@ export function NewTab() {
   const [authLoaded, setAuthLoaded] = useState(false);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [memberships, setMemberships] = useState<SpaceMember[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [orgMemberships, setOrgMemberships] = useState<OrganizationMember[]>([]);
+  const { activeOrgId, setActiveOrgId, loaded: orgLoaded } = useActiveOrg();
   // 스페이스 목록 로드 완료 여부. 0개(신규 가입·전부 삭제)와 "아직 로딩 중"을 구분해
   // 온보딩 화면과 스켈레톤을 올바르게 가른다.
   const [spacesLoaded, setSpacesLoaded] = useState(false);
@@ -142,6 +149,20 @@ export function NewTab() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // 조직 로드: 활성 조직을 chrome.storage에서 읽은 뒤 실행. 저장값이 없으면 개인 조직으로 폴백.
+  useEffect(() => {
+    if (!session || !orgLoaded) return;
+    (async () => {
+      const [orgs, oms] = await Promise.all([listOrganizations(supabase), listMyOrgMemberships(supabase)]);
+      setOrganizations(orgs);
+      setOrgMemberships(oms);
+      const keep = activeOrgId && orgs.some((o) => o.id === activeOrgId);
+      const personal = orgs.find((o) => o.is_personal);
+      setActiveOrgId(keep ? activeOrgId : (personal?.id ?? orgs[0]?.id ?? null));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, orgLoaded]);
+
   // 스페이스 로드
   // chrome.storage에서 활성 스페이스를 읽은 뒤(spaceLoaded) 실행해, 저장된 스페이스가
   // 아직 존재하면 그대로 유지하고, 없거나 삭제됐으면 첫 스페이스로 폴백한다.
@@ -152,8 +173,9 @@ export function NewTab() {
       setSpaces(sp);
       setMemberships(ms);
       setSpacesLoaded(true);
+      const first = sp.find((s) => s.org_id === (activeOrgId ?? "")) ?? sp[0];
       const keep = activeSpaceId && sp.some((s) => s.id === activeSpaceId);
-      setActiveSpaceId(keep ? activeSpaceId : (sp[0]?.id ?? null));
+      setActiveSpaceId(keep ? activeSpaceId : (first?.id ?? null));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, spaceLoaded]);
@@ -215,11 +237,25 @@ export function NewTab() {
 
   async function addSpace(name: string) {
     if (!session) return;
-    const s = await createSpace(supabase, { user_id: session.user.id, name });
+    const s = await createSpace(supabase, { user_id: session.user.id, name, org_id: activeOrgId ?? undefined });
     // 새 스페이스에는 기본 컬렉션을 하나 만들어 둔다.
     await createCollection(supabase, { user_id: session.user.id, space_id: s.id, title: "새 컬렉션" });
     setSpaces((prev) => [...prev, s]);
     setActiveSpaceId(s.id);
+  }
+
+  function selectOrg(id: string) {
+    setActiveOrgId(id);
+    const firstInOrg = spaces.find((s) => s.org_id === id) ?? null;
+    setActiveSpaceId(firstInOrg?.id ?? null);
+  }
+
+  async function createOrg() {
+    if (!session) return;
+    const org = await createOrganization(supabase, { name: "새 조직", owner_id: session.user.id });
+    setOrganizations((prev) => [...prev, org]);
+    setActiveOrgId(org.id);
+    setActiveSpaceId(null);
   }
 
   async function renameSpace(id: string, name: string) {
@@ -657,8 +693,9 @@ export function NewTab() {
   const canEdit = activeSpace ? (myMembership ? myMembership.role === "editor" : true) : true;
   const isOwner = activeSpace ? activeSpace.user_id === userId : false;
 
-  const ownedSpaces = spaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
-  const sharedSpaces = spaces.filter((s) => memberships.some((m) => m.space_id === s.id));
+  const orgSpaces = spaces.filter((s) => s.org_id === activeOrgId);
+  const ownedSpaces = orgSpaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
+  const sharedSpaces = orgSpaces.filter((s) => memberships.some((m) => m.space_id === s.id));
 
   // 커서 미리보기(오버레이)용 데이터 (탭/링크 카드용. 컬렉션은 별도 칩으로 렌더)
   const preview =
@@ -688,21 +725,32 @@ export function NewTab() {
         onResizeLeft={setLeftWidth}
         onResizeRight={setRightWidth}
         left={
-          <ExtSidebar
-            spaces={ownedSpaces}
-            sharedSpaces={sharedSpaces}
-            activeSpaceId={activeSpaceId}
-            userEmail={session.user.email ?? ""}
-            onSelectSpace={(id) => { setActiveSpaceId(id); }}
-            onAddSpace={addSpace}
-            onRenameSpace={renameSpace}
-            onDeleteSpace={deleteSpace}
-            onLeaveSpace={handleLeaveSpace}
-            onSignOut={async () => { await supabase.auth.signOut(); }}
-            onCollapse={toggleLeft}
-            onImportCode={() => setImportOpen(true)}
-            searchSlot={<ExtSearchBar />}
-          />
+          <div style={{ position: "relative", height: "100%", paddingLeft: 54, boxSizing: "border-box" }}>
+            <OrgRail
+              organizations={organizations}
+              memberships={orgMemberships}
+              activeOrgId={activeOrgId}
+              userEmail={session.user.email ?? ""}
+              currentUserId={session.user.id}
+              onSelectOrg={selectOrg}
+              onCreateOrg={createOrg}
+            />
+            <ExtSidebar
+              spaces={ownedSpaces}
+              sharedSpaces={sharedSpaces}
+              activeSpaceId={activeSpaceId}
+              userEmail={session.user.email ?? ""}
+              onSelectSpace={(id) => { setActiveSpaceId(id); }}
+              onAddSpace={addSpace}
+              onRenameSpace={renameSpace}
+              onDeleteSpace={deleteSpace}
+              onLeaveSpace={handleLeaveSpace}
+              onSignOut={async () => { await supabase.auth.signOut(); }}
+              onCollapse={toggleLeft}
+              onImportCode={() => setImportOpen(true)}
+              searchSlot={<ExtSearchBar />}
+            />
+          </div>
         }
         right={
           <OpenTabsPanel groups={groups} onSaveWindow={saveWindow} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab} onCollapse={toggleRight} />
