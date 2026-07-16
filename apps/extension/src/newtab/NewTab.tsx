@@ -173,12 +173,24 @@ export function NewTab() {
       setSpaces(sp);
       setMemberships(ms);
       setSpacesLoaded(true);
-      const first = sp.find((s) => s.org_id === (activeOrgId ?? "")) ?? sp[0];
+      // 다른 조직의 스페이스로 폴백하지 않도록, 활성 조직 내 첫 스페이스로만 대체한다(없으면 null).
+      const first = sp.find((s) => s.org_id === (activeOrgId ?? "")) ?? null;
       const keep = activeSpaceId && sp.some((s) => s.id === activeSpaceId);
       setActiveSpaceId(keep ? activeSpaceId : (first?.id ?? null));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, spaceLoaded]);
+
+  // 정합성 보정: 조직 로드가 activeOrgId를 교정(삭제·탈퇴된 조직 → 개인 조직 폴백)해도
+  // activeSpaceId는 자동으로 재검증되지 않는다. 조직·스페이스가 모두 로드된 뒤,
+  // 활성 스페이스가 활성 조직에 속하지 않으면(또는 더 이상 존재하지 않으면) 그 조직의 첫 스페이스로 되돌린다.
+  useEffect(() => {
+    if (!orgLoaded || !spacesLoaded || !activeOrgId) return;
+    if (activeSpaceId && spaces.some((s) => s.id === activeSpaceId && s.org_id === activeOrgId)) return;
+    const fallback = spaces.find((s) => s.org_id === activeOrgId)?.id ?? null;
+    if (fallback !== activeSpaceId) setActiveSpaceId(fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgLoaded, spacesLoaded, activeOrgId, activeSpaceId, spaces]);
 
   async function loadCollections() {
     if (!activeSpaceId) { setCollections([]); setLinksByCol({}); setCollectionsLoaded(true); return; }
@@ -387,7 +399,7 @@ export function NewTab() {
     if (!session) return;
     let spaceId = activeSpaceId;
     if (!spaceId) {
-      const s = await createSpace(supabase, { user_id: session.user.id, name: "개인" });
+      const s = await createSpace(supabase, { user_id: session.user.id, name: "개인", org_id: activeOrgId ?? undefined });
       setSpaces((prev) => [...prev, s]);
       setActiveSpaceId(s.id);
       spaceId = s.id;
@@ -641,7 +653,7 @@ export function NewTab() {
     if (!session) return;
     let spaceId = activeSpaceId;
     if (!spaceId) {
-      const s = await createSpace(supabase, { user_id: session.user.id, name: "개인" });
+      const s = await createSpace(supabase, { user_id: session.user.id, name: "개인", org_id: activeOrgId ?? undefined });
       setSpaces((prev) => [...prev, s]);
       setActiveSpaceId(s.id);
       spaceId = s.id;
