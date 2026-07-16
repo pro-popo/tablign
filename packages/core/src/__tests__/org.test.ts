@@ -84,3 +84,22 @@ describe("organizations RLS", () => {
     expect(error).not.toBeNull();
   });
 });
+
+describe("spaces.org_id 백필·트리거", () => {
+  it("신규 가입 유저는 개인 조직을 자동으로 갖는다", async () => {
+    const { data } = await admin.from("organizations").select().eq("owner_id", owner.id).eq("is_personal", true);
+    expect(data!.length).toBe(1);
+    expect(data![0].name).toBe("개인");
+  });
+  it("org_id 없이 만든 스페이스는 개인 조직으로 자동 소속된다", async () => {
+    const { data: s, error } = await owner.client.from("spaces").insert({ user_id: owner.id, name: "자동 org" }).select().single();
+    expect(error).toBeNull();
+    const { data: personal } = await admin.from("organizations").select("id").eq("owner_id", owner.id).eq("is_personal", true).single();
+    expect(s!.org_id).toBe(personal!.id);
+  });
+  it("org_id를 명시하면 그 조직에 소속된다", async () => {
+    const { data: s, error } = await owner.client.from("spaces").insert({ user_id: owner.id, name: "팀 스페이스", org_id: orgId }).select().single();
+    expect(error).toBeNull();
+    expect(s!.org_id).toBe(orgId);
+  });
+});
