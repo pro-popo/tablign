@@ -103,3 +103,39 @@ describe("spaces.org_id 백필·트리거", () => {
     expect(s!.org_id).toBe(orgId);
   });
 });
+
+describe("조직 스페이스 접근 매트릭스", () => {
+  let teamSpaceId: string;
+  let colId: string;
+  beforeAll(async () => {
+    await admin.from("organization_members").upsert([
+      { org_id: orgId, user_id: adminMember.id, role: "admin" },
+      { org_id: orgId, user_id: member.id, role: "member" },
+    ]);
+    const { data: s } = await owner.client.from("spaces").insert({ user_id: owner.id, name: "조직 스페이스", org_id: orgId }).select().single();
+    teamSpaceId = s!.id;
+    const { data: c } = await owner.client.from("collections").insert({ user_id: owner.id, space_id: teamSpaceId, title: "조직 컬렉션" }).select().single();
+    colId = c!.id;
+  });
+  it("조직 멤버는 조직 스페이스·컬렉션을 본다", async () => {
+    for (const u of [adminMember, member]) {
+      expect((await u.client.from("spaces").select().eq("id", teamSpaceId)).data!.length).toBe(1);
+      expect((await u.client.from("collections").select().eq("id", colId)).data!.length).toBe(1);
+    }
+  });
+  it("비멤버는 조직 스페이스가 안 보인다", async () => {
+    expect((await outsider.client.from("spaces").select().eq("id", teamSpaceId)).data!.length).toBe(0);
+  });
+  it("admin은 조직 스페이스에 컬렉션을 만들 수 있다", async () => {
+    const { error } = await adminMember.client.from("collections").insert({ user_id: adminMember.id, space_id: teamSpaceId, title: "admin 컬렉션" });
+    expect(error).toBeNull();
+  });
+  it("member는 조직 스페이스에 컬렉션을 못 만든다(읽기 전용)", async () => {
+    const { error } = await member.client.from("collections").insert({ user_id: member.id, space_id: teamSpaceId, title: "member 시도" });
+    expect(error).not.toBeNull();
+  });
+  it("member는 조직 스페이스를 만들 수 없다(생성은 owner/admin)", async () => {
+    const { error } = await member.client.from("spaces").insert({ user_id: member.id, name: "member 스페이스", org_id: orgId });
+    expect(error).not.toBeNull();
+  });
+});
