@@ -3,6 +3,7 @@ export {
   Hash,
   Tag,
   Plus,
+  Home,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
