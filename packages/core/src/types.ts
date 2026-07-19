@@ -108,3 +108,13 @@ export interface OrganizationInvitation {
   status: "pending" | "accepted" | "declined";
   created_at: string;
 }
+
+export interface OrgMemberWithProfile extends OrganizationMember {
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface OrgInvitationWithOrg extends OrganizationInvitation {
+  org_name: string;
+  inviter_name: string | null;
+}

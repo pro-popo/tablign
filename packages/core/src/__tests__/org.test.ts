@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ws from "ws";
 import { listOrganizations, createOrganization, updateOrganization, listMyOrgMemberships } from "../data/organizations";
+import { listOrgMembers, updateOrgMemberRole } from "../data/org-members";
+import { inviteToOrg, listOrgInvitations, listMyOrgInvitations, acceptOrgInvitation, cancelOrgInvitation } from "../data/org-invitations";
 
 const envText = readFileSync(resolve(__dirname, "../../.env.test"), "utf8");
 const env = Object.fromEntries(
@@ -221,5 +223,40 @@ describe("조직 초대 RPC", () => {
     const { error } = await outsider.client.rpc("accept_org_invitation", { p_invitation_id: id });
     expect(error).not.toBeNull();
     await admin.from("organization_invitations").delete().eq("id", id);
+  });
+});
+
+describe("조직 멤버·초대 데이터 계층", () => {
+  it("listOrgMembers는 프로필과 함께 멤버를 돌려준다", async () => {
+    await admin.from("organization_members").upsert([
+      { org_id: orgId, user_id: adminMember.id, role: "admin" },
+      { org_id: orgId, user_id: member.id, role: "member" },
+    ]);
+    const members = await listOrgMembers(owner.client, orgId);
+    expect(members.length).toBeGreaterThanOrEqual(2);
+    expect(members[0]).toHaveProperty("display_name");
+    expect(members[0]).toHaveProperty("role");
+  });
+  it("owner는 멤버 role을 바꿀 수 있다", async () => {
+    await updateOrgMemberRole(owner.client, orgId, member.id, "admin");
+    const { data } = await admin.from("organization_members").select("role").eq("org_id", orgId).eq("user_id", member.id).single();
+    expect(data!.role).toBe("admin");
+    await updateOrgMemberRole(owner.client, orgId, member.id, "member");
+  });
+  it("초대 → 내 초대 목록 → 수락 전체 흐름", async () => {
+    const id = await inviteToOrg(owner.client, orgId, outsider.email, "member");
+    const mine = await listMyOrgInvitations(outsider.client);
+    expect(mine.some((i) => i.id === id)).toBe(true);
+    expect(mine.find((i) => i.id === id)!.org_name).toBe("팀 조직");
+    await acceptOrgInvitation(outsider.client, id);
+    const { data } = await admin.from("organization_members").select().eq("org_id", orgId).eq("user_id", outsider.id);
+    expect(data!.length).toBe(1);
+    await admin.from("organization_members").delete().eq("org_id", orgId).eq("user_id", outsider.id);
+  });
+  it("owner는 대기 중 초대를 취소할 수 있다", async () => {
+    const id = await inviteToOrg(owner.client, orgId, "cancel-me@test.local", "member");
+    await cancelOrgInvitation(owner.client, id);
+    const list = await listOrgInvitations(owner.client, orgId);
+    expect(list.some((i) => i.id === id)).toBe(false);
   });
 });
