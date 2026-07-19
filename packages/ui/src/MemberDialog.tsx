@@ -4,26 +4,26 @@ import { Button } from "./Button";
 import { X } from "./icons";
 import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
 
-export interface MemberRow { user_id: string; role: "editor" | "viewer"; display_name: string | null; avatar_url: string | null }
-export interface InviteRow { id: string; invitee_email: string; role: "editor" | "viewer" }
+export interface MemberRow { user_id: string; role: string; display_name: string | null; avatar_url: string | null }
+export interface InviteRow { id: string; invitee_email: string; role: string }
+export interface RoleOption { value: string; label: string }
 export interface MemberDialogProps {
   open: boolean;
   spaceName: string;
+  roles: RoleOption[];
   members: MemberRow[];
   pendingInvites: InviteRow[];
-  onInvite: (email: string, role: "editor" | "viewer") => void;
-  onChangeRole: (userId: string, role: "editor" | "viewer") => void;
+  onInvite: (email: string, role: string) => void;
+  onChangeRole: (userId: string, role: string) => void;
   onRemove: (userId: string) => void;
   onCancelInvite: (id: string) => void;
   onClose: () => void;
 }
 
-const ROLE_LABEL: Record<"editor" | "viewer", string> = { editor: "편집자", viewer: "뷰어" };
-
-export function MemberDialog({ open, spaceName, members, pendingInvites, onInvite, onChangeRole, onRemove, onCancelInvite, onClose }: MemberDialogProps) {
+export function MemberDialog({ open, spaceName, roles, members, pendingInvites, onInvite, onChangeRole, onRemove, onCancelInvite, onClose }: MemberDialogProps) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"editor" | "viewer">("editor");
-  useEffect(() => { if (!open) { setEmail(""); setRole("editor"); } }, [open]);
+  const [role, setRole] = useState<string>(roles[0]?.value ?? "");
+  useEffect(() => { if (!open) { setEmail(""); setRole(roles[0]?.value ?? ""); } }, [open, roles]);
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
@@ -31,6 +31,10 @@ export function MemberDialog({ open, spaceName, members, pendingInvites, onInvit
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
   if (!open) return null;
+
+  function roleLabel(value: string) {
+    return roles.find((r) => r.value === value)?.label ?? value;
+  }
 
   function submitInvite() {
     const v = email.trim();
@@ -52,10 +56,11 @@ export function MemberDialog({ open, spaceName, members, pendingInvites, onInvit
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="초대할 이메일"
             onKeyDown={(e) => { if (e.key === "Enter") submitInvite(); }}
             style={{ flex: 1, padding: "8px 10px", border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
-          <select value={role} onChange={(e) => setRole(e.target.value as "editor" | "viewer")}
+          <select value={role} onChange={(e) => setRole(e.target.value)}
             aria-label="역할" style={{ border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 13, padding: "0 6px" }}>
-            <option value="editor">편집자</option>
-            <option value="viewer">뷰어</option>
+            {roles.map((r) => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
           </select>
           <Button onClick={submitInvite}>초대</Button>
         </div>
@@ -68,10 +73,11 @@ export function MemberDialog({ open, spaceName, members, pendingInvites, onInvit
                 {!m.avatar_url && (m.display_name?.[0] ?? "?")}
               </div>
               <span style={{ flex: 1, fontSize: 13, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.display_name ?? "이름 없음"}</span>
-              <select value={m.role} onChange={(e) => onChangeRole(m.user_id, e.target.value as "editor" | "viewer")}
+              <select value={m.role} onChange={(e) => onChangeRole(m.user_id, e.target.value)}
                 aria-label="멤버 역할" style={{ border: `1px solid ${theme.border}`, borderRadius: 7, fontSize: 12, padding: "2px 4px" }}>
-                <option value="editor">편집자</option>
-                <option value="viewer">뷰어</option>
+                {roles.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
               </select>
               <button type="button" title="멤버 제거" aria-label="멤버 제거" onClick={() => onRemove(m.user_id)}
                 style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3 }}>
@@ -83,7 +89,7 @@ export function MemberDialog({ open, spaceName, members, pendingInvites, onInvit
             <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 8, opacity: 0.7 }}>
               <div style={{ width: 26, height: 26, borderRadius: "50%", background: theme.surface2, flexShrink: 0 }} />
               <span style={{ flex: 1, fontSize: 13, color: theme.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.invitee_email}</span>
-              <span style={{ fontSize: 11, color: theme.textFaint }}>{`${ROLE_LABEL[inv.role]} · 대기 중`}</span>
+              <span style={{ fontSize: 11, color: theme.textFaint }}>{`${roleLabel(inv.role)} · 대기 중`}</span>
               <button type="button" title="초대 취소" aria-label="초대 취소" onClick={() => onCancelInvite(inv.id)}
                 style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3 }}>
                 <X size={14} color={theme.textFaint} />

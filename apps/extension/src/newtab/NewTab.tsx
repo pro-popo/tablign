@@ -237,8 +237,8 @@ export function NewTab() {
     const [ms, invs] = await Promise.all([listMembers(supabase, activeSpaceId), listSpaceInvitations(supabase, activeSpaceId)]);
     setMembers(ms); setPendingInvites(invs);
   }
-  async function handleInvite(email: string, role: "editor" | "viewer") {
-    try { await inviteToSpace(supabase, activeSpaceId!, email, role); toast.show("초대를 보냈어요"); reloadMembers(); }
+  async function handleInvite(email: string, role: string) {
+    try { await inviteToSpace(supabase, activeSpaceId!, email, role as "editor" | "viewer"); toast.show("초대를 보냈어요"); reloadMembers(); }
     catch (e) { console.error(e); toast.show("초대하지 못했어요. 이미 멤버이거나 잘못된 이메일일 수 있어요."); }
   }
   async function refreshAll() {
@@ -785,6 +785,7 @@ export function NewTab() {
                   <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 60, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: "0 8px 20px rgba(20,30,60,.14)" }}>
                     <InvitationList
                       invitations={myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role }))}
+                      roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
                       onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
                       onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
                     />
@@ -926,10 +927,11 @@ export function NewTab() {
       <MemberDialog
         open={memberDialogOpen}
         spaceName={activeSpace?.name ?? ""}
+        roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
         members={members.map((m) => ({ user_id: m.user_id, role: m.role, display_name: m.display_name, avatar_url: m.avatar_url }))}
         pendingInvites={pendingInvites.map((i) => ({ id: i.id, invitee_email: i.invitee_email, role: i.role }))}
         onInvite={handleInvite}
-        onChangeRole={async (uid, role) => { try { await updateMemberRole(supabase, activeSpaceId!, uid, role); reloadMembers(); } catch (e) { console.error(e); toast.show("역할을 변경하지 못했어요."); } }}
+        onChangeRole={async (uid, role) => { try { await updateMemberRole(supabase, activeSpaceId!, uid, role as "editor" | "viewer"); reloadMembers(); } catch (e) { console.error(e); toast.show("역할을 변경하지 못했어요."); } }}
         onRemove={async (uid) => { try { await removeMember(supabase, activeSpaceId!, uid); reloadMembers(); } catch (e) { console.error(e); toast.show("멤버를 제거하지 못했어요."); } }}
         onCancelInvite={async (id) => { try { await cancelInvitation(supabase, id); reloadMembers(); } catch (e) { console.error(e); toast.show("초대를 취소하지 못했어요."); } }}
         onClose={() => setMemberDialogOpen(false)}
