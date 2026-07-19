@@ -184,3 +184,42 @@ describe("조직 데이터 계층", () => {
     await updateOrganization(adminMember.client, orgId, { name: "팀 조직" });
   });
 });
+
+describe("조직 초대 RPC", () => {
+  it("owner는 이메일로 초대할 수 있고 이메일은 소문자 정규화된다", async () => {
+    const { data, error } = await owner.client.rpc("invite_to_org", { p_org_id: orgId, p_email: outsider.email.toUpperCase(), p_role: "member" });
+    expect(error).toBeNull();
+    const { data: inv } = await admin.from("organization_invitations").select().eq("id", data);
+    expect(inv![0].invitee_email).toBe(outsider.email.toLowerCase());
+  });
+  it("admin도 초대할 수 있다", async () => {
+    const { error } = await adminMember.client.rpc("invite_to_org", { p_org_id: orgId, p_email: "x-admininvite@test.local", p_role: "member" });
+    expect(error).toBeNull();
+    await admin.from("organization_invitations").delete().eq("org_id", orgId).eq("invitee_email", "x-admininvite@test.local");
+  });
+  it("member는 초대할 수 없다", async () => {
+    const { error } = await member.client.rpc("invite_to_org", { p_org_id: orgId, p_email: "y@test.local", p_role: "member" });
+    expect(error).not.toBeNull();
+  });
+  it("이미 멤버인 사람은 초대할 수 없다", async () => {
+    const { error } = await owner.client.rpc("invite_to_org", { p_org_id: orgId, p_email: member.email, p_role: "member" });
+    expect(error).not.toBeNull();
+  });
+  it("초대받은 사람은 목록에서 보고 수락하면 멤버가 된다", async () => {
+    const seen = await outsider.client.rpc("get_my_org_invitations");
+    const inv = (seen.data as { id: string; org_id: string }[]).find((i) => i.org_id === orgId);
+    expect(inv).toBeTruthy();
+    const { error } = await outsider.client.rpc("accept_org_invitation", { p_invitation_id: inv!.id });
+    expect(error).toBeNull();
+    const { data: mem } = await admin.from("organization_members").select().eq("org_id", orgId).eq("user_id", outsider.id);
+    expect(mem![0].role).toBe("member");
+    await admin.from("organization_members").delete().eq("org_id", orgId).eq("user_id", outsider.id);
+    await admin.from("organization_invitations").delete().eq("org_id", orgId).eq("invitee_email", outsider.email.toLowerCase());
+  });
+  it("남의 이메일 초대는 수락할 수 없다", async () => {
+    const { data: id } = await owner.client.rpc("invite_to_org", { p_org_id: orgId, p_email: "someone-else@test.local", p_role: "member" });
+    const { error } = await outsider.client.rpc("accept_org_invitation", { p_invitation_id: id });
+    expect(error).not.toBeNull();
+    await admin.from("organization_invitations").delete().eq("id", id);
+  });
+});
