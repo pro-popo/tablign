@@ -788,176 +788,181 @@ export function NewTab() {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <AppShell
-        leftOpen={panels.left}
-        rightOpen={panels.right}
-        onToggleLeft={toggleLeft}
-        onToggleRight={toggleRight}
-        leftWidth={panels.leftWidth}
-        rightWidth={panels.rightWidth}
-        onResizeLeft={setLeftWidth}
-        onResizeRight={setRightWidth}
-        left={
-          <div style={{ position: "relative", height: "100%", paddingLeft: 54, boxSizing: "border-box" }}>
-            <OrgRail
-              organizations={organizations}
-              memberships={orgMemberships}
-              activeOrgId={activeOrgId}
-              userEmail={session.user.email ?? ""}
-              currentUserId={session.user.id}
-              onSelectOrg={selectOrg}
-              onCreateOrg={createOrg}
-              onSignOut={async () => { await supabase.auth.signOut(); }}
-            />
-            <ExtSidebar
-              spaces={ownedSpaces}
-              sharedSpaces={sharedSpaces}
-              activeSpaceId={activeSpaceId}
-              onSelectSpace={(id) => { setActiveSpaceId(id); }}
-              onAddSpace={addSpace}
-              onRenameSpace={renameSpace}
-              onDeleteSpace={deleteSpace}
-              onLeaveSpace={handleLeaveSpace}
-              onCollapse={toggleLeft}
-              onImportCode={() => setImportOpen(true)}
-              searchSlot={<ExtSearchBar />}
-              orgHeaderSlot={activeOrg ? (
-                <OrgHeader
-                  org={activeOrg}
-                  members={orgMembers}
-                  myRole={myOrgRole}
-                  onOpenMembers={openOrgMemberDialog}
-                />
-              ) : null}
-            />
-          </div>
-        }
-        right={
-          <OpenTabsPanel groups={groups} onSaveWindow={saveWindow} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab} onCollapse={toggleRight} />
-        }
-      >
-        <Board>
-          {spacesLoaded && orgSpaces.length === 0 ? (
-            // 활성 조직에 스페이스가 0개(신규 가입 직후, 전부 삭제, 또는 방금 만든 빈 조직): 온보딩 빈 상태.
-            <SpaceOnboarding onCreate={() => addSpace("개인")} />
-          ) : (
-            <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
-                <span style={{ color: theme.textFaint }}>· {collectionsLoaded ? collections.length : "—"} 컬렉션</span>
-              </div>
-              <span ref={inviteRef} style={{ position: "relative" }}>
-                <Button variant="outline" onClick={() => setInviteOpen((v) => !v)}>
-                  초대 {(myInvitations.length + myOrgInvitations.length) > 0 ? `(${myInvitations.length + myOrgInvitations.length})` : ""}
-                </Button>
-                {inviteOpen && (
-                  <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 60, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: "0 8px 20px rgba(20,30,60,.14)" }}>
-                    {myInvitations.length === 0 && myOrgInvitations.length === 0 ? (
-                      <InvitationList
-                        invitations={[]}
-                        roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
-                        onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
-                        onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
-                      />
-                    ) : (
-                      <>
-                        {myInvitations.length > 0 && (
+      <div style={{ display: "flex", height: "100vh" }}>
+        {/* 조직 레일: 항상 보이는 상시 영역. AppShell의 접기 대상에서 제외해 사이드바를 접어도 로고·조직·계정이 유지된다. */}
+        <div style={{ position: "relative", width: 54, flexShrink: 0 }}>
+          <OrgRail
+            organizations={organizations}
+            memberships={orgMemberships}
+            activeOrgId={activeOrgId}
+            userEmail={session.user.email ?? ""}
+            currentUserId={session.user.id}
+            onSelectOrg={selectOrg}
+            onCreateOrg={createOrg}
+            onSignOut={async () => { await supabase.auth.signOut(); }}
+          />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <AppShell
+            leftOpen={panels.left}
+            rightOpen={panels.right}
+            onToggleLeft={toggleLeft}
+            onToggleRight={toggleRight}
+            leftWidth={panels.leftWidth}
+            rightWidth={panels.rightWidth}
+            onResizeLeft={setLeftWidth}
+            onResizeRight={setRightWidth}
+            left={
+              <ExtSidebar
+                spaces={ownedSpaces}
+                sharedSpaces={sharedSpaces}
+                activeSpaceId={activeSpaceId}
+                onSelectSpace={(id) => { setActiveSpaceId(id); }}
+                onAddSpace={addSpace}
+                onRenameSpace={renameSpace}
+                onDeleteSpace={deleteSpace}
+                onLeaveSpace={handleLeaveSpace}
+                onCollapse={toggleLeft}
+                onImportCode={() => setImportOpen(true)}
+                searchSlot={<ExtSearchBar />}
+                orgHeaderSlot={activeOrg ? (
+                  <OrgHeader
+                    org={activeOrg}
+                    members={orgMembers}
+                    myRole={myOrgRole}
+                    onOpenMembers={openOrgMemberDialog}
+                  />
+                ) : null}
+              />
+            }
+            right={
+              <OpenTabsPanel groups={groups} onSaveWindow={saveWindow} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab} onCollapse={toggleRight} />
+            }
+          >
+            <Board>
+              {spacesLoaded && orgSpaces.length === 0 ? (
+                // 활성 조직에 스페이스가 0개(신규 가입 직후, 전부 삭제, 또는 방금 만든 빈 조직): 온보딩 빈 상태.
+                <SpaceOnboarding onCreate={() => addSpace("개인")} />
+              ) : (
+                <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
+                    <span style={{ color: theme.textFaint }}>· {collectionsLoaded ? collections.length : "—"} 컬렉션</span>
+                  </div>
+                  <span ref={inviteRef} style={{ position: "relative" }}>
+                    <Button variant="outline" onClick={() => setInviteOpen((v) => !v)}>
+                      초대 {(myInvitations.length + myOrgInvitations.length) > 0 ? `(${myInvitations.length + myOrgInvitations.length})` : ""}
+                    </Button>
+                    {inviteOpen && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 60, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: "0 8px 20px rgba(20,30,60,.14)" }}>
+                        {myInvitations.length === 0 && myOrgInvitations.length === 0 ? (
                           <InvitationList
-                            invitations={myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role }))}
+                            invitations={[]}
                             roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
                             onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
                             onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
                           />
+                        ) : (
+                          <>
+                            {myInvitations.length > 0 && (
+                              <InvitationList
+                                invitations={myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role }))}
+                                roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
+                                onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
+                                onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
+                              />
+                            )}
+                            {myOrgInvitations.length > 0 && (
+                              <InvitationList
+                                invitations={myOrgInvitations.map((i) => ({ id: i.id, space_name: i.org_name, inviter_name: i.inviter_name, role: i.role }))}
+                                roles={[{ value: "admin", label: "관리자" }, { value: "member", label: "멤버" }]}
+                                onAccept={async (id) => { await acceptOrgInv(id); setInviteOpen(false); }}
+                                onDecline={async (id) => { await declineOrgInvitation(supabase, id); setMyOrgInvitations((prev) => prev.filter((x) => x.id !== id)); }}
+                              />
+                            )}
+                          </>
                         )}
-                        {myOrgInvitations.length > 0 && (
-                          <InvitationList
-                            invitations={myOrgInvitations.map((i) => ({ id: i.id, space_name: i.org_name, inviter_name: i.inviter_name, role: i.role }))}
-                            roles={[{ value: "admin", label: "관리자" }, { value: "member", label: "멤버" }]}
-                            onAccept={async (id) => { await acceptOrgInv(id); setInviteOpen(false); }}
-                            onDecline={async (id) => { await declineOrgInvitation(supabase, id); setMyOrgInvitations((prev) => prev.filter((x) => x.id !== id)); }}
-                          />
-                        )}
-                      </>
+                      </div>
                     )}
-                  </div>
-                )}
-              </span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {members.length > 0 && <MemberAvatars people={members} />}
-              {isOwner && activeSpaceOrg?.is_personal && (
-                <Button variant="outline" onClick={openMemberDialog}><Users size={15} /> 멤버</Button>
-              )}
-              {canEdit && <Button onClick={addCollection}><Plus size={15} /> 컬렉션</Button>}
-            </div>
-          </div>
-          {(() => {
-            const visibleCollections = collections;
-            return !collectionsLoaded ? (
-              <CollectionSkeleton />
-            ) : visibleCollections.length === 0 ? (
-              <EmptyState title="컬렉션이 없어요. ‘＋ 컬렉션’으로 영역을 만든 뒤, 열린 탭을 드래그해 넣어보세요." />
-            ) : (
-              <SortableContext items={visibleCollections.map((c) => `col:${c.id}`)} strategy={verticalListSortingStrategy}>
-                {visibleCollections.map((c) => (
-                <SortableCollection key={c.id} collection={c}>
-                  {(drag) => {
-                    const links = linksByCol[c.id] ?? [];
-                    return (
-                      <CollectionSection
-                        collection={c}
-                        links={links}
-                        isOver={dragOverCol === c.id}
-                        isPrivate={c.is_private}
-                        autoEditTitle={autoEditId === c.id}
-                        titleDragRef={drag.ref}
-                        titleDragProps={drag.props}
-                        readOnly={!canEdit}
-                        onRenameCollection={canEdit ? async (id, title) => { await updateCollection(supabase, id, { title }); setAutoEditId(null); loadCollections(); } : undefined}
-                        onOpenLink={openUrl}
-                        onDeleteLink={canEdit ? async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); } : undefined}
-                        onAddLink={async (url) => { if (canEdit) { await createLink(supabase, { user_id: userId, collection_id: c.id, url }); reloadCollection(c.id); } }}
-                        onOpenAll={() => links.forEach((l) => openUrl(l.url))}
-                        onDeleteCollection={canEdit ? () => setDeleteColTarget(c) : undefined}
-                        linksSlot={
-                          <DndLinkList
-                            collectionId={c.id}
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {members.length > 0 && <MemberAvatars people={members} />}
+                  {isOwner && activeSpaceOrg?.is_personal && (
+                    <Button variant="outline" onClick={openMemberDialog}><Users size={15} /> 멤버</Button>
+                  )}
+                  {canEdit && <Button onClick={addCollection}><Plus size={15} /> 컬렉션</Button>}
+                </div>
+              </div>
+              {(() => {
+                const visibleCollections = collections;
+                return !collectionsLoaded ? (
+                  <CollectionSkeleton />
+                ) : visibleCollections.length === 0 ? (
+                  <EmptyState title="컬렉션이 없어요. ‘＋ 컬렉션’으로 영역을 만든 뒤, 열린 탭을 드래그해 넣어보세요." />
+                ) : (
+                  <SortableContext items={visibleCollections.map((c) => `col:${c.id}`)} strategy={verticalListSortingStrategy}>
+                    {visibleCollections.map((c) => (
+                    <SortableCollection key={c.id} collection={c}>
+                      {(drag) => {
+                        const links = linksByCol[c.id] ?? [];
+                        return (
+                          <CollectionSection
+                            collection={c}
                             links={links}
+                            isOver={dragOverCol === c.id}
+                            isPrivate={c.is_private}
+                            autoEditTitle={autoEditId === c.id}
+                            titleDragRef={drag.ref}
+                            titleDragProps={drag.props}
+                            readOnly={!canEdit}
+                            onRenameCollection={canEdit ? async (id, title) => { await updateCollection(supabase, id, { title }); setAutoEditId(null); loadCollections(); } : undefined}
                             onOpenLink={openUrl}
                             onDeleteLink={canEdit ? async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); } : undefined}
-                            onUpdateLink={canEdit ? async (id, patch) => { await updateLink(supabase, id, patch); reloadCollection(c.id); } : undefined}
-                            readOnly={!canEdit}
+                            onAddLink={async (url) => { if (canEdit) { await createLink(supabase, { user_id: userId, collection_id: c.id, url }); reloadCollection(c.id); } }}
+                            onOpenAll={() => links.forEach((l) => openUrl(l.url))}
+                            onDeleteCollection={canEdit ? () => setDeleteColTarget(c) : undefined}
+                            linksSlot={
+                              <DndLinkList
+                                collectionId={c.id}
+                                links={links}
+                                onOpenLink={openUrl}
+                                onDeleteLink={canEdit ? async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); } : undefined}
+                                onUpdateLink={canEdit ? async (id, patch) => { await updateLink(supabase, id, patch); reloadCollection(c.id); } : undefined}
+                                readOnly={!canEdit}
+                              />
+                            }
+                            moreMenuSlot={canEdit ? (
+                              <CollectionMoreMenu
+                                spaces={spaces
+                                  .filter((s) => s.id !== activeSpaceId)
+                                  .map((s) => ({ id: s.id, name: s.name, icon: s.icon }))}
+                                onMove={(sid) => moveCollectionTo(c, sid)}
+                                onCopy={(sid) => copyCollectionTo(c, sid)}
+                                onShare={() => openShareDialog(c)}
+                                isPrivate={c.is_private}
+                                onTogglePrivate={c.user_id === userId ? async () => {
+                                  await updateCollection(supabase, c.id, { is_private: !c.is_private });
+                                  loadCollections();
+                                } : undefined}
+                              />
+                            ) : undefined}
                           />
-                        }
-                        moreMenuSlot={canEdit ? (
-                          <CollectionMoreMenu
-                            spaces={spaces
-                              .filter((s) => s.id !== activeSpaceId)
-                              .map((s) => ({ id: s.id, name: s.name, icon: s.icon }))}
-                            onMove={(sid) => moveCollectionTo(c, sid)}
-                            onCopy={(sid) => copyCollectionTo(c, sid)}
-                            onShare={() => openShareDialog(c)}
-                            isPrivate={c.is_private}
-                            onTogglePrivate={c.user_id === userId ? async () => {
-                              await updateCollection(supabase, c.id, { is_private: !c.is_private });
-                              loadCollections();
-                            } : undefined}
-                          />
-                        ) : undefined}
-                      />
-                    );
-                  }}
-                </SortableCollection>
-                ))}
-              </SortableContext>
-            );
-          })()}
-            </>
-          )}
-        </Board>
-      </AppShell>
+                        );
+                      }}
+                    </SortableCollection>
+                    ))}
+                  </SortableContext>
+                );
+              })()}
+                </>
+              )}
+            </Board>
+          </AppShell>
+        </div>
+      </div>
       <DragOverlay dropAnimation={null}>
         {active?.type === "collection" ? (
           <div style={{
