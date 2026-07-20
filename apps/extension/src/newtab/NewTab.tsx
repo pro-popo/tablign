@@ -876,7 +876,7 @@ export function NewTab() {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {members.length > 0 && <MemberAvatars people={members} />}
-              {isOwner && (
+              {isOwner && activeSpaceOrg?.is_personal && (
                 <Button variant="outline" onClick={openMemberDialog}><Users size={15} /> 멤버</Button>
               )}
               {canEdit && <Button onClick={addCollection}><Plus size={15} /> 컬렉션</Button>}
