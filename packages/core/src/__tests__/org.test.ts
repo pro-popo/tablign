@@ -374,3 +374,25 @@ describe("컬렉션 비공개 데이터 계층", () => {
     ).toBe(false);
   });
 });
+
+describe("per-space 공유 개인 조직 제한", () => {
+  let teamSpace: string;
+  beforeAll(async () => {
+    const { data: s } = await owner.client.from("spaces").insert({ user_id: owner.id, name: "팀 초대 차단", org_id: orgId }).select().single();
+    teamSpace = s!.id;
+  });
+  it("팀 조직 스페이스에는 per-space 초대를 할 수 없다", async () => {
+    const { error } = await owner.client.rpc("invite_to_space", { p_space_id: teamSpace, p_email: "x-team@test.local", p_role: "viewer" });
+    expect(error).not.toBeNull();
+  });
+  it("개인 조직 스페이스에는 per-space 초대가 된다(회귀)", async () => {
+    const { data: ps } = await owner.client.from("spaces").insert({ user_id: owner.id, name: "개인 초대 OK" }).select().single(); // org_id 생략 → 개인 조직
+    const { error } = await owner.client.rpc("invite_to_space", { p_space_id: ps!.id, p_email: "x-personal@test.local", p_role: "viewer" });
+    expect(error).toBeNull();
+    await admin.from("space_invitations").delete().eq("space_id", ps!.id);
+  });
+  it("팀 조직 스페이스에 space_members 직접 insert는 트리거가 거부한다", async () => {
+    const { error } = await admin.from("space_members").insert({ space_id: teamSpace, user_id: adminMember.id, role: "viewer" });
+    expect(error).not.toBeNull();
+  });
+});
