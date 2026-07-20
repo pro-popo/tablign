@@ -307,3 +307,43 @@ describe("NewTab — 멤버 관리·초대 알림", () => {
     await waitFor(() => expect(acceptInvitation).toHaveBeenCalledWith(expect.anything(), "inv1"));
   });
 });
+
+describe("NewTab — 조직(팀) 협업", () => {
+  it("팀 조직 선택 시 역할칩·멤버 아바타가 보이고, 멤버 버튼 클릭 시 조직 멤버 다이얼로그가 열린다", async () => {
+    listOrganizations.mockResolvedValue([
+      { id: "org-personal", name: "개인", icon: null, color: null, owner_id: "u1", is_personal: true, created_at: "" },
+      { id: "org-team", name: "우리팀", icon: null, color: null, owner_id: "owner-x", is_personal: false, created_at: "x" },
+    ]);
+    listMyOrgMemberships.mockResolvedValue([
+      { org_id: "org-team", user_id: "u1", role: "admin", created_at: "x" },
+    ]);
+    listOrgMembers.mockResolvedValue([
+      { user_id: "u2", role: "member", display_name: "밥", avatar_url: null },
+    ]);
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+    ]);
+    renderNewTab();
+    await screen.findAllByText("개인");
+
+    fireEvent.click(screen.getByText("우리팀"));
+    expect(await screen.findByText("관리자")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "조직 설정" }));
+    expect(await screen.findByRole("dialog", { name: "멤버 관리" })).toBeInTheDocument();
+  });
+
+  it("조직 초대를 수락하면 acceptOrgInvitation을 호출한다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+    ]);
+    listMyOrgInvitations.mockResolvedValue([
+      { id: "oinv1", org_id: "org-team", inviter_id: "o9", invitee_email: "u1@test.local", role: "member", status: "pending", created_at: "x", org_name: "다른팀", inviter_name: "캐롤" },
+    ]);
+    acceptOrgInvitation.mockResolvedValue(undefined);
+    renderNewTab();
+    fireEvent.click(await screen.findByRole("button", { name: /초대/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "수락" }));
+    await waitFor(() => expect(acceptOrgInvitation).toHaveBeenCalledWith(expect.anything(), "oinv1"));
+  });
+});
