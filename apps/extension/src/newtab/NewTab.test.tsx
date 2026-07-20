@@ -33,6 +33,15 @@ const acceptInvitation = vi.fn();
 const listOrganizations = vi.fn();
 const listMyOrgMemberships = vi.fn();
 const createOrganization = vi.fn();
+const listOrgMembers = vi.fn();
+const listOrgInvitations = vi.fn();
+const listMyOrgInvitations = vi.fn();
+const inviteToOrg = vi.fn();
+const acceptOrgInvitation = vi.fn();
+const declineOrgInvitation = vi.fn();
+const cancelOrgInvitation = vi.fn();
+const removeOrgMember = vi.fn();
+const updateOrgMemberRole = vi.fn();
 vi.mock("@tablign/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tablign/core")>();
   return {
@@ -54,6 +63,15 @@ vi.mock("@tablign/core", async (importOriginal) => {
     listOrganizations: (...a: unknown[]) => listOrganizations(...a),
     listMyOrgMemberships: (...a: unknown[]) => listMyOrgMemberships(...a),
     createOrganization: (...a: unknown[]) => createOrganization(...a),
+    listOrgMembers: (...a: unknown[]) => listOrgMembers(...a),
+    listOrgInvitations: (...a: unknown[]) => listOrgInvitations(...a),
+    listMyOrgInvitations: (...a: unknown[]) => listMyOrgInvitations(...a),
+    inviteToOrg: (...a: unknown[]) => inviteToOrg(...a),
+    acceptOrgInvitation: (...a: unknown[]) => acceptOrgInvitation(...a),
+    declineOrgInvitation: (...a: unknown[]) => declineOrgInvitation(...a),
+    cancelOrgInvitation: (...a: unknown[]) => cancelOrgInvitation(...a),
+    removeOrgMember: (...a: unknown[]) => removeOrgMember(...a),
+    updateOrgMemberRole: (...a: unknown[]) => updateOrgMemberRole(...a),
   };
 });
 
@@ -86,6 +104,18 @@ beforeEach(() => {
   listMyOrgMemberships.mockReset();
   listMyOrgMemberships.mockResolvedValue([]);
   createOrganization.mockReset();
+  listOrgMembers.mockReset();
+  listOrgMembers.mockResolvedValue([]);
+  listOrgInvitations.mockReset();
+  listOrgInvitations.mockResolvedValue([]);
+  listMyOrgInvitations.mockReset();
+  listMyOrgInvitations.mockResolvedValue([]);
+  inviteToOrg.mockReset();
+  acceptOrgInvitation.mockReset();
+  declineOrgInvitation.mockReset();
+  cancelOrgInvitation.mockReset();
+  removeOrgMember.mockReset();
+  updateOrgMemberRole.mockReset();
   // jsdom 전역 chrome 스텁(test-setup)에 tabs API를 보강하고,
   // activeSpace와 동일하게 activeOrg도 저장값 없이 {}를 돌려주게 해 컴포넌트의 개인 조직 폴백을 태운다.
   vi.stubGlobal("chrome", {

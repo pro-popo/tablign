@@ -37,9 +37,10 @@ import {
   copyCollection, moveCollectionToSpace,
   createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
-  listOrganizations, createOrganization, listMyOrgMemberships, listOrgMembers,
+  listOrganizations, createOrganization, listMyOrgMemberships, listOrgMembers, removeOrgMember, updateOrgMemberRole,
+  inviteToOrg, listOrgInvitations, cancelOrgInvitation, listMyOrgInvitations, acceptOrgInvitation, declineOrgInvitation,
   type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
-  type Organization, type OrganizationMember, type OrgMemberWithProfile,
+  type Organization, type OrganizationMember, type OrgMemberWithProfile, type OrganizationInvitation, type OrgInvitationWithOrg,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
@@ -226,6 +227,11 @@ export function NewTab() {
   }, [session]);
 
   useEffect(() => {
+    if (!session) return;
+    listMyOrgInvitations(supabase).then(setMyOrgInvitations).catch(console.error);
+  }, [session]);
+
+  useEffect(() => {
     if (!activeSpaceId) { setMembers([]); return; }
     listMembers(supabase, activeSpaceId).then(setMembers).catch(() => setMembers([]));
   }, [activeSpaceId]);
@@ -256,6 +262,29 @@ export function NewTab() {
     const [sp, ms, invs] = await Promise.all([listSpaces(supabase), listMyMemberships(supabase), listMyInvitations(supabase)]);
     setSpaces(sp); setMemberships(ms); setMyInvitations(invs);
     toast.show("스페이스에 참여했어요");
+  }
+
+  async function openOrgMemberDialog() {
+    if (!activeOrgId) return;
+    setOrgMemberDialogOpen(true);
+    const [ms, invs] = await Promise.all([listOrgMembers(supabase, activeOrgId), listOrgInvitations(supabase, activeOrgId)]);
+    setOrgMembers(ms); setOrgPendingInvites(invs);
+  }
+  async function reloadOrgMembers() {
+    if (!activeOrgId) return;
+    const [ms, invs] = await Promise.all([listOrgMembers(supabase, activeOrgId), listOrgInvitations(supabase, activeOrgId)]);
+    setOrgMembers(ms); setOrgPendingInvites(invs);
+  }
+  async function handleOrgInvite(email: string, role: string) {
+    try { await inviteToOrg(supabase, activeOrgId!, email, role as "admin" | "member"); toast.show("초대를 보냈어요"); reloadOrgMembers(); }
+    catch (e) { console.error(e); toast.show("초대하지 못했어요. 이미 멤버이거나 잘못된 이메일일 수 있어요."); }
+  }
+  // 조직 초대 수락: 새 조직이 레일에 바로 보이도록 조직 목록·조직 멤버십·내 조직 초대를 함께 재조회.
+  async function acceptOrgInv(id: string) {
+    await acceptOrgInvitation(supabase, id);
+    const [orgs, oms, oInvs] = await Promise.all([listOrganizations(supabase), listMyOrgMemberships(supabase), listMyOrgInvitations(supabase)]);
+    setOrganizations(orgs); setOrgMemberships(oms); setMyOrgInvitations(oInvs);
+    toast.show("조직에 참여했어요");
   }
 
   async function addSpace(name: string) {
@@ -340,6 +369,9 @@ export function NewTab() {
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
   const [pendingInvites, setPendingInvites] = useState<SpaceInvitation[]>([]);
   const [myInvitations, setMyInvitations] = useState<InvitationWithSpace[]>([]);
+  // 조직 멤버 관리 다이얼로그의 대기 중 초대 + 받은 조직 초대(알림 팝오버용)
+  const [orgPendingInvites, setOrgPendingInvites] = useState<OrganizationInvitation[]>([]);
+  const [myOrgInvitations, setMyOrgInvitations] = useState<OrgInvitationWithOrg[]>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
   // 경합 가드: 사전조회 응답이 도착할 때 현재 대상과 다르면 버린다.
   const shareTargetRef = useRef<string | null>(null);
@@ -712,8 +744,6 @@ export function NewTab() {
 
   const activeSpace = spaces.find((s) => s.id === activeSpaceId) ?? null;
   const myMembership = memberships.find((m) => m.space_id === activeSpaceId) ?? null;
-  // 오너(멤버십에 없음)면 편집 가능, 멤버면 editor만 편집 가능
-  const canEdit = activeSpace ? (myMembership ? myMembership.role === "editor" : true) : true;
   const isOwner = activeSpace ? activeSpace.user_id === userId : false;
 
   const activeOrg = organizations.find((o) => o.id === activeOrgId) ?? null;
@@ -722,6 +752,13 @@ export function NewTab() {
     ? (activeOrg.owner_id === userId ? "owner"
        : (orgMemberships.find((m) => m.org_id === activeOrgId)?.role ?? "member"))
     : "member";
+
+  // 조직(팀) 스페이스는 조직 역할이 편집 가능 여부의 기준(멤버는 편집 불가, RLS가 최종 방어선).
+  // 개인/공유 스페이스는 기존 스페이스 멤버십 기준(오너는 항상 편집 가능, 멤버는 editor만 편집 가능)을 유지.
+  const activeSpaceOrg = organizations.find((o) => o.id === activeSpace?.org_id) ?? null;
+  const canEdit = activeSpaceOrg && !activeSpaceOrg.is_personal
+    ? myOrgRole !== "member"
+    : activeSpace ? (myMembership ? myMembership.role === "editor" : true) : true;
 
   const orgSpaces = spaces.filter((s) => s.org_id === activeOrgId);
   const ownedSpaces = orgSpaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
@@ -797,7 +834,7 @@ export function NewTab() {
                 org={activeOrg}
                 members={orgMembers}
                 myRole={myOrgRole}
-                onOpenMembers={() => setOrgMemberDialogOpen(true)}
+                onOpenMembers={openOrgMemberDialog}
               />
             </div>
           )}
@@ -808,7 +845,9 @@ export function NewTab() {
                 <span style={{ color: theme.textFaint }}>· {collectionsLoaded ? collections.length : "—"} 컬렉션</span>
               </div>
               <span ref={inviteRef} style={{ position: "relative" }}>
-                <Button variant="outline" onClick={() => setInviteOpen((v) => !v)}>초대 {myInvitations.length > 0 ? `(${myInvitations.length})` : ""}</Button>
+                <Button variant="outline" onClick={() => setInviteOpen((v) => !v)}>
+                  초대 {(myInvitations.length + myOrgInvitations.length) > 0 ? `(${myInvitations.length + myOrgInvitations.length})` : ""}
+                </Button>
                 {inviteOpen && (
                   <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 60, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: "0 8px 20px rgba(20,30,60,.14)" }}>
                     <InvitationList
@@ -817,6 +856,14 @@ export function NewTab() {
                       onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
                       onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
                     />
+                    {myOrgInvitations.length > 0 && (
+                      <InvitationList
+                        invitations={myOrgInvitations.map((i) => ({ id: i.id, space_name: i.org_name, inviter_name: i.inviter_name, role: i.role }))}
+                        roles={[{ value: "admin", label: "관리자" }, { value: "member", label: "멤버" }]}
+                        onAccept={async (id) => { await acceptOrgInv(id); setInviteOpen(false); }}
+                        onDecline={async (id) => { await declineOrgInvitation(supabase, id); setMyOrgInvitations((prev) => prev.filter((x) => x.id !== id)); }}
+                      />
+                    )}
                   </div>
                 )}
               </span>
@@ -963,6 +1010,18 @@ export function NewTab() {
         onRemove={async (uid) => { try { await removeMember(supabase, activeSpaceId!, uid); reloadMembers(); } catch (e) { console.error(e); toast.show("멤버를 제거하지 못했어요."); } }}
         onCancelInvite={async (id) => { try { await cancelInvitation(supabase, id); reloadMembers(); } catch (e) { console.error(e); toast.show("초대를 취소하지 못했어요."); } }}
         onClose={() => setMemberDialogOpen(false)}
+      />
+      <MemberDialog
+        open={orgMemberDialogOpen}
+        spaceName={activeOrg?.name ?? ""}
+        roles={[{ value: "admin", label: "관리자" }, { value: "member", label: "멤버" }]}
+        members={orgMembers.map((m) => ({ user_id: m.user_id, role: m.role, display_name: m.display_name, avatar_url: m.avatar_url }))}
+        pendingInvites={orgPendingInvites.map((i) => ({ id: i.id, invitee_email: i.invitee_email, role: i.role }))}
+        onInvite={handleOrgInvite}
+        onChangeRole={async (uid, role) => { try { await updateOrgMemberRole(supabase, activeOrgId!, uid, role as "admin" | "member"); reloadOrgMembers(); } catch (e) { console.error(e); toast.show("역할을 변경하지 못했어요."); } }}
+        onRemove={async (uid) => { try { await removeOrgMember(supabase, activeOrgId!, uid); reloadOrgMembers(); } catch (e) { console.error(e); toast.show("멤버를 제거하지 못했어요."); } }}
+        onCancelInvite={async (id) => { try { await cancelOrgInvitation(supabase, id); reloadOrgMembers(); } catch (e) { console.error(e); toast.show("초대를 취소하지 못했어요."); } }}
+        onClose={() => setOrgMemberDialogOpen(false)}
       />
     </DndContext>
   );
