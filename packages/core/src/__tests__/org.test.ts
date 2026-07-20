@@ -323,3 +323,34 @@ describe("조직 멤버·초대 데이터 계층", () => {
     expect(list.some((i) => i.id === id)).toBe(false);
   });
 });
+
+describe("컬렉션 비공개", () => {
+  let teamSpace: string;
+  let privColl: string;
+  beforeAll(async () => {
+    await admin.from("organization_members").upsert({ org_id: orgId, user_id: adminMember.id, role: "admin" });
+    const { data: s } = await owner.client.from("spaces").insert({ user_id: owner.id, name: "비공개 테스트", org_id: orgId }).select().single();
+    teamSpace = s!.id;
+    const { data: c } = await owner.client.from("collections").insert({ user_id: owner.id, space_id: teamSpace, title: "오너 비공개", is_private: true }).select().single();
+    privColl = c!.id;
+  });
+  it("생성자는 자기 비공개 컬렉션을 본다", async () => {
+    expect((await owner.client.from("collections").select().eq("id", privColl)).data!.length).toBe(1);
+  });
+  it("같은 조직 admin이라도 남의 비공개 컬렉션은 못 본다", async () => {
+    expect((await adminMember.client.from("collections").select().eq("id", privColl)).data!.length).toBe(0);
+  });
+  it("admin은 남의 비공개 컬렉션을 수정할 수 없다", async () => {
+    await adminMember.client.from("collections").update({ title: "탈취" }).eq("id", privColl);
+    expect((await admin.from("collections").select("title").eq("id", privColl).single()).data!.title).toBe("오너 비공개");
+  });
+  it("비공개 컬렉션의 링크도 생성자만 본다", async () => {
+    const { data: l } = await owner.client.from("links").insert({ user_id: owner.id, collection_id: privColl, url: "https://p.com", title: "P", position: 1000 }).select().single();
+    expect((await owner.client.from("links").select().eq("id", l!.id)).data!.length).toBe(1);
+    expect((await adminMember.client.from("links").select().eq("id", l!.id)).data!.length).toBe(0);
+  });
+  it("공개 컬렉션은 조직 멤버가 정상적으로 본다(회귀)", async () => {
+    const { data: pub } = await owner.client.from("collections").insert({ user_id: owner.id, space_id: teamSpace, title: "공개" }).select().single();
+    expect((await adminMember.client.from("collections").select().eq("id", pub!.id)).data!.length).toBe(1);
+  });
+});
