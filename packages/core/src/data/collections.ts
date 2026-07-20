@@ -8,6 +8,7 @@ export interface CreateCollectionInput {
   icon?: string | null;
   note?: string | null;
   position?: number;
+  is_private?: boolean;
 }
 
 export async function listCollections(
@@ -50,7 +51,7 @@ export async function createCollection(
 export async function updateCollection(
   client: SupabaseClient,
   id: string,
-  patch: Partial<Pick<Collection, "title" | "icon" | "note" | "position" | "space_id">>,
+  patch: Partial<Pick<Collection, "title" | "icon" | "note" | "position" | "space_id" | "is_private">>,
 ): Promise<Collection> {
   const { data, error } = await client
     .from("collections")

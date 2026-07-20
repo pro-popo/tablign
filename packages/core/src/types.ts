@@ -22,6 +22,7 @@ export interface Collection {
   title: string;
   icon: string | null;
   note: string | null;
+  is_private: boolean;
   position: number;
   created_at: string;
 }

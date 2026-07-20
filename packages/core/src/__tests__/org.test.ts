@@ -6,6 +6,7 @@ import ws from "ws";
 import { listOrganizations, createOrganization, updateOrganization, listMyOrgMemberships } from "../data/organizations";
 import { listOrgMembers, updateOrgMemberRole } from "../data/org-members";
 import { inviteToOrg, listOrgInvitations, listMyOrgInvitations, acceptOrgInvitation, cancelOrgInvitation } from "../data/org-invitations";
+import { updateCollection } from "../data/collections";
 
 const envText = readFileSync(resolve(__dirname, "../../.env.test"), "utf8");
 const env = Object.fromEntries(
@@ -352,5 +353,24 @@ describe("컬렉션 비공개", () => {
   it("공개 컬렉션은 조직 멤버가 정상적으로 본다(회귀)", async () => {
     const { data: pub } = await owner.client.from("collections").insert({ user_id: owner.id, space_id: teamSpace, title: "공개" }).select().single();
     expect((await adminMember.client.from("collections").select().eq("id", pub!.id)).data!.length).toBe(1);
+  });
+});
+
+describe("컬렉션 비공개 데이터 계층", () => {
+  it("updateCollection으로 비공개 토글", async () => {
+    const { data: s } = await owner.client.from("spaces")
+      .insert({ user_id: owner.id, name: "토글s", org_id: orgId }).select().single();
+    const { data: c } = await owner.client.from("collections")
+      .insert({ user_id: owner.id, space_id: s!.id, title: "토글" }).select().single();
+
+    await updateCollection(owner.client, c!.id, { is_private: true });
+    expect(
+      (await admin.from("collections").select("is_private").eq("id", c!.id).single()).data!.is_private,
+    ).toBe(true);
+
+    await updateCollection(owner.client, c!.id, { is_private: false });
+    expect(
+      (await admin.from("collections").select("is_private").eq("id", c!.id).single()).data!.is_private,
+    ).toBe(false);
   });
 });
