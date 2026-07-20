@@ -5,7 +5,7 @@ import type { Collection, Link } from "@tablign/core";
 
 const collection: Collection = {
   id: "c1", space_id: "s1", user_id: "u1", title: "읽을거리",
-  icon: null, note: null, position: 1000, created_at: "2026-01-01T00:00:00Z",
+  icon: null, note: null, is_private: false, position: 1000, created_at: "2026-01-01T00:00:00Z",
 };
 const links: Link[] = [
   { id: "l1", collection_id: "c1", user_id: "u1", url: "https://a.com", title: "A", favicon_url: null, thumbnail_url: null, custom_title: null, note: null, position: 1000, created_at: "x" },

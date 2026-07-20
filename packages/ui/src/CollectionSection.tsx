@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { Collection, Link } from "@tablign/core";
 import { LinkCard } from "./LinkCard";
 import { InlineInput } from "./InlineInput";
-import { ChevronDown, ChevronRight, ExternalLink, Pencil, Plus, Trash2 } from "./icons";
+import { ChevronDown, ChevronRight, ExternalLink, Lock, Pencil, Plus, Trash2 } from "./icons";
 import { theme } from "./theme";
 
 export interface CollectionSectionProps {
@@ -10,6 +10,8 @@ export interface CollectionSectionProps {
   links: Link[];
   collapsed?: boolean;
   isOver?: boolean;
+  /** true이면 제목 옆에 🔒 표시 */
+  isPrivate?: boolean;
   tagSlot?: ReactNode;
   /** 제공되면 기본 링크 그리드 대신 이 노드를 렌더(확장의 DnD 리스트 주입용) */
   linksSlot?: ReactNode;
@@ -31,7 +33,7 @@ export interface CollectionSectionProps {
 }
 
 export function CollectionSection({
-  collection, links, collapsed: collapsedProp, isOver, tagSlot, linksSlot, moreMenuSlot, titleDragRef, titleDragProps,
+  collection, links, collapsed: collapsedProp, isOver, isPrivate, tagSlot, linksSlot, moreMenuSlot, titleDragRef, titleDragProps,
   readOnly,
   onOpenLink, onDeleteLink, onAddLink, onOpenAll, onDeleteCollection,
   autoEditTitle, onRenameCollection, onUpdateLink,
@@ -94,6 +96,11 @@ export function CollectionSection({
             >
               {collection.icon ? `${collection.icon} ` : ""}{collection.title}
             </strong>
+            {isPrivate && (
+              <span style={{ display: "flex", boxSizing: "border-box" }} title="비공개 컬렉션">
+                <Lock size={12} color={theme.textFaint} />
+              </span>
+            )}
             {!readOnly && onRenameCollection && hover && (
               <button
                 type="button"

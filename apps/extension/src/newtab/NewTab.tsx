@@ -899,6 +899,7 @@ export function NewTab() {
                         collection={c}
                         links={links}
                         isOver={dragOverCol === c.id}
+                        isPrivate={c.is_private}
                         autoEditTitle={autoEditId === c.id}
                         titleDragRef={drag.ref}
                         titleDragProps={drag.props}
@@ -927,6 +928,11 @@ export function NewTab() {
                             onMove={(sid) => moveCollectionTo(c, sid)}
                             onCopy={(sid) => copyCollectionTo(c, sid)}
                             onShare={() => openShareDialog(c)}
+                            isPrivate={c.is_private}
+                            onTogglePrivate={c.user_id === userId ? async () => {
+                              await updateCollection(supabase, c.id, { is_private: !c.is_private });
+                              loadCollections();
+                            } : undefined}
                           />
                         ) : undefined}
                       />

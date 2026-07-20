@@ -21,4 +21,5 @@ export {
   ArrowLeft,
   Users,
   Check,
+  Lock,
 } from "lucide-react";
