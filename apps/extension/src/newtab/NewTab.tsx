@@ -37,9 +37,9 @@ import {
   copyCollection, moveCollectionToSpace,
   createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
-  listOrganizations, createOrganization, listMyOrgMemberships,
+  listOrganizations, createOrganization, listMyOrgMemberships, listOrgMembers,
   type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
-  type Organization, type OrganizationMember,
+  type Organization, type OrganizationMember, type OrgMemberWithProfile,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
@@ -52,6 +52,7 @@ import { OrgRail } from "./OrgRail";
 import { ExtSearchBar } from "./ExtSearchBar";
 import { DndLinkList } from "./DndLinkList";
 import { AuthScreen } from "./AuthScreen";
+import { OrgHeader, type OrgRole } from "./OrgHeader";
 
 interface DragPreview { label: string; faviconUrl: string | null; domain: string }
 
@@ -106,6 +107,9 @@ export function NewTab() {
   const [memberships, setMemberships] = useState<SpaceMember[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [orgMemberships, setOrgMemberships] = useState<OrganizationMember[]>([]);
+  const [orgMembers, setOrgMembers] = useState<OrgMemberWithProfile[]>([]);
+  // 조직 멤버 관리 다이얼로그 열림 상태(다이얼로그 본체는 Task 5에서 추가).
+  const [orgMemberDialogOpen, setOrgMemberDialogOpen] = useState(false);
   const { activeOrgId, setActiveOrgId, loaded: orgLoaded } = useActiveOrg();
   // 스페이스 목록 로드 완료 여부. 0개(신규 가입·전부 삭제)와 "아직 로딩 중"을 구분해
   // 온보딩 화면과 스켈레톤을 올바르게 가른다.
@@ -225,6 +229,13 @@ export function NewTab() {
     if (!activeSpaceId) { setMembers([]); return; }
     listMembers(supabase, activeSpaceId).then(setMembers).catch(() => setMembers([]));
   }, [activeSpaceId]);
+
+  // 활성 조직의 멤버 로드(오너 제외). 개인 조직은 팀 멤버 개념이 없으므로 건너뛴다.
+  useEffect(() => {
+    const org = organizations.find((o) => o.id === activeOrgId);
+    if (!org || org.is_personal) { setOrgMembers([]); return; }
+    listOrgMembers(supabase, activeOrgId!).then(setOrgMembers).catch(() => setOrgMembers([]));
+  }, [activeOrgId, organizations]);
 
   async function openMemberDialog() {
     if (!activeSpaceId) return;
@@ -705,6 +716,13 @@ export function NewTab() {
   const canEdit = activeSpace ? (myMembership ? myMembership.role === "editor" : true) : true;
   const isOwner = activeSpace ? activeSpace.user_id === userId : false;
 
+  const activeOrg = organizations.find((o) => o.id === activeOrgId) ?? null;
+  // 오너면 owner, 멤버십이 있으면 그 role, 둘 다 아니면(방금 로드 전 등) 기본 member로 취급.
+  const myOrgRole: OrgRole = activeOrg
+    ? (activeOrg.owner_id === userId ? "owner"
+       : (orgMemberships.find((m) => m.org_id === activeOrgId)?.role ?? "member"))
+    : "member";
+
   const orgSpaces = spaces.filter((s) => s.org_id === activeOrgId);
   const ownedSpaces = orgSpaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
   const sharedSpaces = orgSpaces.filter((s) => memberships.some((m) => m.space_id === s.id));
@@ -773,6 +791,16 @@ export function NewTab() {
             <SpaceOnboarding onCreate={() => addSpace("개인")} />
           ) : (
             <>
+          {activeOrg && (
+            <div style={{ marginBottom: 10 }}>
+              <OrgHeader
+                org={activeOrg}
+                members={orgMembers}
+                myRole={myOrgRole}
+                onOpenMembers={() => setOrgMemberDialogOpen(true)}
+              />
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
