@@ -58,8 +58,9 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
     >
       {/* 로고 */}
       <div style={{ display: "flex", alignItems: "center", gap: 11, height: 34, padding: "0 12px", marginBottom: 2 }}>
-        <LogoMark size={26} />
-        <span style={{ opacity: expanded ? 1 : 0, transition: "opacity .13s", fontWeight: 740, letterSpacing: "-0.03em", fontSize: 16, color: theme.text, whiteSpace: "nowrap" }}>
+        {/* flexShrink:0 — 좁은 레일(54px)에서 옆 워드마크(nowrap)에 밀려 SVG가 0폭으로 찌그러지지 않도록 고정 */}
+        <span style={{ display: "flex", flexShrink: 0 }}><LogoMark size={26} /></span>
+        <span style={{ opacity: expanded ? 1 : 0, transition: "opacity .13s", fontWeight: 740, letterSpacing: "-0.03em", fontSize: 16, color: theme.text, whiteSpace: "nowrap", minWidth: 0, overflow: "hidden" }}>
           tab<span style={{ color: theme.accent }}>lign</span>
         </span>
       </div>
