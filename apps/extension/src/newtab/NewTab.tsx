@@ -205,8 +205,10 @@ export function NewTab() {
     setLinksByCol(Object.fromEntries(entries));
     setCollectionsLoaded(true);
   }
-  // 세션/스페이스가 바뀌면 스켈레톤부터 다시 보여준 뒤 로드한다(재조회 핸들러는 플래그를 건드리지 않음).
-  useEffect(() => { if (session && activeSpaceId) { setCollectionsLoaded(false); loadCollections(); } /* eslint-disable-next-line */ }, [session, activeSpaceId]);
+  // 세션/스페이스/조직이 바뀌면 스켈레톤부터 다시 보여준 뒤 로드한다(재조회 핸들러는 플래그를 건드리지 않음).
+  // activeOrgId도 의존성에 둬, 조직만 전환돼도 메인 보드가 반드시 재로드된다. activeSpaceId가 null이면
+  // loadCollections가 컬렉션을 비워, 이전 조직의 컬렉션이 남는 것을 막는다.
+  useEffect(() => { if (session) { setCollectionsLoaded(false); loadCollections(); } /* eslint-disable-next-line */ }, [session, activeSpaceId, activeOrgId]);
 
   async function reloadCollection(collectionId: string) {
     const links = await listLinks(supabase, collectionId);
