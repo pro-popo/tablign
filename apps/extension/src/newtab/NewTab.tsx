@@ -856,19 +856,32 @@ export function NewTab() {
                 </Button>
                 {inviteOpen && (
                   <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 60, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: "0 8px 20px rgba(20,30,60,.14)" }}>
-                    <InvitationList
-                      invitations={myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role }))}
-                      roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
-                      onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
-                      onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
-                    />
-                    {myOrgInvitations.length > 0 && (
+                    {myInvitations.length === 0 && myOrgInvitations.length === 0 ? (
                       <InvitationList
-                        invitations={myOrgInvitations.map((i) => ({ id: i.id, space_name: i.org_name, inviter_name: i.inviter_name, role: i.role }))}
-                        roles={[{ value: "admin", label: "관리자" }, { value: "member", label: "멤버" }]}
-                        onAccept={async (id) => { await acceptOrgInv(id); setInviteOpen(false); }}
-                        onDecline={async (id) => { await declineOrgInvitation(supabase, id); setMyOrgInvitations((prev) => prev.filter((x) => x.id !== id)); }}
+                        invitations={[]}
+                        roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
+                        onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
+                        onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
                       />
+                    ) : (
+                      <>
+                        {myInvitations.length > 0 && (
+                          <InvitationList
+                            invitations={myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role }))}
+                            roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
+                            onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
+                            onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
+                          />
+                        )}
+                        {myOrgInvitations.length > 0 && (
+                          <InvitationList
+                            invitations={myOrgInvitations.map((i) => ({ id: i.id, space_name: i.org_name, inviter_name: i.inviter_name, role: i.role }))}
+                            roles={[{ value: "admin", label: "관리자" }, { value: "member", label: "멤버" }]}
+                            onAccept={async (id) => { await acceptOrgInv(id); setInviteOpen(false); }}
+                            onDecline={async (id) => { await declineOrgInvitation(supabase, id); setMyOrgInvitations((prev) => prev.filter((x) => x.id !== id)); }}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 )}

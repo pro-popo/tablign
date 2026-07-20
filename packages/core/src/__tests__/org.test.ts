@@ -323,6 +323,14 @@ describe("조직 멤버·초대 데이터 계층", () => {
     const list = await listOrgInvitations(owner.client, orgId);
     expect(list.some((i) => i.id === id)).toBe(false);
   });
+  it("개인 조직 소유자는 자기 개인 조직에 멤버를 초대할 수 없다", async () => {
+    const { data: personal } = await admin.from("organizations").select("id").eq("owner_id", owner.id).eq("is_personal", true).single();
+    const before = await admin.from("organization_invitations").select("id").eq("org_id", personal!.id);
+    const { error } = await owner.client.rpc("invite_to_org", { p_org_id: personal!.id, p_email: "personal-invitee@test.local", p_role: "member" });
+    expect(error).not.toBeNull();
+    const after = await admin.from("organization_invitations").select("id").eq("org_id", personal!.id);
+    expect(after.data!.length).toBe(before.data!.length);
+  });
 });
 
 describe("컬렉션 비공개", () => {
