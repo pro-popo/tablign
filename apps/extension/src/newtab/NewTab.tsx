@@ -755,9 +755,15 @@ export function NewTab() {
 
   // 조직(팀) 스페이스는 조직 역할이 편집 가능 여부의 기준(멤버는 편집 불가, RLS가 최종 방어선).
   // 개인/공유 스페이스는 기존 스페이스 멤버십 기준(오너는 항상 편집 가능, 멤버는 editor만 편집 가능)을 유지.
+  // 역할은 '활성 스페이스가 속한 조직'(activeSpaceOrg) 기준으로 계산한다. 레일 선택(activeOrgId)과
+  // 초기 로드 한 프레임 어긋나더라도 편집 판정이 잘못 나오지 않도록 activeOrgId에 결합하지 않는다.
   const activeSpaceOrg = organizations.find((o) => o.id === activeSpace?.org_id) ?? null;
+  const activeSpaceOrgRole: OrgRole = activeSpaceOrg
+    ? (activeSpaceOrg.owner_id === userId ? "owner"
+       : (orgMemberships.find((m) => m.org_id === activeSpaceOrg.id)?.role ?? "member"))
+    : "member";
   const canEdit = activeSpaceOrg && !activeSpaceOrg.is_personal
-    ? myOrgRole !== "member"
+    ? activeSpaceOrgRole !== "member"
     : activeSpace ? (myMembership ? myMembership.role === "editor" : true) : true;
 
   const orgSpaces = spaces.filter((s) => s.org_id === activeOrgId);
