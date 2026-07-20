@@ -16,6 +16,7 @@ export interface ExtSidebarProps {
   onCollapse: () => void;
   onImportCode: () => void;
   searchSlot: ReactNode;
+  orgHeaderSlot?: ReactNode;
 }
 
 /** 스페이스 행을 드래그로 재정렬할 수 있게 감싸는 sortable 래퍼.
@@ -63,14 +64,15 @@ function SortableSpace({ space, active, onSelect, onStartEdit, onDelete }: {
   );
 }
 
-export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace, onAddSpace, onRenameSpace, onDeleteSpace, onLeaveSpace, onCollapse, onImportCode, searchSlot }: ExtSidebarProps) {
+export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace, onAddSpace, onRenameSpace, onDeleteSpace, onLeaveSpace, onCollapse, onImportCode, searchSlot, orgHeaderSlot }: ExtSidebarProps) {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Space | null>(null);
   return (
     <>
-      <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "flex-end", borderBottom: `1px solid ${theme.border}` }}>
-        <button type="button" title="사이드바 접기" aria-label="사이드바 접기" onClick={onCollapse} style={{ border: "none", background: "none", cursor: "pointer", display: "flex" }}>
+      <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${theme.border}`, boxSizing: "border-box" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>{orgHeaderSlot}</div>
+        <button type="button" title="사이드바 접기" aria-label="사이드바 접기" onClick={onCollapse} style={{ flexShrink: 0, border: "none", background: "none", cursor: "pointer", display: "flex" }}>
           <PanelLeftClose size={16} color={theme.textFaint} />
         </button>
       </div>

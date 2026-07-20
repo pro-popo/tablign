@@ -21,20 +21,41 @@ export function OrgHeader({ org, members, myRole, onOpenMembers }: OrgHeaderProp
   // 멤버는 조직 관리 권한이 없어 다이얼로그를 열 수 없으므로 톱니바퀴를 숨긴다.
   // 개인 조직은 단일 사용자 전용(멤버 초대·관리 개념이 없음)이라 소유자여도 톱니바퀴를 숨긴다.
   const showGear = !isPersonal && myRole !== "member";
+  const initial = (org.icon ?? org.name.trim().slice(0, 1) ?? "?").toUpperCase();
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <strong style={{ fontSize: 15, color: theme.text }}>{org.name}</strong>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+      <span
+        aria-hidden="true"
+        style={{
+          boxSizing: "border-box",
+          flexShrink: 0,
+          width: 22,
+          height: 22,
+          borderRadius: 6,
+          background: isPersonal ? theme.textFaint : (org.color ?? "#20a97e"),
+          color: "#fff",
+          fontSize: 12,
+          fontWeight: 700,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          lineHeight: 1,
+        }}
+      >
+        {initial}
+      </span>
+      <strong style={{ fontSize: 15, color: theme.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{org.name}</strong>
       {!isPersonal && (
         <>
           {members.length > 0 && <MemberAvatars people={members} />}
-          <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: chip.bg, color: chip.fg, boxSizing: "border-box" }}>
+          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: chip.bg, color: chip.fg, boxSizing: "border-box" }}>
             {chip.label}
           </span>
         </>
       )}
       {showGear && (
         <button type="button" title="멤버·설정" aria-label="조직 설정" onClick={onOpenMembers}
-          style={{ marginLeft: 2, border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3, color: theme.textFaint }}>
+          style={{ marginLeft: "auto", flexShrink: 0, border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3, color: theme.textFaint }}>
           {/* lucide settings */}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>

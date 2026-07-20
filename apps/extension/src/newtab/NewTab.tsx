@@ -821,6 +821,14 @@ export function NewTab() {
               onCollapse={toggleLeft}
               onImportCode={() => setImportOpen(true)}
               searchSlot={<ExtSearchBar />}
+              orgHeaderSlot={activeOrg ? (
+                <OrgHeader
+                  org={activeOrg}
+                  members={orgMembers}
+                  myRole={myOrgRole}
+                  onOpenMembers={openOrgMemberDialog}
+                />
+              ) : null}
             />
           </div>
         }
@@ -829,21 +837,11 @@ export function NewTab() {
         }
       >
         <Board>
-          {spacesLoaded && spaces.length === 0 ? (
-            // 스페이스 0개(신규 가입 직후 또는 전부 삭제): 온보딩 빈 상태.
+          {spacesLoaded && orgSpaces.length === 0 ? (
+            // 활성 조직에 스페이스가 0개(신규 가입 직후, 전부 삭제, 또는 방금 만든 빈 조직): 온보딩 빈 상태.
             <SpaceOnboarding onCreate={() => addSpace("개인")} />
           ) : (
             <>
-          {activeOrg && (
-            <div style={{ marginBottom: 10 }}>
-              <OrgHeader
-                org={activeOrg}
-                members={orgMembers}
-                myRole={myOrgRole}
-                onOpenMembers={openOrgMemberDialog}
-              />
-            </div>
-          )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
