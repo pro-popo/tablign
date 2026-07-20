@@ -226,6 +226,69 @@ describe("조직 초대 RPC", () => {
   });
 });
 
+describe("organization_members RLS: admin 멤버 관리 권한", () => {
+  beforeAll(async () => {
+    // adminMember=admin, member=member 상태로 정렬 (이전 describe에서 흐트러졌을 수 있음)
+    await admin.from("organization_members").upsert([
+      { org_id: orgId, user_id: adminMember.id, role: "admin" },
+      { org_id: orgId, user_id: member.id, role: "member" },
+    ]);
+  });
+
+  it("admin은 멤버를 제거할 수 있다", async () => {
+    await admin.from("organization_members").upsert({ org_id: orgId, user_id: outsider.id, role: "member" });
+    const { error } = await adminMember.client.from("organization_members")
+      .delete().eq("org_id", orgId).eq("user_id", outsider.id);
+    expect(error).toBeNull();
+    const { data } = await admin.from("organization_members").select().eq("org_id", orgId).eq("user_id", outsider.id);
+    expect(data!.length).toBe(0);
+  });
+
+  it("admin은 멤버의 role을 바꿀 수 있다", async () => {
+    const { error } = await adminMember.client.from("organization_members")
+      .update({ role: "admin" }).eq("org_id", orgId).eq("user_id", member.id);
+    expect(error).toBeNull();
+    const { data } = await admin.from("organization_members").select("role").eq("org_id", orgId).eq("user_id", member.id).single();
+    expect(data!.role).toBe("admin");
+    // 복구: service_role은 auth.uid()가 없어 can_edit_org가 false이므로 가드 트리거에 막힌다.
+    // 실제 권한을 가진 adminMember 클라이언트로 복구해야 한다.
+    await adminMember.client.from("organization_members").update({ role: "member" }).eq("org_id", orgId).eq("user_id", member.id);
+  });
+
+  it("member는 다른 사람의 role을 바꿀 수 없다(영향 없음)", async () => {
+    // adminMember는 현재 admin -> member로 강등 시도(원래는 admin이므로 값이 바뀌면 감지 가능)
+    await member.client.from("organization_members")
+      .update({ role: "member" }).eq("org_id", orgId).eq("user_id", adminMember.id);
+    const { data } = await admin.from("organization_members").select("role").eq("org_id", orgId).eq("user_id", adminMember.id).single();
+    expect(data!.role).toBe("admin"); // 바뀌지 않아야 함
+  });
+
+  it("member는 자기 role을 셀프 승격할 수 없다(트리거 차단)", async () => {
+    const { error } = await member.client.from("organization_members")
+      .update({ role: "admin" }).eq("org_id", orgId).eq("user_id", member.id);
+    expect(error).not.toBeNull();
+    const { data } = await admin.from("organization_members").select("role").eq("org_id", orgId).eq("user_id", member.id).single();
+    expect(data!.role).toBe("member");
+  });
+
+  it("member는 여전히 자기 position을 바꿀 수 있고, 탈퇴(자기 행 삭제)할 수 있다", async () => {
+    const { error: posErr } = await member.client.from("organization_members")
+      .update({ position: 2000 }).eq("org_id", orgId).eq("user_id", member.id);
+    expect(posErr).toBeNull();
+    const { data: posData } = await admin.from("organization_members").select("position").eq("org_id", orgId).eq("user_id", member.id).single();
+    expect(posData!.position).toBe(2000);
+
+    const { error: delErr } = await member.client.from("organization_members")
+      .delete().eq("org_id", orgId).eq("user_id", member.id);
+    expect(delErr).toBeNull();
+    const { data: afterDelete } = await admin.from("organization_members").select().eq("org_id", orgId).eq("user_id", member.id);
+    expect(afterDelete!.length).toBe(0);
+
+    // 다른 describe 블록에 영향 없도록 재시딩
+    await admin.from("organization_members").upsert({ org_id: orgId, user_id: member.id, role: "member", position: 1000 });
+  });
+});
+
 describe("조직 멤버·초대 데이터 계층", () => {
   it("listOrgMembers는 프로필과 함께 멤버를 돌려준다", async () => {
     await admin.from("organization_members").upsert([
