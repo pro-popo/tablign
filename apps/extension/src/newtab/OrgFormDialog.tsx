@@ -34,8 +34,8 @@ export interface OrgFormDialogProps {
   onClose: () => void;
 }
 
-// 대표 색: 이모지(쨍한 색감)와 어울리도록 살짝 파스텔 톤으로 낮춘 8색(고르게 분포).
-const SWATCHES = ["#748FFC", "#9775FA", "#66D9E8", "#38D9A9", "#69DB7C", "#FFD43B", "#FFA94D", "#F783AC"];
+// 대표 색: 살짝 파스텔 톤 8색. 웜→쿨 순서(핑크·오렌지·옐로우 → 그린·틸·시안·블루·바이올렛).
+const SWATCHES = ["#F783AC", "#FFA94D", "#FFD43B", "#69DB7C", "#38D9A9", "#66D9E8", "#748FFC", "#9775FA"];
 const DEFAULT_COLOR = "#748FFC";
 // 이모지 풀 구성에 실패했을 때(테스트 목 등으로 카테고리 데이터가 없는 경우)의 최후 방어값.
 const FALLBACK_ICON = "🚀";
