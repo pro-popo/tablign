@@ -8,6 +8,7 @@ export interface OrgRailProps {
   activeOrgId: string | null;
   userEmail: string;
   currentUserId: string;
+  avatarUrl?: string | null;
   onSelectOrg: (id: string) => void;
   onCreateOrg: () => void;
   onSignOut: () => void;
@@ -21,7 +22,7 @@ function initials(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
-export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, onSelectOrg, onCreateOrg, onSignOut }: OrgRailProps) {
+export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, avatarUrl, onSelectOrg, onCreateOrg, onSignOut }: OrgRailProps) {
   const [expanded, setExpanded] = useState(false);
   const personal = organizations.find((o) => o.is_personal) ?? null;
   const teams = organizations.filter((o) => !o.is_personal);
@@ -101,7 +102,7 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
       <div style={{ height: 1, background: "#e2e5ea", margin: "0 12px 4px" }} />
       {/* 계정 */}
       <div style={row(false)} title={userEmail}>
-        <span style={{ width: 32, height: 32, borderRadius: "50%", background: "#dfe2ea", flex: "none", border: "2px solid #fff", boxShadow: "0 0 0 1px #e2e5ea", boxSizing: "border-box" }} />
+        <span style={{ width: 32, height: 32, borderRadius: "50%", background: avatarUrl ? `center/cover url(${avatarUrl})` : "#dfe2ea", flex: "none", border: "2px solid #fff", boxShadow: "0 0 0 1px #e2e5ea", boxSizing: "border-box" }} />
         <span style={{ ...label(false), overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>{userEmail}</span>
         {expanded && (
           <button

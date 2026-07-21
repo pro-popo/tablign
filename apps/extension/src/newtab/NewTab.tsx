@@ -821,6 +821,7 @@ export function NewTab() {
             activeOrgId={activeOrgId}
             userEmail={session.user.email ?? ""}
             currentUserId={session.user.id}
+            avatarUrl={session.user.user_metadata?.avatar_url ?? null}
             onSelectOrg={selectOrg}
             onCreateOrg={openCreateOrg}
             onSignOut={async () => { await supabase.auth.signOut(); }}
