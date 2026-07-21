@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker } from "@tablign/ui";
 
 export interface OrgFormValue { name: string; icon: string | null; color: string | null }
@@ -21,13 +21,16 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  const wasOpen = useRef(false);
   useEffect(() => {
-    if (!open) return;
-    setName(initial?.name ?? "");
-    setIcon(initial?.icon ?? null);
-    setColor(initial?.color ?? DEFAULT_COLOR);
-    setEmojiOpen(false);
-    setPickerOpen(false);
+    if (open && !wasOpen.current) {
+      setName(initial?.name ?? "");
+      setIcon(initial?.icon ?? null);
+      setColor(initial?.color ?? DEFAULT_COLOR);
+      setEmojiOpen(false);
+      setPickerOpen(false);
+    }
+    wasOpen.current = open;
   }, [open, initial]);
 
   useEffect(() => {

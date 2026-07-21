@@ -856,7 +856,7 @@ export function NewTab() {
                     members={orgMembers}
                     myRole={myOrgRole}
                     onOpenMembers={openOrgMemberDialog}
-                    onEditOrg={(myOrgRole === "owner" || myOrgRole === "admin") ? openEditOrg : undefined}
+                    onEditOrg={(!activeOrg?.is_personal && (myOrgRole === "owner" || myOrgRole === "admin")) ? openEditOrg : undefined}
                   />
                 ) : null}
               />
