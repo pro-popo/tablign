@@ -206,7 +206,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
       <style>{overlayAnimationCss}</style>
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
-        style={{ width: 340, maxWidth: "calc(100vw - 32px)", animation: panelIn, background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}>
+        style={{ width: 356, maxWidth: "calc(100vw - 32px)", animation: panelIn, background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{title}</div>
 
         {/* 아바타 + 이름 */}
@@ -253,30 +253,32 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
         </div>
 
         {/* 색상 스와치 */}
-        <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div style={{ marginTop: 14, display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6 }}>
           {SWATCHES.map((s) => (
             <button key={s} type="button" aria-label={s} onClick={() => { setColor(s); setPickerOpen(false); }}
-              style={{ width: 26, height: 26, borderRadius: 8,
+              style={{ width: 24, height: 24, borderRadius: 7, flex: "none",
                 // 선택: 흰 간격 + 그 스와치 자기 색 링(레일 활성 아이콘과 통일). 비선택: 은은한 테두리.
                 border: color === s ? "none" : "1px solid rgba(0,0,0,.08)",
                 boxShadow: color === s ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${s}` : "none",
                 background: s, cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
           ))}
           {/* 커스텀 색 표출 + 직접 고르기 트리거. 래퍼로 묶어 바깥클릭 판정(colorWrapRef.contains)에서 제외 → 트리거·커스텀 스와치 클릭이 팝오버를 닫지 않는다. */}
-          <div ref={colorWrapRef} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div ref={colorWrapRef} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {/* 커스텀 색이 선택돼 있으면 프리셋과 구분선으로 나눈 뒤 선택된 커스텀 스와치를 보여준다. */}
             {isCustomColor && (
               <>
-                <span style={{ width: 1, height: 22, background: theme.border, flex: "none" }} />
+                <span style={{ width: 1, height: 20, background: theme.border, flex: "none" }} />
                 <button type="button" aria-label={`직접 고른 색 ${color}`} onClick={() => { setPickerOpen(true); setEmojiOpen(false); }}
-                  style={{ width: 26, height: 26, borderRadius: 8, border: "none",
+                  style={{ width: 24, height: 24, borderRadius: 7, border: "none", flex: "none",
                     boxShadow: `0 0 0 2px ${theme.surface}, 0 0 0 4px ${color}`,
                     background: color, cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
               </>
             )}
-            <div style={{ position: "relative" }}>
+            <div style={{ position: "relative", flex: "none" }}>
+              {/* 무지개 원: 그라데이션 위에 평평한 테두리는 어색 → 얇은 외곽 링(box-shadow)으로 정의만. */}
               <button type="button" aria-label="색상 직접 선택" onClick={() => { setPickerOpen((o) => !o); setEmojiOpen(false); }}
-                style={{ width: 26, height: 26, borderRadius: 8, border: "1px solid rgba(0,0,0,.08)", background: rainbowGradient,
+                style={{ width: 24, height: 24, borderRadius: 7, border: "none", background: rainbowGradient,
+                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,.5), 0 0 0 1px rgba(0,0,0,.08)",
                   cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
 
               {/* 색상 직접 선택기 — 무지개 트리거에 앵커된 플로팅 팝오버(이모지 팝오버와 동일 패턴). 다이얼로그 본문 흐름을 밀어내지 않는다. */}
