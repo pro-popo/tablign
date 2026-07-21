@@ -192,7 +192,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   const submitLabel = mode === "create" ? "만들기" : "저장";
   // 프리셋에 없는 색 = 직접 고른 커스텀 색. 스와치 목록에 별도 칸으로 표출한다.
   const isCustomColor = !SWATCHES.includes(color);
-  // "직접 고르기" 트리거의 무지개 원(프리셋 색을 이어붙여 한 바퀴).
+  // 커스텀 색 스와치의 "직접 고른 색" 스펙트럼 배지(프리셋 색을 이어붙여 한 바퀴).
   const rainbowGradient = `conic-gradient(from 0deg, ${[...SWATCHES, SWATCHES[0]].join(", ")})`;
 
   function submit() {
@@ -206,7 +206,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
       <style>{overlayAnimationCss}</style>
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
-        style={{ width: 356, maxWidth: "calc(100vw - 32px)", animation: panelIn, background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}>
+        style={{ width: 340, maxWidth: "calc(100vw - 32px)", animation: panelIn, background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{title}</div>
 
         {/* 아바타 + 이름 */}
@@ -253,45 +253,45 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
         </div>
 
         {/* 색상 스와치 */}
-        <div style={{ marginTop: 14, display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6 }}>
+        <div style={{ marginTop: 14, display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 8 }}>
           {SWATCHES.map((s) => (
             <button key={s} type="button" aria-label={s} onClick={() => { setColor(s); setPickerOpen(false); }}
-              style={{ width: 24, height: 24, borderRadius: 7, flex: "none",
+              style={{ width: 26, height: 26, borderRadius: 8, flex: "none",
                 // 선택: 흰 간격 + 그 스와치 자기 색 링(레일 활성 아이콘과 통일). 비선택: 은은한 테두리.
                 border: color === s ? "none" : "1px solid rgba(0,0,0,.08)",
                 boxShadow: color === s ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${s}` : "none",
                 background: s, cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
           ))}
-          {/* 커스텀 색 표출 + 직접 고르기 트리거. 래퍼로 묶어 바깥클릭 판정(colorWrapRef.contains)에서 제외 → 트리거·커스텀 스와치 클릭이 팝오버를 닫지 않는다. */}
-          <div ref={colorWrapRef} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            {/* 커스텀 색이 선택돼 있으면 프리셋과 구분선으로 나눈 뒤 선택된 커스텀 스와치를 보여준다. */}
-            {isCustomColor && (
-              <>
-                <span style={{ width: 1, height: 20, background: theme.border, flex: "none" }} />
-                <button type="button" aria-label={`직접 고른 색 ${color}`} onClick={() => { setPickerOpen(true); setEmojiOpen(false); }}
-                  style={{ width: 24, height: 24, borderRadius: 7, border: "none", flex: "none",
-                    boxShadow: `0 0 0 2px ${theme.surface}, 0 0 0 4px ${color}`,
-                    background: color, cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
-              </>
-            )}
-            <div style={{ position: "relative", flex: "none" }}>
-              {/* 무지개 원: 그라데이션 위에 평평한 테두리는 어색 → 얇은 외곽 링(box-shadow)으로 정의만. */}
+          {/* 커스텀 슬롯(항상 한 칸) — 래퍼로 묶어 바깥클릭 판정(colorWrapRef.contains)에서 제외 → 트리거 클릭이 팝오버를 닫지 않는다. */}
+          <div ref={colorWrapRef} style={{ position: "relative", flex: "none" }}>
+            {isCustomColor ? (
+              // 커스텀 색을 고른 상태: 그 색으로 채워지고 선택 링 + 스펙트럼 배지. 다시 누르면 피커로 수정.
+              <button type="button" aria-label={`직접 고른 색 ${color}`} onClick={() => { setPickerOpen((o) => !o); setEmojiOpen(false); }}
+                style={{ position: "relative", width: 26, height: 26, borderRadius: 8, border: "none",
+                  boxShadow: `0 0 0 2px ${theme.surface}, 0 0 0 4px ${color}`,
+                  background: color, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
+                <span aria-hidden style={{ position: "absolute", right: -3, bottom: -3, width: 13, height: 13, borderRadius: "50%",
+                  background: rainbowGradient, boxShadow: `0 0 0 1px ${theme.surface}` }} />
+              </button>
+            ) : (
+              // 커스텀 색을 안 고른 상태: 비어 있는 점선 ＋ = 직접 고르기.
               <button type="button" aria-label="색상 직접 선택" onClick={() => { setPickerOpen((o) => !o); setEmojiOpen(false); }}
-                style={{ width: 24, height: 24, borderRadius: 7, border: "none", background: rainbowGradient,
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,.5), 0 0 0 1px rgba(0,0,0,.08)",
-                  cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
+                style={{ width: 26, height: 26, borderRadius: 8, border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint,
+                  cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
+                ＋
+              </button>
+            )}
 
-              {/* 색상 직접 선택기 — 무지개 트리거에 앵커된 플로팅 팝오버(이모지 팝오버와 동일 패턴). 다이얼로그 본문 흐름을 밀어내지 않는다. */}
-              {pickerOpen && (
-                <div onClick={(e) => e.stopPropagation()}
-                  style={{ position: "absolute", ...(colorPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
-                    left: 0, zIndex: 50, width: 240,
-                    maxWidth: "calc(100vw - 32px)", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
-                    padding: 14, boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
-                  <ColorPicker value={color} onChange={setColor} />
-                </div>
-              )}
-            </div>
+            {/* 색상 직접 선택기 — 커스텀 슬롯에 앵커된 플로팅 팝오버(이모지 팝오버와 동일 패턴). 다이얼로그 본문 흐름을 밀어내지 않는다. */}
+            {pickerOpen && (
+              <div onClick={(e) => e.stopPropagation()}
+                style={{ position: "absolute", ...(colorPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
+                  left: 0, zIndex: 50, width: 240,
+                  maxWidth: "calc(100vw - 32px)", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
+                  padding: 14, boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
+                <ColorPicker value={color} onChange={setColor} />
+              </div>
+            )}
           </div>
         </div>
 
