@@ -252,7 +252,10 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
         <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
           {SWATCHES.map((s) => (
             <button key={s} type="button" aria-label={s} onClick={() => { setColor(s); setPickerOpen(false); }}
-              style={{ width: 26, height: 26, borderRadius: 8, border: color === s ? `2px solid ${theme.text}` : "1px solid rgba(0,0,0,.08)",
+              style={{ width: 26, height: 26, borderRadius: 8,
+                // 선택: 흰 간격 + 그 스와치 자기 색 링(레일 활성 아이콘과 통일). 비선택: 은은한 테두리.
+                border: color === s ? "none" : "1px solid rgba(0,0,0,.08)",
+                boxShadow: color === s ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${s}` : "none",
                 background: s, cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
           ))}
           <div ref={colorWrapRef} style={{ position: "relative" }}>
