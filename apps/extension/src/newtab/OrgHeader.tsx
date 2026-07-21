@@ -13,37 +13,48 @@ export interface OrgHeaderProps {
   members: OrgMemberWithProfile[];
   myRole: OrgRole;
   onOpenMembers: () => void;
+  onEditOrg?: () => void;
 }
 
-export function OrgHeader({ org, members, myRole, onOpenMembers }: OrgHeaderProps) {
+export function OrgHeader({ org, members, myRole, onOpenMembers, onEditOrg }: OrgHeaderProps) {
   const chip = ROLE_CHIP[myRole];
   const isPersonal = org.is_personal;
   // 멤버는 조직 관리 권한이 없어 다이얼로그를 열 수 없으므로 톱니바퀴를 숨긴다.
   // 개인 조직은 단일 사용자 전용(멤버 초대·관리 개념이 없음)이라 소유자여도 톱니바퀴를 숨긴다.
   const showGear = !isPersonal && myRole !== "member";
   const initial = (org.icon ?? org.name.trim().slice(0, 1) ?? "?").toUpperCase();
+  const avatarStyle: React.CSSProperties = {
+    boxSizing: "border-box",
+    flexShrink: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    background: isPersonal ? theme.textFaint : (org.color ?? "#20a97e"),
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: 700,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    lineHeight: 1,
+  };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-      <span
-        aria-hidden="true"
-        style={{
-          boxSizing: "border-box",
-          flexShrink: 0,
-          width: 22,
-          height: 22,
-          borderRadius: 6,
-          background: isPersonal ? theme.textFaint : (org.color ?? "#20a97e"),
-          color: "#fff",
-          fontSize: 12,
-          fontWeight: 700,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          lineHeight: 1,
-        }}
-      >
-        {initial}
-      </span>
+      {onEditOrg ? (
+        <button
+          type="button"
+          aria-label="조직 편집"
+          title="조직 편집"
+          onClick={onEditOrg}
+          style={{ ...avatarStyle, border: "none", padding: 0, cursor: "pointer" }}
+        >
+          {initial}
+        </button>
+      ) : (
+        <span aria-hidden="true" style={avatarStyle}>
+          {initial}
+        </span>
+      )}
       <strong style={{ fontSize: 15, color: theme.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{org.name}</strong>
       {!isPersonal && (
         <>

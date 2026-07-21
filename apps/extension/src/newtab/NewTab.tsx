@@ -37,7 +37,7 @@ import {
   copyCollection, moveCollectionToSpace,
   createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
-  listOrganizations, createOrganization, listMyOrgMemberships, listOrgMembers, removeOrgMember, updateOrgMemberRole,
+  listOrganizations, createOrganization, updateOrganization, listMyOrgMemberships, listOrgMembers, removeOrgMember, updateOrgMemberRole,
   inviteToOrg, listOrgInvitations, cancelOrgInvitation, listMyOrgInvitations, acceptOrgInvitation, declineOrgInvitation,
   type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
   type Organization, type OrganizationMember, type OrgMemberWithProfile, type OrganizationInvitation, type OrgInvitationWithOrg,
@@ -54,6 +54,7 @@ import { ExtSearchBar } from "./ExtSearchBar";
 import { DndLinkList } from "./DndLinkList";
 import { AuthScreen } from "./AuthScreen";
 import { OrgHeader, type OrgRole } from "./OrgHeader";
+import { OrgFormDialog } from "./OrgFormDialog";
 
 interface DragPreview { label: string; faviconUrl: string | null; domain: string }
 
@@ -111,6 +112,9 @@ export function NewTab() {
   const [orgMembers, setOrgMembers] = useState<OrgMemberWithProfile[]>([]);
   // 조직 멤버 관리 다이얼로그 열림 상태(다이얼로그 본체는 Task 5에서 추가).
   const [orgMemberDialogOpen, setOrgMemberDialogOpen] = useState(false);
+  // 조직 생성/편집 다이얼로그 상태.
+  const [orgFormOpen, setOrgFormOpen] = useState(false);
+  const [orgFormMode, setOrgFormMode] = useState<"create" | "edit">("create");
   const { activeOrgId, setActiveOrgId, loaded: orgLoaded } = useActiveOrg();
   // 스페이스 목록 로드 완료 여부. 0개(신규 가입·전부 삭제)와 "아직 로딩 중"을 구분해
   // 온보딩 화면과 스켈레톤을 올바르게 가른다.
@@ -304,12 +308,30 @@ export function NewTab() {
     setActiveSpaceId(firstInOrg?.id ?? null);
   }
 
-  async function createOrg() {
+  function openCreateOrg() {
+    setOrgFormMode("create");
+    setOrgFormOpen(true);
+  }
+
+  function openEditOrg() {
+    if (activeOrg && !activeOrg.is_personal) {
+      setOrgFormMode("edit");
+      setOrgFormOpen(true);
+    }
+  }
+
+  async function submitOrgForm(v: { name: string; icon: string | null; color: string | null }) {
     if (!session) return;
-    const org = await createOrganization(supabase, { name: "새 조직", owner_id: session.user.id });
-    setOrganizations((prev) => [...prev, org]);
-    setActiveOrgId(org.id);
-    setActiveSpaceId(null);
+    if (orgFormMode === "create") {
+      const org = await createOrganization(supabase, { name: v.name || "새 조직", owner_id: session.user.id, icon: v.icon, color: v.color });
+      setOrganizations((prev) => [...prev, org]);
+      setActiveOrgId(org.id);
+      setActiveSpaceId(null);
+    } else if (activeOrg) {
+      const updated = await updateOrganization(supabase, activeOrg.id, { name: v.name || activeOrg.name, icon: v.icon, color: v.color });
+      setOrganizations((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+    }
+    setOrgFormOpen(false);
   }
 
   async function renameSpace(id: string, name: string) {
@@ -800,7 +822,7 @@ export function NewTab() {
             userEmail={session.user.email ?? ""}
             currentUserId={session.user.id}
             onSelectOrg={selectOrg}
-            onCreateOrg={createOrg}
+            onCreateOrg={openCreateOrg}
             onSignOut={async () => { await supabase.auth.signOut(); }}
           />
         </div>
@@ -833,6 +855,7 @@ export function NewTab() {
                     members={orgMembers}
                     myRole={myOrgRole}
                     onOpenMembers={openOrgMemberDialog}
+                    onEditOrg={(myOrgRole === "owner" || myOrgRole === "admin") ? openEditOrg : undefined}
                   />
                 ) : null}
               />
@@ -1040,6 +1063,13 @@ export function NewTab() {
         onRemove={async (uid) => { try { await removeMember(supabase, activeSpaceId!, uid); reloadMembers(); } catch (e) { console.error(e); toast.show("멤버를 제거하지 못했어요."); } }}
         onCancelInvite={async (id) => { try { await cancelInvitation(supabase, id); reloadMembers(); } catch (e) { console.error(e); toast.show("초대를 취소하지 못했어요."); } }}
         onClose={() => setMemberDialogOpen(false)}
+      />
+      <OrgFormDialog
+        open={orgFormOpen}
+        mode={orgFormMode}
+        initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color } : undefined}
+        onSubmit={submitOrgForm}
+        onClose={() => setOrgFormOpen(false)}
       />
       <MemberDialog
         open={orgMemberDialogOpen}
