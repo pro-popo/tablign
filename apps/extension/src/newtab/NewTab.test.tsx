@@ -33,6 +33,7 @@ const acceptInvitation = vi.fn();
 const listOrganizations = vi.fn();
 const listMyOrgMemberships = vi.fn();
 const createOrganization = vi.fn();
+const updateOrganization = vi.fn();
 const listOrgMembers = vi.fn();
 const listOrgInvitations = vi.fn();
 const listMyOrgInvitations = vi.fn();
@@ -63,6 +64,7 @@ vi.mock("@tablign/core", async (importOriginal) => {
     listOrganizations: (...a: unknown[]) => listOrganizations(...a),
     listMyOrgMemberships: (...a: unknown[]) => listMyOrgMemberships(...a),
     createOrganization: (...a: unknown[]) => createOrganization(...a),
+    updateOrganization: (...a: unknown[]) => updateOrganization(...a),
     listOrgMembers: (...a: unknown[]) => listOrgMembers(...a),
     listOrgInvitations: (...a: unknown[]) => listOrgInvitations(...a),
     listMyOrgInvitations: (...a: unknown[]) => listMyOrgInvitations(...a),
@@ -104,6 +106,30 @@ beforeEach(() => {
   listMyOrgMemberships.mockReset();
   listMyOrgMemberships.mockResolvedValue([]);
   createOrganization.mockReset();
+  // 인자를 반영한 org를 resolve — 다이얼로그 제출 후 화면에 새 조직이 실제로 나타나는지 검증할 수 있도록 한다.
+  createOrganization.mockImplementation(
+    async (_supabase: unknown, input: { name: string; owner_id: string; icon?: string | null; color?: string | null }) => ({
+      id: "org-new",
+      name: input.name,
+      icon: input.icon ?? null,
+      color: input.color ?? null,
+      owner_id: input.owner_id,
+      is_personal: false,
+      created_at: "x",
+    }),
+  );
+  updateOrganization.mockReset();
+  updateOrganization.mockImplementation(
+    async (_supabase: unknown, id: string, patch: { name: string; icon?: string | null; color?: string | null }) => ({
+      id,
+      name: patch.name,
+      icon: patch.icon ?? null,
+      color: patch.color ?? null,
+      owner_id: "owner-x",
+      is_personal: false,
+      created_at: "x",
+    }),
+  );
   listOrgMembers.mockReset();
   listOrgMembers.mockResolvedValue([]);
   listOrgInvitations.mockReset();
@@ -345,5 +371,58 @@ describe("NewTab — 조직(팀) 협업", () => {
     fireEvent.click(await screen.findByRole("button", { name: /초대/ }));
     fireEvent.click(await screen.findByRole("button", { name: "수락" }));
     await waitFor(() => expect(acceptOrgInvitation).toHaveBeenCalledWith(expect.anything(), "oinv1"));
+  });
+});
+
+describe("NewTab — 조직 생성·편집 다이얼로그", () => {
+  it("레일 '조직 만들기'를 클릭하면 즉시 생성되지 않고 다이얼로그가 열리며, 제출 시 createOrganization을 호출한다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+    ]);
+    renderNewTab();
+    await screen.findAllByText("개인");
+
+    fireEvent.click(screen.getByText("조직 만들기"));
+    // 즉시 생성되지 않는다 — 다이얼로그가 뜬다.
+    expect(createOrganization).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", { name: "새 조직 만들기" });
+
+    fireEvent.change(within(dialog).getByPlaceholderText("조직 이름"), { target: { value: "새싹팀" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "만들기" }));
+
+    await waitFor(() => expect(createOrganization).toHaveBeenCalledTimes(1));
+    expect(createOrganization.mock.calls[0][1]).toMatchObject({ name: "새싹팀", owner_id: "u1" });
+    // 제출 후 다이얼로그는 닫힌다.
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "새 조직 만들기" })).not.toBeInTheDocument());
+  });
+
+  it("팀 조직 관리자가 헤더 아바타(편집)를 클릭하면 기존 값으로 편집 다이얼로그가 열리고, 저장 시 updateOrganization이 반영된 이름으로 호출된다", async () => {
+    listOrganizations.mockResolvedValue([
+      { id: "org-personal", name: "개인", icon: null, color: null, owner_id: "u1", is_personal: true, created_at: "" },
+      { id: "org-team", name: "우리팀", icon: null, color: "#20a97e", owner_id: "owner-x", is_personal: false, created_at: "x" },
+    ]);
+    listMyOrgMemberships.mockResolvedValue([
+      { org_id: "org-team", user_id: "u1", role: "admin", created_at: "x" },
+    ]);
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+    ]);
+    renderNewTab();
+    await screen.findAllByText("개인");
+
+    fireEvent.click(screen.getByText("우리팀"));
+    await screen.findByText("관리자"); // 팀 헤더 로드 대기
+
+    fireEvent.click(screen.getByRole("button", { name: "조직 편집" }));
+    const dialog = await screen.findByRole("dialog", { name: "조직 설정" });
+    expect(within(dialog).getByPlaceholderText("조직 이름")).toHaveValue("우리팀");
+
+    fireEvent.change(within(dialog).getByPlaceholderText("조직 이름"), { target: { value: "우리팀2" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
+
+    await waitFor(() =>
+      expect(updateOrganization).toHaveBeenCalledWith(expect.anything(), "org-team", expect.objectContaining({ name: "우리팀2" })),
+    );
+    expect((await screen.findAllByText("우리팀2")).length).toBeGreaterThan(0);
   });
 });
