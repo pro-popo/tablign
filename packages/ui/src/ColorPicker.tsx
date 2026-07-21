@@ -12,12 +12,20 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
   const [hexText, setHexText] = useState(value);
   const svRef = useRef<HTMLDivElement>(null);
   const hueRef = useRef<HTMLDivElement>(null);
+  // 방금 내가 emit한 hex. controlled 부모가 이 값을 그대로 되돌려줄 때(self-echo) hue 재계산을 건너뛴다.
+  // (검정/흰색 등 achromatic에서 hexToHsv가 h=0을 주므로, self-echo까지 반영하면 hue가 빨강으로 초기화됨)
+  const lastEmit = useRef(value);
 
-  // 외부 value 변경 반영(대표 스와치 클릭 등)
-  useEffect(() => { const c = hexToHsv(value); if (c) { setH(c.h); setS(c.s); setV(c.v); setHexText(value); } }, [value]);
+  // 외부 value 변경만 반영(대표 스와치 클릭 등). 내가 emit한 값(self-echo)은 무시해 내부 hue를 보존.
+  useEffect(() => {
+    if (value === lastEmit.current) return;
+    const c = hexToHsv(value);
+    if (c) { setH(c.h); setS(c.s); setV(c.v); setHexText(value); lastEmit.current = value; }
+  }, [value]);
 
   function emit(nh: number, ns: number, nv: number) {
     const hex = hsvToHex(nh, ns, nv);
+    lastEmit.current = hex;
     setHexText(hex);
     onChange(hex);
   }
