@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker } from "@tablign/ui";
 import Picker from "@emoji-mart/react";
 import emojiData from "@emoji-mart/data";
@@ -83,15 +83,57 @@ function detectPickerLocale(): string {
 const PICKER_LOCALE = detectPickerLocale();
 const PICKER_I18N_DATA = PICKER_I18N[PICKER_LOCALE];
 
+// 팝오버가 열릴 위치(아래/위)를 정할 때 필요한 대략적인 높이 추정치.
+// 이모지 피커는 em-emoji-picker 자체를 340px로 캡핑하므로 테두리·여백을 포함해 넉넉히 잡는다.
+const EMOJI_POPOVER_HEIGHT = 380;
+const COLOR_POPOVER_HEIGHT = 300;
+
+type Placement = "down" | "up";
+
+// 트리거 래퍼 기준으로 아래 공간이 부족하고 위 공간이 더 넓으면 위로 뒤집는다.
+// jsdom 등 테스트 환경에서는 getBoundingClientRect가 전부 0을 반환하므로
+// spaceBelow(= innerHeight - 0)가 커져 항상 "down"으로 안전하게 귀결된다.
+function computePlacement(triggerRef: React.RefObject<HTMLElement | null>, neededHeight: number): Placement {
+  if (!triggerRef.current) return "down";
+  const rect = triggerRef.current.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const spaceAbove = rect.top;
+  if (spaceBelow < neededHeight && spaceAbove > spaceBelow) return "up";
+  return "down";
+}
+
 export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFormDialogProps) {
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<string>(() => (mode === "edit" ? (initial?.icon ?? randomIcon()) : randomIcon()));
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [emojiPlacement, setEmojiPlacement] = useState<Placement>("down");
+  const [colorPlacement, setColorPlacement] = useState<Placement>("down");
 
   const emojiWrapRef = useRef<HTMLDivElement>(null);
   const colorWrapRef = useRef<HTMLDivElement>(null);
+
+  // 열릴 때 + 창 크기 변경 시 아래 공간을 다시 측정해 뒤집을지 정한다.
+  useLayoutEffect(() => {
+    if (!emojiOpen) return;
+    function update() {
+      setEmojiPlacement(computePlacement(emojiWrapRef, EMOJI_POPOVER_HEIGHT));
+    }
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [emojiOpen]);
+
+  useLayoutEffect(() => {
+    if (!pickerOpen) return;
+    function update() {
+      setColorPlacement(computePlacement(colorWrapRef, COLOR_POPOVER_HEIGHT));
+    }
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [pickerOpen]);
 
   const wasOpen = useRef(false);
   useEffect(() => {
@@ -180,9 +222,12 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                 크기는 피커의 자연 크기를 그대로 따른다(hug) — 우측/하단에 빈 여백이 남지 않도록 폭·높이를 강제하지 않는다. */}
             {emojiOpen && (
               <div onClick={(e) => e.stopPropagation()}
-                style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 50, width: "fit-content", maxWidth: "calc(100vw - 32px)",
+                style={{ position: "absolute", ...(emojiPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
+                  left: 0, zIndex: 50, width: "fit-content", maxWidth: "calc(100vw - 32px)",
                   maxHeight: "calc(100vh - 32px)", overflow: "auto", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
                   boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
+                {/* em-emoji-picker의 자연 높이(~435px)가 화면을 넘지 않도록 고정 높이로 캡핑 — 내부 이모지 그리드가 스크롤된다. */}
+                <style>{"em-emoji-picker { height: 340px; }"}</style>
                 <Picker
                   data={emojiData}
                   i18n={PICKER_I18N_DATA}
@@ -220,7 +265,8 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
             {/* 색상 직접 선택기 — ＋ 버튼에 앵커된 플로팅 팝오버(이모지 팝오버와 동일 패턴). 다이얼로그 본문 흐름을 밀어내지 않는다. */}
             {pickerOpen && (
               <div onClick={(e) => e.stopPropagation()}
-                style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 50, width: 240,
+                style={{ position: "absolute", ...(colorPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
+                  left: 0, zIndex: 50, width: 240,
                   maxWidth: "calc(100vw - 32px)", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
                   padding: 14, boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
                 <ColorPicker value={color} onChange={setColor} />
