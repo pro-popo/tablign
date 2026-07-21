@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker } from "@tablign/ui";
+import Picker from "@emoji-mart/react";
+import emojiData from "@emoji-mart/data";
 
 export interface OrgFormValue { name: string; icon: string | null; color: string | null }
 export interface OrgFormDialogProps {
@@ -10,13 +12,15 @@ export interface OrgFormDialogProps {
   onClose: () => void;
 }
 
-const EMOJIS = ["🙂", "🚀", "💡", "🎨", "📚", "🏢", "⭐", "🔥", "✅", "📌", "🧩", "🎯", "🌱", "🏷"];
 const SWATCHES = ["#E03131", "#F59F00", "#2F9E44", "#0CA678", "#1C7ED6", "#4263EB", "#7048E8", "#E64980"];
 const DEFAULT_COLOR = "#4263EB";
+const DEFAULT_ICON = "🚀";
+
+interface EmojiMartSelection { native?: string }
 
 export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFormDialogProps) {
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState<string | null>(null);
+  const [icon, setIcon] = useState<string>(DEFAULT_ICON);
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -25,7 +29,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   useEffect(() => {
     if (open && !wasOpen.current) {
       setName(initial?.name ?? "");
-      setIcon(initial?.icon ?? null);
+      setIcon(initial?.icon ?? DEFAULT_ICON);
       setColor(initial?.color ?? DEFAULT_COLOR);
       setEmojiOpen(false);
       setPickerOpen(false);
@@ -44,7 +48,6 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
 
   const title = mode === "create" ? "새 조직 만들기" : "조직 설정";
   const submitLabel = mode === "create" ? "만들기" : "저장";
-  const avatarContent = icon ?? (name.trim()[0]?.toUpperCase() ?? "?");
 
   function submit() {
     const v = name.trim();
@@ -66,7 +69,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
             style={{ position: "relative", width: 56, height: 56, borderRadius: 15, border: "none", padding: 0, cursor: "pointer",
               background: color, color: "#fff", fontSize: 24, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0, boxSizing: "border-box" }}>
-            {avatarContent}
+            {icon}
             <span style={{ position: "absolute", right: -3, bottom: -3, width: 20, height: 20, borderRadius: "50%", background: theme.surface,
               border: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: theme.textMuted,
               boxSizing: "border-box" }}>✎</span>
@@ -75,21 +78,23 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
             style={{ flex: 1, padding: "9px 11px", border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
         </div>
 
-        {/* 이모지 그리드 */}
+        {/* 이모지 피커 (emoji-mart) */}
         {emojiOpen && (
-          <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
-            {EMOJIS.map((e) => (
-              <button key={e} type="button" onClick={() => { setIcon(e); setEmojiOpen(false); }}
-                style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface, cursor: "pointer",
-                  fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
-                {e}
-              </button>
-            ))}
-            <button type="button" onClick={() => { setIcon(null); setEmojiOpen(false); }} title="이니셜로"
-              style={{ gridColumn: "span 7", marginTop: 2, padding: "6px 0", borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.surface,
-                cursor: "pointer", fontSize: 12, color: theme.textMuted, boxSizing: "border-box" }}>
-              이니셜로
-            </button>
+          <div style={{ marginTop: 10, maxWidth: "100%", overflowX: "hidden", border: `1px solid ${theme.border}`, borderRadius: 8 }}>
+            <style>{"em-emoji-picker { height: 340px !important; }"}</style>
+            <Picker
+              data={emojiData}
+              onEmojiSelect={(e: EmojiMartSelection) => {
+                if (e.native) setIcon(e.native);
+                setEmojiOpen(false);
+              }}
+              theme="light"
+              previewPosition="none"
+              skinTonePosition="search"
+              perLine={7}
+              maxFrequentRows={2}
+              dynamicWidth={false}
+            />
           </div>
         )}
 

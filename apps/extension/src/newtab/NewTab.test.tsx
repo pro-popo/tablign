@@ -15,6 +15,15 @@ vi.mock("../lib/supabase", () => ({
   },
 }));
 
+// emoji-mart는 shadow DOM 커스텀 엘리먼트를 실제로 마운트하는 무거운 컴포넌트라
+// jsdom에서는 가벼운 스텁으로 대체하고, 이모지 선택 플로우 자체만 검증한다.
+vi.mock("@emoji-mart/react", () => ({
+  default: ({ onEmojiSelect }: { onEmojiSelect: (e: { native: string }) => void }) => (
+    <button type="button" onClick={() => onEmojiSelect({ native: "🎉" })}>emoji-mart-stub</button>
+  ),
+}));
+vi.mock("@emoji-mart/data", () => ({ default: {} }));
+
 // 데이터 계층 모킹: 함수만 대체하고 타입·정렬 헬퍼 등 나머지는 실제 모듈을 쓴다.
 const listSpaces = vi.fn();
 const createSpace = vi.fn();
@@ -391,9 +400,38 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "만들기" }));
 
     await waitFor(() => expect(createOrganization).toHaveBeenCalledTimes(1));
-    expect(createOrganization.mock.calls[0][1]).toMatchObject({ name: "새싹팀", owner_id: "u1" });
+    // 아이콘은 이제 필수 — 이모지를 고르지 않아도 기본 이모지(🚀)가 실려 간다.
+    expect(createOrganization.mock.calls[0][1]).toMatchObject({ name: "새싹팀", owner_id: "u1", icon: "🚀" });
     // 제출 후 다이얼로그는 닫힌다.
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "새 조직 만들기" })).not.toBeInTheDocument());
+  });
+
+  it("조직 다이얼로그의 아바타를 클릭하면 emoji-mart 피커가 열리고, 이모지를 고르면 아바타와 제출 값에 반영된다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+    ]);
+    renderNewTab();
+    await screen.findAllByText("개인");
+
+    fireEvent.click(screen.getByText("조직 만들기"));
+    const dialog = await screen.findByRole("dialog", { name: "새 조직 만들기" });
+
+    // 기본 아바타는 항상 이모지(🚀)를 보여준다 — 이니셜로 대체되는 경로는 없다.
+    expect(within(dialog).getByRole("button", { name: "아이콘 선택" })).toHaveTextContent("🚀");
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "아이콘 선택" }));
+    fireEvent.click(await within(dialog).findByText("emoji-mart-stub"));
+
+    // 선택한 이모지가 아바타에 즉시 반영되고, 피커는 닫힌다.
+    expect(within(dialog).getByRole("button", { name: "아이콘 선택" })).toHaveTextContent("🎉");
+    expect(within(dialog).queryByText("emoji-mart-stub")).not.toBeInTheDocument();
+
+    fireEvent.change(within(dialog).getByPlaceholderText("조직 이름"), { target: { value: "새싹팀2" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "만들기" }));
+
+    await waitFor(() =>
+      expect(createOrganization.mock.calls.at(-1)?.[1]).toMatchObject({ name: "새싹팀2", icon: "🎉" }),
+    );
   });
 
   it("팀 조직 관리자가 헤더 아바타(편집)를 클릭하면 기존 값으로 편집 다이얼로그가 열리고, 저장 시 updateOrganization이 반영된 이름으로 호출된다", async () => {
