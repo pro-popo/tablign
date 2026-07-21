@@ -12,8 +12,9 @@ export interface OrgFormDialogProps {
   onClose: () => void;
 }
 
-const SWATCHES = ["#E03131", "#F59F00", "#2F9E44", "#0CA678", "#1C7ED6", "#4263EB", "#7048E8", "#E64980"];
-const DEFAULT_COLOR = "#4263EB";
+// 대표 색: 이모지와 두루 어울리도록 채도를 살짝 낮춘 균형 잡힌 톤(고르게 분포된 8색).
+const SWATCHES = ["#4C6EF5", "#7950F2", "#22B8CF", "#12B886", "#40C057", "#FAB005", "#FD7E14", "#F06595"];
+const DEFAULT_COLOR = "#4C6EF5";
 const DEFAULT_ICON = "🚀";
 
 interface EmojiMartSelection { native?: string }
@@ -86,12 +87,12 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
         <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
           <div ref={emojiWrapRef} style={{ position: "relative", flexShrink: 0 }}>
             <button type="button" aria-label="아이콘 선택" onClick={() => setEmojiOpen((o) => !o)}
-              style={{ position: "relative", width: 56, height: 56, borderRadius: 15, border: "none", padding: 0, cursor: "pointer",
-                background: color, color: "#fff", fontSize: 24, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+              style={{ position: "relative", width: 44, height: 44, borderRadius: 12, border: "none", padding: 0, cursor: "pointer",
+                background: color, color: "#fff", fontSize: 20, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0, boxSizing: "border-box" }}>
               {icon}
-              <span style={{ position: "absolute", right: -3, bottom: -3, width: 20, height: 20, borderRadius: "50%", background: theme.surface,
-                border: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: theme.textMuted,
+              <span style={{ position: "absolute", right: -3, bottom: -3, width: 17, height: 17, borderRadius: "50%", background: theme.surface,
+                border: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: theme.textMuted,
                 boxSizing: "border-box" }}>✎</span>
             </button>
 
