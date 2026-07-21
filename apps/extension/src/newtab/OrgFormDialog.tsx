@@ -88,7 +88,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
           <div ref={emojiWrapRef} style={{ position: "relative", flexShrink: 0 }}>
             <button type="button" aria-label="아이콘 선택" onClick={() => setEmojiOpen((o) => !o)}
               style={{ position: "relative", width: 44, height: 44, borderRadius: 12, border: "none", padding: 0, cursor: "pointer",
-                background: color, color: "#fff", fontSize: 20, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                background: color, color: "#fff", fontSize: 26, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0, boxSizing: "border-box" }}>
               {icon}
               <span style={{ position: "absolute", right: -3, bottom: -3, width: 17, height: 17, borderRadius: "50%", background: theme.surface,
