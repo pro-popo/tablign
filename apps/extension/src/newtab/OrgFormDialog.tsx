@@ -25,6 +25,8 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  const emojiWrapRef = useRef<HTMLDivElement>(null);
+
   const wasOpen = useRef(false);
   useEffect(() => {
     if (open && !wasOpen.current) {
@@ -39,10 +41,27 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
 
   useEffect(() => {
     if (!open) return;
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      // 이모지 팝오버가 열려 있으면 팝오버만 먼저 닫는다 — 다이얼로그의 Escape 닫기는 그대로 둔다.
+      if (emojiOpen) { setEmojiOpen(false); return; }
+      onClose();
+    }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, emojiOpen, onClose]);
+
+  // 팝오버 바깥 클릭 시 닫기 (아바타 버튼 자체는 팝오버 래퍼 안에 있어 토글과 충돌하지 않는다)
+  useEffect(() => {
+    if (!emojiOpen) return;
+    function onPointerDown(e: MouseEvent) {
+      if (emojiWrapRef.current && !emojiWrapRef.current.contains(e.target as Node)) {
+        setEmojiOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [emojiOpen]);
 
   if (!open) return null;
 
@@ -65,38 +84,43 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
 
         {/* 아바타 + 이름 */}
         <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
-          <button type="button" aria-label="아이콘 선택" onClick={() => setEmojiOpen((o) => !o)}
-            style={{ position: "relative", width: 56, height: 56, borderRadius: 15, border: "none", padding: 0, cursor: "pointer",
-              background: color, color: "#fff", fontSize: 24, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0, boxSizing: "border-box" }}>
-            {icon}
-            <span style={{ position: "absolute", right: -3, bottom: -3, width: 20, height: 20, borderRadius: "50%", background: theme.surface,
-              border: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: theme.textMuted,
-              boxSizing: "border-box" }}>✎</span>
-          </button>
+          <div ref={emojiWrapRef} style={{ position: "relative", flexShrink: 0 }}>
+            <button type="button" aria-label="아이콘 선택" onClick={() => setEmojiOpen((o) => !o)}
+              style={{ position: "relative", width: 56, height: 56, borderRadius: 15, border: "none", padding: 0, cursor: "pointer",
+                background: color, color: "#fff", fontSize: 24, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, boxSizing: "border-box" }}>
+              {icon}
+              <span style={{ position: "absolute", right: -3, bottom: -3, width: 20, height: 20, borderRadius: "50%", background: theme.surface,
+                border: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: theme.textMuted,
+                boxSizing: "border-box" }}>✎</span>
+            </button>
+
+            {/* 이모지 피커 (emoji-mart) — 아바타에 앵커된 플로팅 팝오버. 다이얼로그 본문 흐름 밖에 렌더링돼 레이아웃에 자리를 차지하지 않는다. */}
+            {emojiOpen && (
+              <div onClick={(e) => e.stopPropagation()}
+                style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 50, width: 300, maxWidth: "calc(100vw - 64px)",
+                  overflow: "hidden", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
+                  boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
+                <style>{"em-emoji-picker { height: 340px !important; }"}</style>
+                <Picker
+                  data={emojiData}
+                  onEmojiSelect={(e: EmojiMartSelection) => {
+                    if (e.native) setIcon(e.native);
+                    setEmojiOpen(false);
+                  }}
+                  theme="light"
+                  previewPosition="none"
+                  skinTonePosition="search"
+                  perLine={7}
+                  maxFrequentRows={2}
+                  dynamicWidth={false}
+                />
+              </div>
+            )}
+          </div>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="조직 이름" autoFocus
             style={{ flex: 1, padding: "9px 11px", border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
         </div>
-
-        {/* 이모지 피커 (emoji-mart) */}
-        {emojiOpen && (
-          <div style={{ marginTop: 10, maxWidth: "100%", overflowX: "hidden", border: `1px solid ${theme.border}`, borderRadius: 8 }}>
-            <style>{"em-emoji-picker { height: 340px !important; }"}</style>
-            <Picker
-              data={emojiData}
-              onEmojiSelect={(e: EmojiMartSelection) => {
-                if (e.native) setIcon(e.native);
-                setEmojiOpen(false);
-              }}
-              theme="light"
-              previewPosition="none"
-              skinTonePosition="search"
-              perLine={7}
-              maxFrequentRows={2}
-              dynamicWidth={false}
-            />
-          </div>
-        )}
 
         {/* 색상 스와치 */}
         <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
