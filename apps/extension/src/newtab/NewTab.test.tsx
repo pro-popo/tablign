@@ -400,8 +400,11 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "만들기" }));
 
     await waitFor(() => expect(createOrganization).toHaveBeenCalledTimes(1));
-    // 아이콘은 이제 필수 — 이모지를 고르지 않아도 기본 이모지(🚀)가 실려 간다.
-    expect(createOrganization.mock.calls[0][1]).toMatchObject({ name: "새싹팀", owner_id: "u1", icon: "🚀" });
+    // 아이콘은 이제 필수 — 이모지를 고르지 않아도 무작위 기본 이모지가 실려 간다(값은 매번 달라질 수 있어 비어있지 않은 문자열인지만 확인한다).
+    expect(createOrganization.mock.calls[0][1]).toMatchObject({ name: "새싹팀", owner_id: "u1" });
+    const createdIcon = createOrganization.mock.calls[0][1].icon;
+    expect(typeof createdIcon).toBe("string");
+    expect(createdIcon.length).toBeGreaterThan(0);
     // 제출 후 다이얼로그는 닫힌다.
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "새 조직 만들기" })).not.toBeInTheDocument());
   });
@@ -416,8 +419,10 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     fireEvent.click(screen.getByText("조직 만들기"));
     const dialog = await screen.findByRole("dialog", { name: "새 조직 만들기" });
 
-    // 기본 아바타는 항상 이모지(🚀)를 보여준다 — 이니셜로 대체되는 경로는 없다.
-    expect(within(dialog).getByRole("button", { name: "아이콘 선택" })).toHaveTextContent("🚀");
+    // 기본 아바타는 항상 (무작위) 이모지를 보여준다 — 이니셜로 대체되는 경로는 없다.
+    const defaultIconText = within(dialog).getByRole("button", { name: "아이콘 선택" }).textContent;
+    expect(defaultIconText).toBeTruthy();
+    expect(defaultIconText!.length).toBeGreaterThan(0);
 
     fireEvent.click(within(dialog).getByRole("button", { name: "아이콘 선택" }));
     fireEvent.click(await within(dialog).findByText("emoji-mart-stub"));

@@ -2,6 +2,28 @@ import { useEffect, useRef, useState } from "react";
 import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker } from "@tablign/ui";
 import Picker from "@emoji-mart/react";
 import emojiData from "@emoji-mart/data";
+import i18nAr from "@emoji-mart/data/i18n/ar.json";
+import i18nBe from "@emoji-mart/data/i18n/be.json";
+import i18nCs from "@emoji-mart/data/i18n/cs.json";
+import i18nDe from "@emoji-mart/data/i18n/de.json";
+import i18nEn from "@emoji-mart/data/i18n/en.json";
+import i18nEs from "@emoji-mart/data/i18n/es.json";
+import i18nFa from "@emoji-mart/data/i18n/fa.json";
+import i18nFi from "@emoji-mart/data/i18n/fi.json";
+import i18nFr from "@emoji-mart/data/i18n/fr.json";
+import i18nHi from "@emoji-mart/data/i18n/hi.json";
+import i18nIt from "@emoji-mart/data/i18n/it.json";
+import i18nJa from "@emoji-mart/data/i18n/ja.json";
+import i18nKo from "@emoji-mart/data/i18n/ko.json";
+import i18nNl from "@emoji-mart/data/i18n/nl.json";
+import i18nPl from "@emoji-mart/data/i18n/pl.json";
+import i18nPt from "@emoji-mart/data/i18n/pt.json";
+import i18nRu from "@emoji-mart/data/i18n/ru.json";
+import i18nSa from "@emoji-mart/data/i18n/sa.json";
+import i18nTr from "@emoji-mart/data/i18n/tr.json";
+import i18nUk from "@emoji-mart/data/i18n/uk.json";
+import i18nVi from "@emoji-mart/data/i18n/vi.json";
+import i18nZh from "@emoji-mart/data/i18n/zh.json";
 
 export interface OrgFormValue { name: string; icon: string | null; color: string | null }
 export interface OrgFormDialogProps {
@@ -15,13 +37,55 @@ export interface OrgFormDialogProps {
 // 대표 색: 이모지와 두루 어울리도록 채도를 살짝 낮춘 균형 잡힌 톤(고르게 분포된 8색).
 const SWATCHES = ["#4C6EF5", "#7950F2", "#22B8CF", "#12B886", "#40C057", "#FAB005", "#FD7E14", "#F06595"];
 const DEFAULT_COLOR = "#4C6EF5";
-const DEFAULT_ICON = "🚀";
+// 이모지 풀 구성에 실패했을 때(테스트 목 등으로 카테고리 데이터가 없는 경우)의 최후 방어값.
+const FALLBACK_ICON = "🚀";
 
 interface EmojiMartSelection { native?: string }
+interface EmojiMartCategory { id: string; emojis: string[] }
+interface EmojiMartEmojiEntry { skins?: { native?: string }[] }
+interface EmojiMartDataShape { categories?: EmojiMartCategory[]; emojis?: Record<string, EmojiMartEmojiEntry> }
+
+// 생성 시 무작위 기본 이모지 후보 풀 — Symbols·Flags 카테고리는 제외한다.
+// 모듈 스코프에서 한 번만 구성한다.
+const RANDOM_ICON_EXCLUDED_CATEGORIES = new Set(["symbols", "flags"]);
+const RANDOM_ICON_POOL: string[] = (() => {
+  const data = emojiData as unknown as EmojiMartDataShape;
+  const pool: string[] = [];
+  for (const category of data.categories ?? []) {
+    if (RANDOM_ICON_EXCLUDED_CATEGORIES.has(category.id)) continue;
+    for (const emojiId of category.emojis ?? []) {
+      const native = data.emojis?.[emojiId]?.skins?.[0]?.native;
+      if (native) pool.push(native);
+    }
+  }
+  return pool;
+})();
+
+function randomIcon(): string {
+  if (RANDOM_ICON_POOL.length === 0) return FALLBACK_ICON;
+  return RANDOM_ICON_POOL[Math.floor(Math.random() * RANDOM_ICON_POOL.length)];
+}
+
+// emoji-mart Picker의 UI 문자열(검색 placeholder, 카테고리명 등) 로케일.
+// CDN에서 fetch하지 않도록 @emoji-mart/data가 번들에 포함해 배포하는 i18n JSON만 사용한다(CSP 안전).
+const PICKER_I18N: Record<string, unknown> = {
+  ar: i18nAr, be: i18nBe, cs: i18nCs, de: i18nDe, en: i18nEn, es: i18nEs,
+  fa: i18nFa, fi: i18nFi, fr: i18nFr, hi: i18nHi, it: i18nIt, ja: i18nJa,
+  ko: i18nKo, nl: i18nNl, pl: i18nPl, pt: i18nPt, ru: i18nRu, sa: i18nSa,
+  tr: i18nTr, uk: i18nUk, vi: i18nVi, zh: i18nZh,
+};
+
+function detectPickerLocale(): string {
+  const lang = (typeof navigator !== "undefined" ? navigator.language : "en").split("-")[0].toLowerCase();
+  return PICKER_I18N[lang] ? lang : "en";
+}
+
+const PICKER_LOCALE = detectPickerLocale();
+const PICKER_I18N_DATA = PICKER_I18N[PICKER_LOCALE];
 
 export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFormDialogProps) {
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState<string>(DEFAULT_ICON);
+  const [icon, setIcon] = useState<string>(() => (mode === "edit" ? (initial?.icon ?? randomIcon()) : randomIcon()));
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -32,13 +96,14 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   useEffect(() => {
     if (open && !wasOpen.current) {
       setName(initial?.name ?? "");
-      setIcon(initial?.icon ?? DEFAULT_ICON);
+      // 생성 모드는 열릴 때마다 새로운 무작위 기본 이모지를 뽑는다. 편집 모드는 기존 아이콘을 유지한다.
+      setIcon(mode === "edit" ? (initial?.icon ?? randomIcon()) : randomIcon());
       setColor(initial?.color ?? DEFAULT_COLOR);
       setEmojiOpen(false);
       setPickerOpen(false);
     }
     wasOpen.current = open;
-  }, [open, initial]);
+  }, [open, initial, mode]);
 
   useEffect(() => {
     if (!open) return;
@@ -105,6 +170,8 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                 <style>{"em-emoji-picker { height: 340px !important; }"}</style>
                 <Picker
                   data={emojiData}
+                  i18n={PICKER_I18N_DATA}
+                  locale={PICKER_LOCALE}
                   onEmojiSelect={(e: EmojiMartSelection) => {
                     if (e.native) setIcon(e.native);
                     setEmojiOpen(false);
@@ -112,9 +179,8 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                   theme="light"
                   previewPosition="none"
                   skinTonePosition="search"
-                  perLine={7}
                   maxFrequentRows={2}
-                  dynamicWidth={false}
+                  dynamicWidth={true}
                 />
               </div>
             )}
