@@ -106,6 +106,8 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<string>(() => (mode === "edit" ? (initial?.icon ?? randomIcon()) : randomIcon()));
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
+  // 직접 고른 커스텀 색을 기억한다 — 프리셋을 다시 눌러도 스와치 목록에 남겨두기 위해 현재 선택(color)과 분리해서 보관.
+  const [customColor, setCustomColor] = useState<string | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [emojiPlacement, setEmojiPlacement] = useState<Placement>("down");
@@ -141,7 +143,10 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
       setName(initial?.name ?? "");
       // 생성 모드는 열릴 때마다 새로운 무작위 기본 이모지를 뽑는다. 편집 모드는 기존 아이콘을 유지한다.
       setIcon(mode === "edit" ? (initial?.icon ?? randomIcon()) : randomIcon());
-      setColor(initial?.color ?? DEFAULT_COLOR);
+      const initialColor = initial?.color ?? DEFAULT_COLOR;
+      setColor(initialColor);
+      // 기존 색이 프리셋에 없으면 커스텀 색으로 기억해 슬롯에 표시한다.
+      setCustomColor(SWATCHES.includes(initialColor) ? null : initialColor);
       setEmojiOpen(false);
       setPickerOpen(false);
     }
@@ -190,8 +195,10 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
 
   const title = mode === "create" ? "새 조직 만들기" : "조직 설정";
   const submitLabel = mode === "create" ? "만들기" : "저장";
-  // 프리셋에 없는 색 = 직접 고른 커스텀 색. 스와치 목록에 별도 칸으로 표출한다.
-  const isCustomColor = !SWATCHES.includes(color);
+  // 커스텀 색 슬롯 표시 여부는 "기억된 커스텀 색"(customColor)으로 결정한다 — 프리셋을 골라도 유지됨.
+  // 선택 링은 현재 선택색이 그 커스텀 색과 같을 때만 켠다.
+  const hasCustom = customColor !== null;
+  const customSelected = hasCustom && color === customColor;
   // 커스텀 색 스와치의 "직접 고른 색" 스펙트럼 배지(프리셋 색을 이어붙여 한 바퀴).
   const rainbowGradient = `conic-gradient(from 0deg, ${[...SWATCHES, SWATCHES[0]].join(", ")})`;
 
@@ -252,32 +259,37 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
             style={{ flex: 1, padding: "9px 11px", border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
         </div>
 
-        {/* 색상 스와치 */}
-        <div style={{ marginTop: 14, display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 8 }}>
+        {/* 색상 스와치 — 프리셋 8 + 커스텀 슬롯 1 = 항상 9칸(줄바꿈 없음). 24px/gap6이라 마지막 칸 링·배지가 다이얼로그 밖으로 넘쳐 어긋나지 않는다. */}
+        <div style={{ marginTop: 14, display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6 }}>
           {SWATCHES.map((s) => (
             <button key={s} type="button" aria-label={s} onClick={() => { setColor(s); setPickerOpen(false); }}
-              style={{ width: 26, height: 26, borderRadius: 8, flex: "none",
+              style={{ width: 24, height: 24, borderRadius: 7, flex: "none",
                 // 선택: 흰 간격 + 그 스와치 자기 색 링(레일 활성 아이콘과 통일). 비선택: 은은한 테두리.
                 border: color === s ? "none" : "1px solid rgba(0,0,0,.08)",
                 boxShadow: color === s ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${s}` : "none",
                 background: s, cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
           ))}
-          {/* 커스텀 슬롯(항상 한 칸) — 래퍼로 묶어 바깥클릭 판정(colorWrapRef.contains)에서 제외 → 트리거 클릭이 팝오버를 닫지 않는다. */}
+          {/* 커스텀 슬롯(항상 한 칸, 크기 고정) — 래퍼로 묶어 바깥클릭 판정(colorWrapRef.contains)에서 제외 → 클릭이 팝오버를 닫지 않는다. */}
           <div ref={colorWrapRef} style={{ position: "relative", flex: "none" }}>
-            {isCustomColor ? (
-              // 커스텀 색을 고른 상태: 그 색으로 채워지고 선택 링 + 스펙트럼 배지. 다시 누르면 피커로 수정.
-              <button type="button" aria-label={`직접 고른 색 ${color}`} onClick={() => { setPickerOpen((o) => !o); setEmojiOpen(false); }}
-                style={{ position: "relative", width: 26, height: 26, borderRadius: 8, border: "none",
-                  boxShadow: `0 0 0 2px ${theme.surface}, 0 0 0 4px ${color}`,
-                  background: color, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
-                <span aria-hidden style={{ position: "absolute", right: -3, bottom: -3, width: 13, height: 13, borderRadius: "50%",
-                  background: rainbowGradient, boxShadow: `0 0 0 1px ${theme.surface}` }} />
+            {hasCustom ? (
+              // 기억된 커스텀 색: 그 색 스와치로 고정. 클릭 = 그 색 선택(프리셋을 골라도 스와치는 유지). 스펙트럼 배지 클릭 = 피커로 수정.
+              <button type="button" aria-label={`커스텀 색 ${customColor}`} onClick={() => { setColor(customColor as string); setPickerOpen(false); }}
+                style={{ position: "relative", width: 24, height: 24, borderRadius: 7, border: "none",
+                  // 선택 링은 커스텀 색이 현재 선택색일 때만. 아닐 땐 프리셋과 동일한 은은한 테두리로 크기 동일 유지.
+                  boxShadow: customSelected
+                    ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${customColor}`
+                    : "inset 0 0 0 1px rgba(0,0,0,.08)",
+                  background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
+                <span role="button" aria-label="커스텀 색 수정" title="색 수정"
+                  onClick={(e) => { e.stopPropagation(); setColor(customColor as string); setPickerOpen((o) => !o); setEmojiOpen(false); }}
+                  style={{ position: "absolute", right: -4, bottom: -4, width: 14, height: 14, borderRadius: "50%",
+                    background: rainbowGradient, boxShadow: `0 0 0 1.5px ${theme.surface}`, cursor: "pointer" }} />
               </button>
             ) : (
-              // 커스텀 색을 안 고른 상태: 비어 있는 점선 ＋ = 직접 고르기.
+              // 커스텀 색이 아직 없는 상태: 비어 있는 점선 ＋ = 직접 고르기.
               <button type="button" aria-label="색상 직접 선택" onClick={() => { setPickerOpen((o) => !o); setEmojiOpen(false); }}
-                style={{ width: 26, height: 26, borderRadius: 8, border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint,
-                  cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
+                style={{ width: 24, height: 24, borderRadius: 7, border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint,
+                  cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
                 ＋
               </button>
             )}
@@ -289,7 +301,8 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                   left: 0, zIndex: 50, width: 240,
                   maxWidth: "calc(100vw - 32px)", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
                   padding: 14, boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
-                <ColorPicker value={color} onChange={setColor} />
+                {/* 피커에서 프리셋 밖의 색을 고르면 커스텀 색으로 기억한다(프리셋을 고르면 기존 기억은 유지). */}
+                <ColorPicker value={color} onChange={(c) => { setColor(c); if (!SWATCHES.includes(c)) setCustomColor(c); }} />
               </div>
             )}
           </div>
