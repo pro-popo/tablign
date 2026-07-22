@@ -224,9 +224,13 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                 background: color, color: "#fff", fontSize: 22, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0, boxSizing: "border-box" }}>
               {icon}
-              <span style={{ position: "absolute", right: -3, bottom: -3, width: 17, height: 17, borderRadius: "50%", background: theme.surface,
-                border: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: theme.textMuted,
-                boxSizing: "border-box" }}>✎</span>
+              {/* 편집 표식: 흰 원 + 채운 연필(액센트). 얇은 글리프 대신 filled SVG로 존재감을 준다. */}
+              <span aria-hidden style={{ position: "absolute", right: -4, bottom: -4, width: 21, height: 21, borderRadius: "50%", background: theme.surface,
+                boxShadow: "0 1px 5px rgba(20,30,60,.25)", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill={theme.accent} aria-hidden="true">
+                  <path d="M20.3 5.71l-2.01-2.01a1.25 1.25 0 0 0-1.77 0l-1.58 1.58 3.78 3.78 1.58-1.58a1.25 1.25 0 0 0 0-1.77zM13.87 6.42L4 16.29V20.07h3.78l9.87-9.87-3.78-3.78z"/>
+                </svg>
+              </span>
             </button>
 
             {/* 이모지 피커 (emoji-mart) — 아바타에 앵커된 플로팅 팝오버. 다이얼로그 본문 흐름 밖에 렌더링돼 레이아웃에 자리를 차지하지 않는다.
