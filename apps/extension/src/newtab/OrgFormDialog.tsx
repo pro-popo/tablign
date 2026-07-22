@@ -199,6 +199,8 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   // 선택 링은 현재 선택색이 그 커스텀 색과 같을 때만 켠다.
   const hasCustom = customColor !== null;
   const customSelected = hasCustom && color === customColor;
+  // 커스텀 스와치의 "직접 고른 색" 표식(프리셋 색을 이어붙인 스펙트럼). 스와치 안쪽에 배치해 크기는 그대로 둔다.
+  const rainbowGradient = `conic-gradient(from 0deg, ${[...SWATCHES, SWATCHES[0]].join(", ")})`;
 
   function submit() {
     const v = name.trim();
@@ -270,15 +272,20 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
           {/* 커스텀 슬롯(항상 한 칸, 크기 고정) — 래퍼로 묶어 바깥클릭 판정(colorWrapRef.contains)에서 제외 → 클릭이 팝오버를 닫지 않는다. */}
           <div ref={colorWrapRef} style={{ position: "relative", flex: "none" }}>
             {hasCustom ? (
-              // 기억된 커스텀 색: 프리셋과 완전히 동일한 크기·모양의 스와치로 고정(배지 없음 → 크기 변화 없음).
-              // 클릭 = 그 색 선택(프리셋을 골라도 유지). 이미 선택된 상태에서 다시 클릭 = 피커로 수정.
-              <button type="button" aria-label={`커스텀 색 ${customColor}${customSelected ? " (다시 클릭하면 수정)" : ""}`}
-                onClick={() => { if (customSelected) { setPickerOpen((o) => !o); setEmojiOpen(false); } else { setColor(customColor as string); setPickerOpen(false); } }}
-                style={{ width: 24, height: 24, borderRadius: 7, flex: "none",
+              // 기억된 커스텀 색: 프리셋과 동일한 24px 크기. 클릭 = 그 색 선택(프리셋을 골라도 유지). 스펙트럼 표식 클릭 = 피커로 수정.
+              <button type="button" aria-label={`커스텀 색 ${customColor}`}
+                onClick={() => { setColor(customColor as string); setPickerOpen(false); }}
+                style={{ position: "relative", width: 24, height: 24, borderRadius: 7, flex: "none",
                   // 프리셋 스와치와 동일한 규칙: 선택 시 흰 간격+동색 링, 비선택 시 은은한 테두리.
                   border: customSelected ? "none" : "1px solid rgba(0,0,0,.08)",
                   boxShadow: customSelected ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${customColor}` : "none",
-                  background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
+                  background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
+                {/* 스펙트럼 표식(스와치 안쪽 모서리) — 크기를 늘리지 않으면서 "직접 고른 색"임을 표시하고, 클릭 시 피커로 수정. */}
+                <span role="button" aria-label="커스텀 색 수정" title="색 수정"
+                  onClick={(e) => { e.stopPropagation(); setColor(customColor as string); setPickerOpen((o) => !o); setEmojiOpen(false); }}
+                  style={{ position: "absolute", right: 1.5, bottom: 1.5, width: 9, height: 9, borderRadius: "50%",
+                    background: rainbowGradient, boxShadow: "0 0 0 1px rgba(255,255,255,.9)", cursor: "pointer" }} />
+              </button>
             ) : (
               // 커스텀 색이 아직 없는 상태: 비어 있는 점선 ＋ = 직접 고르기.
               <button type="button" aria-label="색상 직접 선택" onClick={() => { setPickerOpen((o) => !o); setEmojiOpen(false); }}
