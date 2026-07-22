@@ -1,5 +1,6 @@
 import type { Organization, OrgMemberWithProfile } from "@tablign/core";
 import { MemberAvatars, theme } from "@tablign/ui";
+import { orgIconStyle } from "./orgIcon";
 
 export type OrgRole = "owner" | "admin" | "member";
 const ROLE_CHIP: Record<OrgRole, { label: string; bg: string; fg: string }> = {
@@ -22,13 +23,17 @@ export function OrgHeader({ org, members, myRole, onOpenMembers, onEditOrg }: Or
   // 멤버는 조직 관리 권한이 없어 다이얼로그를 열 수 없으므로 톱니바퀴를 숨긴다.
   // 개인 조직은 단일 사용자 전용(멤버 초대·관리 개념이 없음)이라 소유자여도 톱니바퀴를 숨긴다.
   const showGear = !isPersonal && myRole !== "member";
-  const initial = (org.icon ?? org.name.trim().slice(0, 1) ?? "?").toUpperCase();
+  // 이모지면 위치·크기 조정 transform 적용, 아니면 이름 첫 글자.
+  const iconContent = org.icon
+    ? <span style={orgIconStyle(org, 22)}>{org.icon}</span>
+    : (org.name.trim().slice(0, 1) || "?").toUpperCase();
   const avatarStyle: React.CSSProperties = {
     boxSizing: "border-box",
     flexShrink: 0,
     width: 22,
     height: 22,
     borderRadius: 6,
+    overflow: "hidden",
     background: isPersonal ? theme.textFaint : (org.color ?? "#20a97e"),
     color: "#fff",
     fontSize: 12,
@@ -48,11 +53,11 @@ export function OrgHeader({ org, members, myRole, onOpenMembers, onEditOrg }: Or
           onClick={onEditOrg}
           style={{ ...avatarStyle, border: "none", padding: 0, cursor: "pointer" }}
         >
-          {initial}
+          {iconContent}
         </button>
       ) : (
         <span aria-hidden="true" style={avatarStyle}>
-          {initial}
+          {iconContent}
         </span>
       )}
       <strong style={{ fontSize: 15, color: theme.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{org.name}</strong>

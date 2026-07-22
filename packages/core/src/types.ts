@@ -87,6 +87,12 @@ export interface Organization {
   name: string;
   icon: string | null;
   color: string | null;
+  /** 아이콘 스케일(%). 기본 100. */
+  icon_scale: number;
+  /** 아이콘 좌우 오프셋(px @100px 기준 박스). 기본 0. */
+  icon_x: number;
+  /** 아이콘 상하 오프셋(px @100px 기준 박스). 기본 0. */
+  icon_y: number;
   owner_id: string;
   is_personal: boolean;
   created_at: string;

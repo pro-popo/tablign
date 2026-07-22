@@ -54,7 +54,7 @@ import { ExtSearchBar } from "./ExtSearchBar";
 import { DndLinkList } from "./DndLinkList";
 import { AuthScreen } from "./AuthScreen";
 import { OrgHeader, type OrgRole } from "./OrgHeader";
-import { OrgFormDialog } from "./OrgFormDialog";
+import { OrgFormDialog, type OrgFormValue } from "./OrgFormDialog";
 
 interface DragPreview { label: string; faviconUrl: string | null; domain: string }
 
@@ -320,15 +320,16 @@ export function NewTab() {
     }
   }
 
-  async function submitOrgForm(v: { name: string; icon: string | null; color: string | null }) {
+  async function submitOrgForm(v: OrgFormValue) {
     if (!session) return;
+    const transform = { icon_scale: v.icon_scale, icon_x: v.icon_x, icon_y: v.icon_y };
     if (orgFormMode === "create") {
-      const org = await createOrganization(supabase, { name: v.name || "새 조직", owner_id: session.user.id, icon: v.icon, color: v.color });
+      const org = await createOrganization(supabase, { name: v.name || "새 조직", owner_id: session.user.id, icon: v.icon, color: v.color, ...transform });
       setOrganizations((prev) => [...prev, org]);
       setActiveOrgId(org.id);
       setActiveSpaceId(null);
     } else if (activeOrg) {
-      const updated = await updateOrganization(supabase, activeOrg.id, { name: v.name || activeOrg.name, icon: v.icon, color: v.color });
+      const updated = await updateOrganization(supabase, activeOrg.id, { name: v.name || activeOrg.name, icon: v.icon, color: v.color, ...transform });
       setOrganizations((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
     }
     setOrgFormOpen(false);
@@ -1068,7 +1069,7 @@ export function NewTab() {
       <OrgFormDialog
         open={orgFormOpen}
         mode={orgFormMode}
-        initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color } : undefined}
+        initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color, icon_scale: activeOrg.icon_scale, icon_x: activeOrg.icon_x, icon_y: activeOrg.icon_y } : undefined}
         onSubmit={submitOrgForm}
         onClose={() => setOrgFormOpen(false)}
       />

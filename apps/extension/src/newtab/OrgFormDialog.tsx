@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker } from "@tablign/ui";
+import { orgIconStyle, ICON_REF_BOX } from "./orgIcon";
 import Picker from "@emoji-mart/react";
 import emojiData from "@emoji-mart/data";
 import i18nAr from "@emoji-mart/data/i18n/ar.json";
@@ -25,7 +26,7 @@ import i18nUk from "@emoji-mart/data/i18n/uk.json";
 import i18nVi from "@emoji-mart/data/i18n/vi.json";
 import i18nZh from "@emoji-mart/data/i18n/zh.json";
 
-export interface OrgFormValue { name: string; icon: string | null; color: string | null }
+export interface OrgFormValue { name: string; icon: string | null; color: string | null; icon_scale: number; icon_x: number; icon_y: number }
 export interface OrgFormDialogProps {
   open: boolean;
   mode: "create" | "edit";
@@ -37,6 +38,13 @@ export interface OrgFormDialogProps {
 // 대표 색: 살짝 파스텔 톤 8색. 웜→쿨 순서(핑크·오렌지·옐로우 → 그린·틸·시안·블루·바이올렛).
 const SWATCHES = ["#F783AC", "#FFA94D", "#FFD43B", "#69DB7C", "#38D9A9", "#66D9E8", "#748FFC", "#9775FA"];
 const DEFAULT_COLOR = "#748FFC";
+
+// 아이콘 조정: 다이얼로그 내 드래그 편집기 크기, 오프셋 한계(±, @100px 기준), 스케일(%) 범위.
+const ICON_EDITOR_BOX = 88;
+const ICON_OFFSET_MAX = 25;
+const ICON_SCALE_MIN = 60;
+const ICON_SCALE_MAX = 140;
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 // 이모지 풀 구성에 실패했을 때(테스트 목 등으로 카테고리 데이터가 없는 경우)의 최후 방어값.
 const FALLBACK_ICON = "🚀";
 
@@ -111,11 +119,18 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [avatarHover, setAvatarHover] = useState(false);
+  // 아이콘 위치·크기 조정값(기준 박스 100px). 스케일 %, 오프셋 px.
+  const [iconScale, setIconScale] = useState(100);
+  const [iconX, setIconX] = useState(0);
+  const [iconY, setIconY] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const [emojiPlacement, setEmojiPlacement] = useState<Placement>("down");
   const [colorPlacement, setColorPlacement] = useState<Placement>("down");
 
   const emojiWrapRef = useRef<HTMLDivElement>(null);
   const colorWrapRef = useRef<HTMLDivElement>(null);
+  // 아이콘 드래그 시작점(화면 좌표)과 시작 오프셋.
+  const dragStart = useRef({ sx: 0, sy: 0, ox: 0, oy: 0 });
 
   // 열릴 때 + 창 크기 변경 시 아래 공간을 다시 측정해 뒤집을지 정한다.
   useLayoutEffect(() => {
@@ -138,6 +153,20 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
     return () => window.removeEventListener("resize", update);
   }, [pickerOpen]);
 
+  // 아이콘 드래그: 편집기 위에서 마우스를 끌면 오프셋 갱신(편집기 픽셀 → 100px 기준으로 환산).
+  useEffect(() => {
+    if (!dragging) return;
+    const r = ICON_EDITOR_BOX / ICON_REF_BOX;
+    function onMove(e: MouseEvent) {
+      setIconX(Math.round(clamp(dragStart.current.ox + (e.clientX - dragStart.current.sx) / r, -ICON_OFFSET_MAX, ICON_OFFSET_MAX)));
+      setIconY(Math.round(clamp(dragStart.current.oy + (e.clientY - dragStart.current.sy) / r, -ICON_OFFSET_MAX, ICON_OFFSET_MAX)));
+    }
+    function onUp() { setDragging(false); }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+  }, [dragging]);
+
   const wasOpen = useRef(false);
   useEffect(() => {
     if (open && !wasOpen.current) {
@@ -148,6 +177,9 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
       setColor(initialColor);
       // 기존 색이 프리셋에 없으면 커스텀 색으로 기억해 슬롯에 표시한다.
       setCustomColor(SWATCHES.includes(initialColor) ? null : initialColor);
+      setIconScale(initial?.icon_scale ?? 100);
+      setIconX(initial?.icon_x ?? 0);
+      setIconY(initial?.icon_y ?? 0);
       setEmojiOpen(false);
       setPickerOpen(false);
     }
@@ -206,7 +238,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   function submit() {
     const v = name.trim();
     if (!v) return;
-    onSubmit({ name: v, icon, color });
+    onSubmit({ name: v, icon, color, icon_scale: iconScale, icon_x: iconX, icon_y: iconY });
   }
 
   return (
@@ -226,7 +258,10 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
               style={{ position: "relative", width: 42, height: 42, borderRadius: 11, border: "none", padding: 0, cursor: "pointer",
                 background: color, color: "#fff", fontSize: 25, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0, boxSizing: "border-box" }}>
-              {icon}
+              {/* 이모지 클립 레이어: 확대해도 아바타 밖으로 넘치지 않도록 overflow hidden. 편집 배지는 이 레이어 밖(버튼 직속)이라 잘리지 않는다. */}
+              <span style={{ position: "absolute", inset: 0, borderRadius: 11, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={orgIconStyle({ icon_scale: iconScale, icon_x: iconX, icon_y: iconY }, 42)}>{icon}</span>
+              </span>
               {/* 편집 표식: 흰 원 + 채운 연필(액센트). 호버·포커스·피커 열림 시에만 노출. */}
               <span aria-hidden style={{ position: "absolute", right: -4, bottom: -4, width: 20, height: 20, borderRadius: "50%", background: theme.surface,
                 boxShadow: "0 1px 5px rgba(20,30,60,.25)", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box",
@@ -315,6 +350,38 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                 <ColorPicker value={color} onChange={(c) => { setColor(c); if (!SWATCHES.includes(c)) setCustomColor(c); }} />
               </div>
             )}
+          </div>
+        </div>
+
+        {/* 아이콘 위치·크기 조정 — 편집기에서 이모지를 드래그해 위치를, 슬라이더로 크기를 정한다(기준 박스 100px). */}
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8 }}>아이콘 위치·크기</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div
+              onMouseDown={(e) => { dragStart.current = { sx: e.clientX, sy: e.clientY, ox: iconX, oy: iconY }; setDragging(true); e.preventDefault(); }}
+              style={{ position: "relative", width: ICON_EDITOR_BOX, height: ICON_EDITOR_BOX, borderRadius: 20, background: color, overflow: "hidden",
+                cursor: dragging ? "grabbing" : "grab", flex: "none", userSelect: "none" }}>
+              {/* 드래그 중 격자 가이드 */}
+              <span style={{ position: "absolute", inset: 0, opacity: dragging ? 1 : 0, transition: "opacity .1s",
+                backgroundImage: "linear-gradient(rgba(255,255,255,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.18) 1px,transparent 1px)",
+                backgroundSize: "22px 22px", pointerEvents: "none" }} />
+              <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 46, pointerEvents: "none" }}>
+                <span style={orgIconStyle({ icon_scale: iconScale, icon_x: iconX, icon_y: iconY }, ICON_EDITOR_BOX)}>{icon}</span>
+              </span>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: theme.textMuted }}>
+                <span style={{ width: 28, flexShrink: 0 }}>크기</span>
+                <input type="range" min={ICON_SCALE_MIN} max={ICON_SCALE_MAX} value={iconScale}
+                  onChange={(e) => setIconScale(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
+                <span style={{ width: 36, flexShrink: 0, textAlign: "right", color: theme.text, fontVariantNumeric: "tabular-nums" }}>{iconScale}%</span>
+              </label>
+              <button type="button" onClick={() => { setIconScale(100); setIconX(0); setIconY(0); }}
+                style={{ alignSelf: "flex-start", fontSize: 11.5, padding: "5px 10px", border: `1px solid ${theme.border}`, borderRadius: 8, background: theme.surface, color: theme.textMuted, cursor: "pointer" }}>
+                가운데·기본 크기로
+              </button>
+              <div style={{ fontSize: 10.5, color: theme.textFaint }}>편집기에서 이모지를 끌어 위치를 옮기세요.</div>
+            </div>
           </div>
         </div>
 

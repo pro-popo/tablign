@@ -10,7 +10,7 @@ export async function listOrganizations(client: SupabaseClient): Promise<Organiz
 
 export async function createOrganization(
   client: SupabaseClient,
-  input: { name: string; owner_id: string; icon?: string | null; color?: string | null },
+  input: { name: string; owner_id: string; icon?: string | null; color?: string | null; icon_scale?: number; icon_x?: number; icon_y?: number },
 ): Promise<Organization> {
   const { data, error } = await client.from("organizations").insert(input).select().single();
   if (error) throw error;
@@ -20,7 +20,7 @@ export async function createOrganization(
 export async function updateOrganization(
   client: SupabaseClient,
   id: string,
-  patch: Partial<Pick<Organization, "name" | "icon" | "color">>,
+  patch: Partial<Pick<Organization, "name" | "icon" | "color" | "icon_scale" | "icon_x" | "icon_y">>,
 ): Promise<Organization> {
   const { data, error } = await client.from("organizations").update(patch).eq("id", id).select().single();
   if (error) throw error;
