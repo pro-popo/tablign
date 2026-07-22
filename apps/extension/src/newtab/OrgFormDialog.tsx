@@ -284,7 +284,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                 {/* 스펙트럼 표식(스와치 안쪽 모서리) — 크기를 늘리지 않으면서 "직접 고른 색"임을 표시하고, 클릭 시 피커로 수정. */}
                 <span role="button" aria-label="커스텀 색 수정" title="색 수정"
                   onClick={(e) => { e.stopPropagation(); setColor(customColor as string); setPickerOpen((o) => !o); setEmojiOpen(false); }}
-                  style={{ position: "absolute", right: 1, bottom: -1, width: 11, height: 11, borderRadius: "50%",
+                  style={{ position: "absolute", right: -1.5, bottom: -1.5, width: 12, height: 12, borderRadius: "50%",
                     background: rainbowGradient, boxShadow: "0 0 0 1px rgba(255,255,255,.9)", cursor: "pointer" }} />
               </button>
             ) : (
