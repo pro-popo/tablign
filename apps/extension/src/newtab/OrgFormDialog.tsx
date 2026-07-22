@@ -110,6 +110,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   const [customColor, setCustomColor] = useState<string | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [avatarHover, setAvatarHover] = useState(false);
   const [emojiPlacement, setEmojiPlacement] = useState<Placement>("down");
   const [colorPlacement, setColorPlacement] = useState<Placement>("down");
 
@@ -220,13 +221,16 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
         <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
           <div ref={emojiWrapRef} style={{ position: "relative", flexShrink: 0 }}>
             <button type="button" aria-label="아이콘 선택" onClick={() => { setEmojiOpen((o) => !o); setPickerOpen(false); }}
+              onMouseEnter={() => setAvatarHover(true)} onMouseLeave={() => setAvatarHover(false)}
+              onFocus={() => setAvatarHover(true)} onBlur={() => setAvatarHover(false)}
               style={{ position: "relative", width: 42, height: 42, borderRadius: 11, border: "none", padding: 0, cursor: "pointer",
                 background: color, color: "#fff", fontSize: 25, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0, boxSizing: "border-box" }}>
               {icon}
-              {/* 편집 표식: 흰 원 + 채운 연필(액센트). 얇은 글리프 대신 filled SVG로 존재감을 준다. */}
+              {/* 편집 표식: 흰 원 + 채운 연필(액센트). 호버·포커스·피커 열림 시에만 노출. */}
               <span aria-hidden style={{ position: "absolute", right: -4, bottom: -4, width: 20, height: 20, borderRadius: "50%", background: theme.surface,
-                boxShadow: "0 1px 5px rgba(20,30,60,.25)", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
+                boxShadow: "0 1px 5px rgba(20,30,60,.25)", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box",
+                opacity: avatarHover || emojiOpen ? 1 : 0, transition: "opacity .13s ease", pointerEvents: "none" }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill={theme.accent} aria-hidden="true">
                   <path d="M20.3 5.71l-2.01-2.01a1.25 1.25 0 0 0-1.77 0l-1.58 1.58 3.78 3.78 1.58-1.58a1.25 1.25 0 0 0 0-1.77zM13.87 6.42L4 16.29V20.07h3.78l9.87-9.87-3.78-3.78z"/>
                 </svg>
