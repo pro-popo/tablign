@@ -277,14 +277,14 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
               <button type="button" aria-label={`커스텀 색 ${customColor}`}
                 onClick={() => { setColor(customColor as string); setPickerOpen(false); }}
                 style={{ position: "relative", width: 24, height: 24, borderRadius: 7, flex: "none",
-                  // 프리셋 스와치와 동일한 규칙: 선택 시 흰 간격+동색 링, 비선택 시 은은한 테두리.
-                  border: customSelected ? "none" : "1px solid rgba(0,0,0,.08)",
+                  // 테두리 두께는 항상 1px 고정(선택 시 transparent) — 두께가 0↔1로 바뀌면 배지의 기준(padding box)이 밀려 위치가 흔들리므로.
+                  border: `1px solid ${customSelected ? "transparent" : "rgba(0,0,0,.08)"}`,
                   boxShadow: customSelected ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${customColor}` : "none",
                   background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
                 {/* 스펙트럼 표식(스와치 안쪽 모서리) — 크기를 늘리지 않으면서 "직접 고른 색"임을 표시하고, 클릭 시 피커로 수정. */}
                 <span role="button" aria-label="커스텀 색 수정" title="색 수정"
                   onClick={(e) => { e.stopPropagation(); setColor(customColor as string); setPickerOpen((o) => !o); setEmojiOpen(false); }}
-                  style={{ position: "absolute", right: 1.5, bottom: 1.5, width: 9, height: 9, borderRadius: "50%",
+                  style={{ position: "absolute", right: 1, bottom: 1, width: 11, height: 11, borderRadius: "50%",
                     background: rainbowGradient, boxShadow: "0 0 0 1px rgba(255,255,255,.9)", cursor: "pointer" }} />
               </button>
             ) : (
