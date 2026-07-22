@@ -269,8 +269,9 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                 boxShadow: color === s ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${s}` : "none",
                 background: s, cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
           ))}
-          {/* 커스텀 슬롯(항상 한 칸, 크기 고정) — 래퍼로 묶어 바깥클릭 판정(colorWrapRef.contains)에서 제외 → 클릭이 팝오버를 닫지 않는다. */}
-          <div ref={colorWrapRef} style={{ position: "relative", flex: "none" }}>
+          {/* 커스텀 슬롯(항상 한 칸, 크기 고정) — 래퍼로 묶어 바깥클릭 판정(colorWrapRef.contains)에서 제외 → 클릭이 팝오버를 닫지 않는다.
+              display:flex — 안의 버튼을 flex 자식으로 만들어 inline-block baseline 여백(커스텀 활성화 시 높이 어긋남)을 없앤다. */}
+          <div ref={colorWrapRef} style={{ position: "relative", flex: "none", display: "flex", alignItems: "center" }}>
             {hasCustom ? (
               // 기억된 커스텀 색: 프리셋과 동일한 24px 크기. 클릭 = 그 색 선택(프리셋을 골라도 유지). 스펙트럼 표식 클릭 = 피커로 수정.
               <button type="button" aria-label={`커스텀 색 ${customColor}`}
