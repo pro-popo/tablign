@@ -45,6 +45,9 @@ const ICON_SCALE_MIN = 60;
 const ICON_SCALE_MAX = 140;
 // 이모지 빠른 선택 대표 칩(색상 프리셋과 대응). 그 외는 ＋(emoji-mart)에서 고른다.
 const PRESET_EMOJIS = ["🚀", "💡", "🎯", "🏢", "🌱", "🎨"];
+// 이모지 선택 링 색 — 대표색(#3b5bdb)의 파스텔 인디고. 색상은 자기색 링을 쓰므로 이모지에만 적용.
+const EMOJI_RING = "#91A7FF";
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 // 이모지 풀 구성에 실패했을 때(테스트 목 등으로 카테고리 데이터가 없는 경우)의 최후 방어값.
 const FALLBACK_ICON = "🚀";
 
@@ -228,10 +231,10 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   const rowLabel: CSSProperties = { fontSize: 10, letterSpacing: ".2px", color: "#8a929c", fontWeight: 600, marginBottom: 8 };
   const divider: CSSProperties = { borderTop: "1px solid #f1f3f5" };
   const emojiChip: CSSProperties = { width: 24, height: 24, borderRadius: 7, flex: "none", border: "1px solid rgba(0,0,0,.08)", background: "#f7f8fa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, cursor: "pointer", padding: 0, boxSizing: "border-box" };
-  const emojiChipSel: CSSProperties = { border: "none", boxShadow: `0 0 0 2px ${theme.surface}, 0 0 0 3px ${theme.accent}`, background: "#edf0fe" };
+  // 선택: 회색 보더 유지 + 흰 간격 1.5 + 파스텔 인디고 링(3px 지점까지). 색상 스와치 링과 같은 굵기.
+  const emojiChipSel: CSSProperties = { boxShadow: `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${EMOJI_RING}` };
   const plusChip: CSSProperties = { width: 24, height: 24, borderRadius: 7, flex: "none", border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, cursor: "pointer", boxSizing: "border-box", padding: 0 };
   const sliderIcon: CSSProperties = { width: 17, height: 17, flex: "none", color: theme.textMuted, display: "flex", alignItems: "center", justifyContent: "center" };
-  const sliderVal: CSSProperties = { width: 40, textAlign: "right", fontSize: 10.5, color: theme.text, flex: "none", fontVariantNumeric: "tabular-nums" };
 
   function submit() {
     const v = name.trim();
@@ -246,6 +249,8 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
         style={{ width: 340, maxWidth: "calc(100vw - 32px)", animation: panelIn, background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{title}</div>
+        {/* 크기·위치 행의 고스트 −/+ : 평소 숨김, 행 호버 시 옅게 노출. */}
+        <style>{".tbl-srow .tbl-b{border:none;background:none;color:#c2c8d2;width:15px;height:22px;font-size:14px;line-height:1;cursor:pointer;padding:0;opacity:0;transition:opacity .12s}.tbl-srow:hover .tbl-b{opacity:1}.tbl-srow .tbl-b:hover{color:#495057}"}</style>
 
         {/* 아바타(미리보기) + 이름 */}
         <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
@@ -320,7 +325,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                 <button key={s} type="button" aria-label={s} onClick={() => { setColor(s); setPickerOpen(false); }}
                   style={{ width: 24, height: 24, borderRadius: 7, flex: "none",
                     border: color === s ? "none" : "1px solid rgba(0,0,0,.08)",
-                    boxShadow: color === s ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${s}` : "none",
+                    boxShadow: color === s ? `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${s}` : "none",
                     background: s, cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
               ))}
               {/* 커스텀 슬롯 — 래퍼로 묶어 바깥클릭 판정에서 제외. display:flex로 baseline 여백 제거. */}
@@ -330,7 +335,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                     onClick={() => { setColor(customColor as string); setPickerOpen(false); }}
                     style={{ position: "relative", width: 24, height: 24, borderRadius: 7, flex: "none",
                       border: `1px solid ${customSelected ? "transparent" : "rgba(0,0,0,.08)"}`,
-                      boxShadow: customSelected ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${customColor}` : "none",
+                      boxShadow: customSelected ? `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${customColor}` : "none",
                       background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
                     <span role="button" aria-label="커스텀 색 수정" title="색 수정"
                       onClick={(e) => { e.stopPropagation(); setColor(customColor as string); setPickerOpen((o) => !o); setEmojiOpen(false); }}
@@ -371,22 +376,34 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {/* 크기: 상자 + 대각 화살표 */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="tbl-srow" style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={sliderIcon} title="크기"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="13" width="7" height="7" rx="1.3"/><path d="M11.5 12.5L19 5"/><path d="M13.5 5H19v5.5"/></svg></span>
                 <input type="range" min={ICON_SCALE_MIN} max={ICON_SCALE_MAX} value={iconScale} onChange={(e) => setIconScale(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
-                <span style={sliderVal}>{iconScale}%</span>
+                <span style={{ display: "flex", alignItems: "center", flex: "none" }}>
+                  <button type="button" className="tbl-b" aria-label="크기 감소" onClick={() => setIconScale((v) => clamp(v - 1, ICON_SCALE_MIN, ICON_SCALE_MAX))}>−</button>
+                  <span style={{ minWidth: 34, textAlign: "center", fontSize: 10.5, color: theme.text, fontVariantNumeric: "tabular-nums" }}>{iconScale}%</span>
+                  <button type="button" className="tbl-b" aria-label="크기 증가" onClick={() => setIconScale((v) => clamp(v + 1, ICON_SCALE_MIN, ICON_SCALE_MAX))}>+</button>
+                </span>
               </div>
-              {/* 좌우: 원 + 좌우 화살촉 */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={sliderIcon} title="좌우"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M6 8.5L2.5 12 6 15.5"/><path d="M18 8.5L21.5 12 18 15.5"/></svg></span>
+              {/* 좌우: 원 + 뻗는 화살표(안2) */}
+              <div className="tbl-srow" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={sliderIcon} title="좌우"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M8.6 12H3"/><path d="M5.5 9.5L3 12l2.5 2.5"/><path d="M15.4 12H21"/><path d="M18.5 9.5L21 12l-2.5 2.5"/></svg></span>
                 <input type="range" min={-ICON_OFFSET_MAX} max={ICON_OFFSET_MAX} value={iconX} onChange={(e) => setIconX(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
-                <span style={sliderVal}>{iconX}</span>
+                <span style={{ display: "flex", alignItems: "center", flex: "none" }}>
+                  <button type="button" className="tbl-b" aria-label="좌우 감소" onClick={() => setIconX((v) => clamp(v - 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>−</button>
+                  <span style={{ minWidth: 34, textAlign: "center", fontSize: 10.5, color: theme.text, fontVariantNumeric: "tabular-nums" }}>{iconX}</span>
+                  <button type="button" className="tbl-b" aria-label="좌우 증가" onClick={() => setIconX((v) => clamp(v + 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>+</button>
+                </span>
               </div>
-              {/* 상하: 원 + 상하 화살촉 */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={sliderIcon} title="상하"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M8.5 6L12 2.5 15.5 6"/><path d="M8.5 18L12 21.5 15.5 18"/></svg></span>
+              {/* 상하: 원 + 뻗는 화살표(안2) */}
+              <div className="tbl-srow" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={sliderIcon} title="상하"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 8.6V3"/><path d="M9.5 5.5L12 3l2.5 2.5"/><path d="M12 15.4V21"/><path d="M9.5 18.5L12 21l2.5-2.5"/></svg></span>
                 <input type="range" min={-ICON_OFFSET_MAX} max={ICON_OFFSET_MAX} value={iconY} onChange={(e) => setIconY(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
-                <span style={sliderVal}>{iconY}</span>
+                <span style={{ display: "flex", alignItems: "center", flex: "none" }}>
+                  <button type="button" className="tbl-b" aria-label="상하 감소" onClick={() => setIconY((v) => clamp(v - 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>−</button>
+                  <span style={{ minWidth: 34, textAlign: "center", fontSize: 10.5, color: theme.text, fontVariantNumeric: "tabular-nums" }}>{iconY}</span>
+                  <button type="button" className="tbl-b" aria-label="상하 증가" onClick={() => setIconY((v) => clamp(v + 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>+</button>
+                </span>
               </div>
             </div>
           </div>
