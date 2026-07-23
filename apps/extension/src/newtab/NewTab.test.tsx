@@ -15,14 +15,13 @@ vi.mock("../lib/supabase", () => ({
   },
 }));
 
-// emoji-mart는 shadow DOM 커스텀 엘리먼트를 실제로 마운트하는 무거운 컴포넌트라
-// jsdom에서는 가벼운 스텁으로 대체하고, 이모지 선택 플로우 자체만 검증한다.
-vi.mock("@emoji-mart/react", () => ({
-  default: ({ onEmojiSelect }: { onEmojiSelect: (e: { native: string }) => void }) => (
-    <button type="button" onClick={() => onEmojiSelect({ native: "🎉" })}>emoji-mart-stub</button>
+// 커스텀 토스 피커는 데이터(@emoji-mart/data)를 읽어 렌더하는 컴포넌트라
+// jsdom 테스트에서는 가벼운 스텁으로 대체하고, 이모지 선택 플로우만 검증한다.
+vi.mock("./TossEmojiPicker", () => ({
+  TossEmojiPicker: ({ onSelect }: { onSelect: (n: string) => void }) => (
+    <button type="button" onClick={() => onSelect("🎉")}>toss-picker-stub</button>
   ),
 }));
-vi.mock("@emoji-mart/data", () => ({ default: {} }));
 
 // 데이터 계층 모킹: 함수만 대체하고 타입·정렬 헬퍼 등 나머지는 실제 모듈을 쓴다.
 const listSpaces = vi.fn();
@@ -413,7 +412,7 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "새 조직 만들기" })).not.toBeInTheDocument());
   });
 
-  it("조직 다이얼로그에서 이모지 ＋(전체 선택)을 누르면 emoji-mart 피커가 열리고, 이모지를 고르면 커스텀 슬롯과 제출 값에 반영된다", async () => {
+  it("조직 다이얼로그에서 이모지 ＋(전체 선택)을 누르면 토스 피커가 열리고, 이모지를 고르면 커스텀 슬롯과 제출 값에 반영된다", async () => {
     listSpaces.mockResolvedValue([
       { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
@@ -423,13 +422,13 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     fireEvent.click(screen.getByText("조직 만들기"));
     const dialog = await screen.findByRole("dialog", { name: "새 조직 만들기" });
 
-    // 이모지 ＋(전체 선택) 버튼을 눌러 emoji-mart를 연다.
+    // 이모지 ＋(전체 선택) 버튼을 눌러 토스 피커를 연다.
     fireEvent.click(within(dialog).getByRole("button", { name: "이모지 전체 선택" }));
-    fireEvent.click(await within(dialog).findByText("emoji-mart-stub"));
+    fireEvent.click(await within(dialog).findByText("toss-picker-stub"));
 
     // 선택한(대표 외) 이모지가 커스텀 슬롯에 반영되고, 피커는 닫힌다.
     expect(within(dialog).getByRole("button", { name: "이모지 🎉" })).toBeInTheDocument();
-    expect(within(dialog).queryByText("emoji-mart-stub")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("toss-picker-stub")).not.toBeInTheDocument();
 
     fireEvent.change(within(dialog).getByPlaceholderText("조직 이름"), { target: { value: "새싹팀2" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "만들기" }));

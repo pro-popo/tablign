@@ -1,30 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker } from "@tablign/ui";
 import { orgIconStyle } from "./orgIcon";
-import Picker from "@emoji-mart/react";
-import emojiData from "@emoji-mart/data";
-import i18nAr from "@emoji-mart/data/i18n/ar.json";
-import i18nBe from "@emoji-mart/data/i18n/be.json";
-import i18nCs from "@emoji-mart/data/i18n/cs.json";
-import i18nDe from "@emoji-mart/data/i18n/de.json";
-import i18nEn from "@emoji-mart/data/i18n/en.json";
-import i18nEs from "@emoji-mart/data/i18n/es.json";
-import i18nFa from "@emoji-mart/data/i18n/fa.json";
-import i18nFi from "@emoji-mart/data/i18n/fi.json";
-import i18nFr from "@emoji-mart/data/i18n/fr.json";
-import i18nHi from "@emoji-mart/data/i18n/hi.json";
-import i18nIt from "@emoji-mart/data/i18n/it.json";
-import i18nJa from "@emoji-mart/data/i18n/ja.json";
-import i18nKo from "@emoji-mart/data/i18n/ko.json";
-import i18nNl from "@emoji-mart/data/i18n/nl.json";
-import i18nPl from "@emoji-mart/data/i18n/pl.json";
-import i18nPt from "@emoji-mart/data/i18n/pt.json";
-import i18nRu from "@emoji-mart/data/i18n/ru.json";
-import i18nSa from "@emoji-mart/data/i18n/sa.json";
-import i18nTr from "@emoji-mart/data/i18n/tr.json";
-import i18nUk from "@emoji-mart/data/i18n/uk.json";
-import i18nVi from "@emoji-mart/data/i18n/vi.json";
-import i18nZh from "@emoji-mart/data/i18n/zh.json";
+import { TossEmojiPicker } from "./TossEmojiPicker";
+import { buildTossCategories } from "./tossEmoji";
 
 export interface OrgFormValue { name: string; icon: string | null; color: string | null; icon_scale: number; icon_x: number; icon_y: number }
 export interface OrgFormDialogProps {
@@ -43,7 +21,7 @@ const DEFAULT_COLOR = "#748FFC";
 const ICON_OFFSET_MAX = 25;
 const ICON_SCALE_MIN = 60;
 const ICON_SCALE_MAX = 140;
-// 이모지 빠른 선택 대표 칩(색상 프리셋과 대응). 그 외는 ＋(emoji-mart)에서 고른다.
+// 이모지 빠른 선택 대표 칩(색상 프리셋과 대응). 그 외는 ＋(토스 피커)에서 고른다.
 const PRESET_EMOJIS = ["🚀", "💡", "🎯", "🏢", "🌱", "🎨"];
 // 이모지 선택 링 색 — 대표색(#3b5bdb)의 파스텔 인디고. 색상은 자기색 링을 쓰므로 이모지에만 적용.
 const EMOJI_RING = "#91A7FF";
@@ -51,51 +29,18 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 // 이모지 풀 구성에 실패했을 때(테스트 목 등으로 카테고리 데이터가 없는 경우)의 최후 방어값.
 const FALLBACK_ICON = "🚀";
 
-interface EmojiMartSelection { native?: string }
-interface EmojiMartCategory { id: string; emojis: string[] }
-interface EmojiMartEmojiEntry { skins?: { native?: string }[] }
-interface EmojiMartDataShape { categories?: EmojiMartCategory[]; emojis?: Record<string, EmojiMartEmojiEntry> }
-
-// 생성 시 무작위 기본 이모지 후보 풀 — Symbols·Flags 카테고리는 제외한다.
-// 모듈 스코프에서 한 번만 구성한다.
-const RANDOM_ICON_EXCLUDED_CATEGORIES = new Set(["symbols", "flags"]);
-const RANDOM_ICON_POOL: string[] = (() => {
-  const data = emojiData as unknown as EmojiMartDataShape;
-  const pool: string[] = [];
-  for (const category of data.categories ?? []) {
-    if (RANDOM_ICON_EXCLUDED_CATEGORIES.has(category.id)) continue;
-    for (const emojiId of category.emojis ?? []) {
-      const native = data.emojis?.[emojiId]?.skins?.[0]?.native;
-      if (native) pool.push(native);
-    }
-  }
-  return pool;
-})();
+// 생성 시 기본 아이콘 후보 — 토스 커버 범위에서, symbols·flags 제외.
+const RANDOM_ICON_POOL: string[] = buildTossCategories()
+  .filter((c) => c.id !== "symbols" && c.id !== "flags")
+  .flatMap((c) => c.items.map((it) => it.native));
 
 function randomIcon(): string {
   if (RANDOM_ICON_POOL.length === 0) return FALLBACK_ICON;
   return RANDOM_ICON_POOL[Math.floor(Math.random() * RANDOM_ICON_POOL.length)];
 }
 
-// emoji-mart Picker의 UI 문자열(검색 placeholder, 카테고리명 등) 로케일.
-// CDN에서 fetch하지 않도록 @emoji-mart/data가 번들에 포함해 배포하는 i18n JSON만 사용한다(CSP 안전).
-const PICKER_I18N: Record<string, unknown> = {
-  ar: i18nAr, be: i18nBe, cs: i18nCs, de: i18nDe, en: i18nEn, es: i18nEs,
-  fa: i18nFa, fi: i18nFi, fr: i18nFr, hi: i18nHi, it: i18nIt, ja: i18nJa,
-  ko: i18nKo, nl: i18nNl, pl: i18nPl, pt: i18nPt, ru: i18nRu, sa: i18nSa,
-  tr: i18nTr, uk: i18nUk, vi: i18nVi, zh: i18nZh,
-};
-
-function detectPickerLocale(): string {
-  const lang = (typeof navigator !== "undefined" ? navigator.language : "en").split("-")[0].toLowerCase();
-  return PICKER_I18N[lang] ? lang : "en";
-}
-
-const PICKER_LOCALE = detectPickerLocale();
-const PICKER_I18N_DATA = PICKER_I18N[PICKER_LOCALE];
-
 // 팝오버가 열릴 위치(아래/위)를 정할 때 필요한 대략적인 높이 추정치.
-// 이모지 피커는 em-emoji-picker 자체를 340px로 캡핑하므로 테두리·여백을 포함해 넉넉히 잡는다.
+// 토스 피커 본문(264px) + 탭·검색·프리뷰 영역을 포함해 넉넉히 잡는다.
 const EMOJI_POPOVER_HEIGHT = 380;
 const COLOR_POPOVER_HEIGHT = 300;
 
@@ -266,7 +211,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
         {/* 아이콘 편집 통합 패널: 이모지 · 색상 · 크기·위치 */}
         <div style={{ marginTop: 14, border: `1px solid ${theme.border}`, borderRadius: 12, padding: "2px 13px" }}>
 
-          {/* 이모지 — 대표 칩 + ＋(emoji-mart). 색상 행과 동일 구조. */}
+          {/* 이모지 — 대표 칩 + ＋(토스 피커). 색상 행과 동일 구조. */}
           <div style={{ padding: "11px 0" }}>
             <div style={rowLabel}>이모지</div>
             <div ref={emojiWrapRef} style={{ position: "relative", display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6 }}>
@@ -275,7 +220,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                   style={icon === e ? { ...emojiChip, ...emojiChipSel } : emojiChip}>{e}</button>
               ))}
               {hasCustomEmoji ? (
-                // 기억된(대표 외) 이모지 슬롯 — 클릭 = 선택, 안쪽 그리드 배지 = emoji-mart 전체 열기.
+                // 기억된(대표 외) 이모지 슬롯 — 클릭 = 선택, 안쪽 그리드 배지 = 토스 피커 전체 열기.
                 <button type="button" aria-label={`이모지 ${customEmoji}`} onClick={() => { setIcon(customEmoji as string); setEmojiOpen(false); }}
                   style={{ position: "relative", ...(customEmojiSelected ? { ...emojiChip, ...emojiChipSel } : emojiChip) }}>
                   {customEmoji}
@@ -290,26 +235,19 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
                 <button type="button" aria-label="이모지 전체 선택" onClick={() => { setEmojiOpen((o) => !o); setPickerOpen(false); }} style={plusChip}>＋</button>
               )}
 
-              {/* emoji-mart 팝오버 — 이모지 행에 앵커. */}
+              {/* 토스 피커 팝오버 — 이모지 행에 앵커. */}
               {emojiOpen && (
                 <div onClick={(e) => e.stopPropagation()}
                   style={{ position: "absolute", ...(emojiPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
                     left: 0, zIndex: 50, width: "fit-content", maxWidth: "calc(100vw - 48px)",
                     maxHeight: "calc(100vh - 32px)", overflow: "auto", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
                     boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
-                  <style>{"em-emoji-picker { height: 340px; }"}</style>
-                  <Picker
-                    data={emojiData}
-                    i18n={PICKER_I18N_DATA}
-                    locale={PICKER_LOCALE}
-                    onEmojiSelect={(e: EmojiMartSelection) => {
-                      if (e.native) { setIcon(e.native); if (!PRESET_EMOJIS.includes(e.native)) setCustomEmoji(e.native); }
+                  <TossEmojiPicker
+                    onSelect={(native) => {
+                      setIcon(native);
+                      if (!PRESET_EMOJIS.includes(native)) setCustomEmoji(native);
                       setEmojiOpen(false);
                     }}
-                    theme="light"
-                    previewPosition="none"
-                    skinTonePosition="search"
-                    maxFrequentRows={2}
                   />
                 </div>
               )}
