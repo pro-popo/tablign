@@ -22,7 +22,9 @@ export function orgIconTransform(o: IconTransform, boxSize: number): string {
 export function orgIconStyle(o: IconTransform, boxSize: number): CSSProperties {
   return {
     display: "inline-flex",
-    fontSize: Math.round(boxSize * ICON_EMOJI_RATIO),
+    // 반올림하지 않는다 — 렌더 지점(레일 32·헤더 28·다이얼로그 44)마다 글자/박스 비율을 정확히 0.57로 통일해야
+    // 이모지 글리프의 baseline 위치가 박스 대비 동일하게 맞는다(반올림 시 0.5625 vs 0.571로 미세하게 어긋남).
+    fontSize: boxSize * ICON_EMOJI_RATIO,
     lineHeight: 1,
     transform: orgIconTransform(o, boxSize),
     willChange: "transform",
