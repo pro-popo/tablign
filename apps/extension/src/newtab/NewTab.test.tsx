@@ -409,7 +409,7 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "새 조직 만들기" })).not.toBeInTheDocument());
   });
 
-  it("조직 다이얼로그의 아바타를 클릭하면 emoji-mart 피커가 열리고, 이모지를 고르면 아바타와 제출 값에 반영된다", async () => {
+  it("조직 다이얼로그에서 이모지 ＋(전체 선택)을 누르면 emoji-mart 피커가 열리고, 이모지를 고르면 커스텀 슬롯과 제출 값에 반영된다", async () => {
     listSpaces.mockResolvedValue([
       { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
@@ -419,16 +419,12 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     fireEvent.click(screen.getByText("조직 만들기"));
     const dialog = await screen.findByRole("dialog", { name: "새 조직 만들기" });
 
-    // 기본 아바타는 항상 (무작위) 이모지를 보여준다 — 이니셜로 대체되는 경로는 없다.
-    const defaultIconText = within(dialog).getByRole("button", { name: "아이콘 선택" }).textContent;
-    expect(defaultIconText).toBeTruthy();
-    expect(defaultIconText!.length).toBeGreaterThan(0);
-
-    fireEvent.click(within(dialog).getByRole("button", { name: "아이콘 선택" }));
+    // 이모지 ＋(전체 선택) 버튼을 눌러 emoji-mart를 연다.
+    fireEvent.click(within(dialog).getByRole("button", { name: "이모지 전체 선택" }));
     fireEvent.click(await within(dialog).findByText("emoji-mart-stub"));
 
-    // 선택한 이모지가 아바타에 즉시 반영되고, 피커는 닫힌다.
-    expect(within(dialog).getByRole("button", { name: "아이콘 선택" })).toHaveTextContent("🎉");
+    // 선택한(대표 외) 이모지가 커스텀 슬롯에 반영되고, 피커는 닫힌다.
+    expect(within(dialog).getByRole("button", { name: "이모지 🎉" })).toBeInTheDocument();
     expect(within(dialog).queryByText("emoji-mart-stub")).not.toBeInTheDocument();
 
     fireEvent.change(within(dialog).getByPlaceholderText("조직 이름"), { target: { value: "새싹팀2" } });

@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker } from "@tablign/ui";
-import { orgIconStyle, ICON_REF_BOX } from "./orgIcon";
+import { orgIconStyle } from "./orgIcon";
 import Picker from "@emoji-mart/react";
 import emojiData from "@emoji-mart/data";
 import i18nAr from "@emoji-mart/data/i18n/ar.json";
@@ -39,12 +39,12 @@ export interface OrgFormDialogProps {
 const SWATCHES = ["#F783AC", "#FFA94D", "#FFD43B", "#69DB7C", "#38D9A9", "#66D9E8", "#748FFC", "#9775FA"];
 const DEFAULT_COLOR = "#748FFC";
 
-// 아이콘 조정: 다이얼로그 내 드래그 편집기 크기, 오프셋 한계(±, @100px 기준), 스케일(%) 범위.
-const ICON_EDITOR_BOX = 88;
+// 아이콘 조정: 오프셋 한계(±, @100px 기준), 스케일(%) 범위.
 const ICON_OFFSET_MAX = 25;
 const ICON_SCALE_MIN = 60;
 const ICON_SCALE_MAX = 140;
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+// 이모지 빠른 선택 대표 칩(색상 프리셋과 대응). 그 외는 ＋(emoji-mart)에서 고른다.
+const PRESET_EMOJIS = ["🚀", "💡", "🎯", "🏢", "🌱", "🎨"];
 // 이모지 풀 구성에 실패했을 때(테스트 목 등으로 카테고리 데이터가 없는 경우)의 최후 방어값.
 const FALLBACK_ICON = "🚀";
 
@@ -118,19 +118,17 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   const [customColor, setCustomColor] = useState<string | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [avatarHover, setAvatarHover] = useState(false);
+  // 직접 고른(대표 외) 이모지를 기억 — 대표 칩을 눌러도 슬롯에 남겨두기 위해 현재 아이콘과 분리 보관.
+  const [customEmoji, setCustomEmoji] = useState<string | null>(null);
   // 아이콘 위치·크기 조정값(기준 박스 100px). 스케일 %, 오프셋 px.
   const [iconScale, setIconScale] = useState(100);
   const [iconX, setIconX] = useState(0);
   const [iconY, setIconY] = useState(0);
-  const [dragging, setDragging] = useState(false);
   const [emojiPlacement, setEmojiPlacement] = useState<Placement>("down");
   const [colorPlacement, setColorPlacement] = useState<Placement>("down");
 
   const emojiWrapRef = useRef<HTMLDivElement>(null);
   const colorWrapRef = useRef<HTMLDivElement>(null);
-  // 아이콘 드래그 시작점(화면 좌표)과 시작 오프셋.
-  const dragStart = useRef({ sx: 0, sy: 0, ox: 0, oy: 0 });
 
   // 열릴 때 + 창 크기 변경 시 아래 공간을 다시 측정해 뒤집을지 정한다.
   useLayoutEffect(() => {
@@ -153,26 +151,15 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
     return () => window.removeEventListener("resize", update);
   }, [pickerOpen]);
 
-  // 아이콘 드래그: 편집기 위에서 마우스를 끌면 오프셋 갱신(편집기 픽셀 → 100px 기준으로 환산).
-  useEffect(() => {
-    if (!dragging) return;
-    const r = ICON_EDITOR_BOX / ICON_REF_BOX;
-    function onMove(e: MouseEvent) {
-      setIconX(Math.round(clamp(dragStart.current.ox + (e.clientX - dragStart.current.sx) / r, -ICON_OFFSET_MAX, ICON_OFFSET_MAX)));
-      setIconY(Math.round(clamp(dragStart.current.oy + (e.clientY - dragStart.current.sy) / r, -ICON_OFFSET_MAX, ICON_OFFSET_MAX)));
-    }
-    function onUp() { setDragging(false); }
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
-  }, [dragging]);
-
   const wasOpen = useRef(false);
   useEffect(() => {
     if (open && !wasOpen.current) {
       setName(initial?.name ?? "");
       // 생성 모드는 열릴 때마다 새로운 무작위 기본 이모지를 뽑는다. 편집 모드는 기존 아이콘을 유지한다.
-      setIcon(mode === "edit" ? (initial?.icon ?? randomIcon()) : randomIcon());
+      const initialIcon = mode === "edit" ? (initial?.icon ?? randomIcon()) : randomIcon();
+      setIcon(initialIcon);
+      // 대표 칩에 없는 이모지면 커스텀 슬롯에 표시한다.
+      setCustomEmoji(PRESET_EMOJIS.includes(initialIcon) ? null : initialIcon);
       const initialColor = initial?.color ?? DEFAULT_COLOR;
       setColor(initialColor);
       // 기존 색이 프리셋에 없으면 커스텀 색으로 기억해 슬롯에 표시한다.
@@ -232,8 +219,19 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   // 선택 링은 현재 선택색이 그 커스텀 색과 같을 때만 켠다.
   const hasCustom = customColor !== null;
   const customSelected = hasCustom && color === customColor;
+  const hasCustomEmoji = customEmoji !== null;
+  const customEmojiSelected = hasCustomEmoji && icon === customEmoji;
   // 커스텀 스와치의 "직접 고른 색" 표식(프리셋 색을 이어붙인 스펙트럼). 스와치 안쪽에 배치해 크기는 그대로 둔다.
   const rainbowGradient = `conic-gradient(from 0deg, ${[...SWATCHES, SWATCHES[0]].join(", ")})`;
+
+  // 패널 행 공용 스타일
+  const rowLabel: CSSProperties = { fontSize: 10, letterSpacing: ".2px", color: "#8a929c", fontWeight: 600, marginBottom: 8 };
+  const divider: CSSProperties = { borderTop: "1px solid #f1f3f5" };
+  const emojiChip: CSSProperties = { width: 24, height: 24, borderRadius: 7, flex: "none", border: "1px solid rgba(0,0,0,.08)", background: "#f7f8fa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, cursor: "pointer", padding: 0, boxSizing: "border-box" };
+  const emojiChipSel: CSSProperties = { border: "none", boxShadow: `0 0 0 2px ${theme.surface}, 0 0 0 3px ${theme.accent}`, background: "#edf0fe" };
+  const plusChip: CSSProperties = { width: 24, height: 24, borderRadius: 7, flex: "none", border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, cursor: "pointer", boxSizing: "border-box", padding: 0 };
+  const sliderIcon: CSSProperties = { width: 17, height: 17, flex: "none", color: theme.textMuted, display: "flex", alignItems: "center", justifyContent: "center" };
+  const sliderVal: CSSProperties = { width: 40, textAlign: "right", fontSize: 10.5, color: theme.text, flex: "none", fontVariantNumeric: "tabular-nums" };
 
   function submit() {
     const v = name.trim();
@@ -249,138 +247,147 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
         style={{ width: 340, maxWidth: "calc(100vw - 32px)", animation: panelIn, background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{title}</div>
 
-        {/* 아바타 + 이름 */}
+        {/* 아바타(미리보기) + 이름 */}
         <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
-          <div ref={emojiWrapRef} style={{ position: "relative", flexShrink: 0 }}>
-            <button type="button" aria-label="아이콘 선택" onClick={() => { setEmojiOpen((o) => !o); setPickerOpen(false); }}
-              onMouseEnter={() => setAvatarHover(true)} onMouseLeave={() => setAvatarHover(false)}
-              onFocus={() => setAvatarHover(true)} onBlur={() => setAvatarHover(false)}
-              style={{ position: "relative", width: 42, height: 42, borderRadius: 11, border: "none", padding: 0, cursor: "pointer",
-                background: color, color: "#fff", fontSize: 25, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0, boxSizing: "border-box" }}>
-              {/* 이모지 클립 레이어: 확대해도 아바타 밖으로 넘치지 않도록 overflow hidden. 편집 배지는 이 레이어 밖(버튼 직속)이라 잘리지 않는다. */}
-              <span style={{ position: "absolute", inset: 0, borderRadius: 11, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={orgIconStyle({ icon_scale: iconScale, icon_x: iconX, icon_y: iconY }, 42)}>{icon}</span>
-              </span>
-              {/* 편집 표식: 흰 원 + 채운 연필(액센트). 호버·포커스·피커 열림 시에만 노출. */}
-              <span aria-hidden style={{ position: "absolute", right: -4, bottom: -4, width: 20, height: 20, borderRadius: "50%", background: theme.surface,
-                boxShadow: "0 1px 5px rgba(20,30,60,.25)", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box",
-                opacity: avatarHover || emojiOpen ? 1 : 0, transition: "opacity .13s ease", pointerEvents: "none" }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill={theme.accent} aria-hidden="true">
-                  <path d="M20.3 5.71l-2.01-2.01a1.25 1.25 0 0 0-1.77 0l-1.58 1.58 3.78 3.78 1.58-1.58a1.25 1.25 0 0 0 0-1.77zM13.87 6.42L4 16.29V20.07h3.78l9.87-9.87-3.78-3.78z"/>
-                </svg>
-              </span>
-            </button>
-
-            {/* 이모지 피커 (emoji-mart) — 아바타에 앵커된 플로팅 팝오버. 다이얼로그 본문 흐름 밖에 렌더링돼 레이아웃에 자리를 차지하지 않는다.
-                크기는 피커의 자연 크기를 그대로 따른다(hug) — 우측/하단에 빈 여백이 남지 않도록 폭·높이를 강제하지 않는다. */}
-            {emojiOpen && (
-              <div onClick={(e) => e.stopPropagation()}
-                style={{ position: "absolute", ...(emojiPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
-                  left: 0, zIndex: 50, width: "fit-content", maxWidth: "calc(100vw - 32px)",
-                  maxHeight: "calc(100vh - 32px)", overflow: "auto", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
-                  boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
-                {/* em-emoji-picker의 자연 높이(~435px)가 화면을 넘지 않도록 고정 높이로 캡핑 — 내부 이모지 그리드가 스크롤된다. */}
-                <style>{"em-emoji-picker { height: 340px; }"}</style>
-                <Picker
-                  data={emojiData}
-                  i18n={PICKER_I18N_DATA}
-                  locale={PICKER_LOCALE}
-                  onEmojiSelect={(e: EmojiMartSelection) => {
-                    if (e.native) setIcon(e.native);
-                    setEmojiOpen(false);
-                  }}
-                  theme="light"
-                  previewPosition="none"
-                  skinTonePosition="search"
-                  maxFrequentRows={2}
-                />
-              </div>
-            )}
+          <div style={{ position: "relative", width: 44, height: 44, borderRadius: 12, background: color, overflow: "hidden",
+            display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 25, fontWeight: 700, flexShrink: 0, boxSizing: "border-box" }}>
+            <span style={orgIconStyle({ icon_scale: iconScale, icon_x: iconX, icon_y: iconY }, 44)}>{icon}</span>
           </div>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="조직 이름" autoFocus
             style={{ flex: 1, padding: "9px 11px", border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
         </div>
 
-        {/* 색상 스와치 — 프리셋 8 + 커스텀 슬롯 1 = 항상 9칸(줄바꿈 없음). 24px/gap6이라 마지막 칸 링·배지가 다이얼로그 밖으로 넘쳐 어긋나지 않는다. */}
-        <div style={{ marginTop: 14, display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6 }}>
-          {SWATCHES.map((s) => (
-            <button key={s} type="button" aria-label={s} onClick={() => { setColor(s); setPickerOpen(false); }}
-              style={{ width: 24, height: 24, borderRadius: 7, flex: "none",
-                // 선택: 흰 간격 + 그 스와치 자기 색 링(레일 활성 아이콘과 통일). 비선택: 은은한 테두리.
-                border: color === s ? "none" : "1px solid rgba(0,0,0,.08)",
-                boxShadow: color === s ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${s}` : "none",
-                background: s, cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
-          ))}
-          {/* 커스텀 슬롯(항상 한 칸, 크기 고정) — 래퍼로 묶어 바깥클릭 판정(colorWrapRef.contains)에서 제외 → 클릭이 팝오버를 닫지 않는다.
-              display:flex — 안의 버튼을 flex 자식으로 만들어 inline-block baseline 여백(커스텀 활성화 시 높이 어긋남)을 없앤다. */}
-          <div ref={colorWrapRef} style={{ position: "relative", flex: "none", display: "flex", alignItems: "center" }}>
-            {hasCustom ? (
-              // 기억된 커스텀 색: 프리셋과 동일한 24px 크기. 클릭 = 그 색 선택(프리셋을 골라도 유지). 스펙트럼 표식 클릭 = 피커로 수정.
-              <button type="button" aria-label={`커스텀 색 ${customColor}`}
-                onClick={() => { setColor(customColor as string); setPickerOpen(false); }}
-                style={{ position: "relative", width: 24, height: 24, borderRadius: 7, flex: "none",
-                  // 테두리 두께는 항상 1px 고정(선택 시 transparent) — 두께가 0↔1로 바뀌면 배지의 기준(padding box)이 밀려 위치가 흔들리므로.
-                  border: `1px solid ${customSelected ? "transparent" : "rgba(0,0,0,.08)"}`,
-                  boxShadow: customSelected ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${customColor}` : "none",
-                  background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
-                {/* 스펙트럼 표식(스와치 안쪽 모서리) — 크기를 늘리지 않으면서 "직접 고른 색"임을 표시하고, 클릭 시 피커로 수정. */}
-                <span role="button" aria-label="커스텀 색 수정" title="색 수정"
-                  onClick={(e) => { e.stopPropagation(); setColor(customColor as string); setPickerOpen((o) => !o); setEmojiOpen(false); }}
-                  style={{ position: "absolute", right: -1.5, bottom: -1.5, width: 12, height: 12, borderRadius: "50%",
-                    background: rainbowGradient, boxShadow: "0 0 0 1px rgba(255,255,255,.9)", cursor: "pointer" }} />
-              </button>
-            ) : (
-              // 커스텀 색이 아직 없는 상태: 비어 있는 점선 ＋ = 직접 고르기.
-              <button type="button" aria-label="색상 직접 선택" onClick={() => { setPickerOpen((o) => !o); setEmojiOpen(false); }}
-                style={{ width: 24, height: 24, borderRadius: 7, border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint,
-                  cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
-                ＋
-              </button>
-            )}
+        {/* 아이콘 편집 통합 패널: 이모지 · 색상 · 크기·위치 */}
+        <div style={{ marginTop: 14, border: `1px solid ${theme.border}`, borderRadius: 12, padding: "2px 13px" }}>
 
-            {/* 색상 직접 선택기 — 커스텀 슬롯에 앵커된 플로팅 팝오버(이모지 팝오버와 동일 패턴). 다이얼로그 본문 흐름을 밀어내지 않는다. */}
-            {pickerOpen && (
-              <div onClick={(e) => e.stopPropagation()}
-                style={{ position: "absolute", ...(colorPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
-                  left: 0, zIndex: 50, width: 240,
-                  maxWidth: "calc(100vw - 32px)", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
-                  padding: 14, boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
-                {/* 피커에서 프리셋 밖의 색을 고르면 커스텀 색으로 기억한다(프리셋을 고르면 기존 기억은 유지). */}
-                <ColorPicker value={color} onChange={(c) => { setColor(c); if (!SWATCHES.includes(c)) setCustomColor(c); }} />
-              </div>
-            )}
-          </div>
-        </div>
+          {/* 이모지 — 대표 칩 + ＋(emoji-mart). 색상 행과 동일 구조. */}
+          <div style={{ padding: "11px 0" }}>
+            <div style={rowLabel}>이모지</div>
+            <div ref={emojiWrapRef} style={{ position: "relative", display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6 }}>
+              {PRESET_EMOJIS.map((e) => (
+                <button key={e} type="button" aria-label={e} onClick={() => { setIcon(e); setEmojiOpen(false); }}
+                  style={icon === e ? { ...emojiChip, ...emojiChipSel } : emojiChip}>{e}</button>
+              ))}
+              {hasCustomEmoji ? (
+                // 기억된(대표 외) 이모지 슬롯 — 클릭 = 선택, 안쪽 그리드 배지 = emoji-mart 전체 열기.
+                <button type="button" aria-label={`이모지 ${customEmoji}`} onClick={() => { setIcon(customEmoji as string); setEmojiOpen(false); }}
+                  style={{ position: "relative", ...(customEmojiSelected ? { ...emojiChip, ...emojiChipSel } : emojiChip) }}>
+                  {customEmoji}
+                  <span role="button" aria-label="이모지 전체 선택" title="이모지 전체"
+                    onClick={(e) => { e.stopPropagation(); setEmojiOpen((o) => !o); setPickerOpen(false); }}
+                    style={{ position: "absolute", right: -3, bottom: -3, width: 12, height: 12, borderRadius: "50%", background: theme.accent,
+                      boxShadow: `0 0 0 1.5px ${theme.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="7" height="7" viewBox="0 0 24 24" fill="#fff"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                  </span>
+                </button>
+              ) : (
+                <button type="button" aria-label="이모지 전체 선택" onClick={() => { setEmojiOpen((o) => !o); setPickerOpen(false); }} style={plusChip}>＋</button>
+              )}
 
-        {/* 아이콘 위치·크기 조정 — 편집기에서 이모지를 드래그해 위치를, 슬라이더로 크기를 정한다(기준 박스 100px). */}
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8 }}>아이콘 위치·크기</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div
-              onMouseDown={(e) => { dragStart.current = { sx: e.clientX, sy: e.clientY, ox: iconX, oy: iconY }; setDragging(true); e.preventDefault(); }}
-              style={{ position: "relative", width: ICON_EDITOR_BOX, height: ICON_EDITOR_BOX, borderRadius: 20, background: color, overflow: "hidden",
-                cursor: dragging ? "grabbing" : "grab", flex: "none", userSelect: "none" }}>
-              {/* 드래그 중 격자 가이드 */}
-              <span style={{ position: "absolute", inset: 0, opacity: dragging ? 1 : 0, transition: "opacity .1s",
-                backgroundImage: "linear-gradient(rgba(255,255,255,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.18) 1px,transparent 1px)",
-                backgroundSize: "22px 22px", pointerEvents: "none" }} />
-              <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 46, pointerEvents: "none" }}>
-                <span style={orgIconStyle({ icon_scale: iconScale, icon_x: iconX, icon_y: iconY }, ICON_EDITOR_BOX)}>{icon}</span>
-              </span>
+              {/* emoji-mart 팝오버 — 이모지 행에 앵커. */}
+              {emojiOpen && (
+                <div onClick={(e) => e.stopPropagation()}
+                  style={{ position: "absolute", ...(emojiPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
+                    left: 0, zIndex: 50, width: "fit-content", maxWidth: "calc(100vw - 48px)",
+                    maxHeight: "calc(100vh - 32px)", overflow: "auto", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
+                    boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
+                  <style>{"em-emoji-picker { height: 340px; }"}</style>
+                  <Picker
+                    data={emojiData}
+                    i18n={PICKER_I18N_DATA}
+                    locale={PICKER_LOCALE}
+                    onEmojiSelect={(e: EmojiMartSelection) => {
+                      if (e.native) { setIcon(e.native); if (!PRESET_EMOJIS.includes(e.native)) setCustomEmoji(e.native); }
+                      setEmojiOpen(false);
+                    }}
+                    theme="light"
+                    previewPosition="none"
+                    skinTonePosition="search"
+                    maxFrequentRows={2}
+                  />
+                </div>
+              )}
             </div>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: theme.textMuted }}>
-                <span style={{ width: 28, flexShrink: 0 }}>크기</span>
-                <input type="range" min={ICON_SCALE_MIN} max={ICON_SCALE_MAX} value={iconScale}
-                  onChange={(e) => setIconScale(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
-                <span style={{ width: 36, flexShrink: 0, textAlign: "right", color: theme.text, fontVariantNumeric: "tabular-nums" }}>{iconScale}%</span>
-              </label>
-              <button type="button" onClick={() => { setIconScale(100); setIconX(0); setIconY(0); }}
-                style={{ alignSelf: "flex-start", fontSize: 11.5, padding: "5px 10px", border: `1px solid ${theme.border}`, borderRadius: 8, background: theme.surface, color: theme.textMuted, cursor: "pointer" }}>
-                가운데·기본 크기로
+          </div>
+
+          <div style={divider} />
+
+          {/* 색상 — 프리셋 8 + 커스텀 슬롯 1. */}
+          <div style={{ padding: "11px 0" }}>
+            <div style={rowLabel}>색상</div>
+            <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6 }}>
+              {SWATCHES.map((s) => (
+                <button key={s} type="button" aria-label={s} onClick={() => { setColor(s); setPickerOpen(false); }}
+                  style={{ width: 24, height: 24, borderRadius: 7, flex: "none",
+                    border: color === s ? "none" : "1px solid rgba(0,0,0,.08)",
+                    boxShadow: color === s ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${s}` : "none",
+                    background: s, cursor: "pointer", padding: 0, boxSizing: "border-box" }} />
+              ))}
+              {/* 커스텀 슬롯 — 래퍼로 묶어 바깥클릭 판정에서 제외. display:flex로 baseline 여백 제거. */}
+              <div ref={colorWrapRef} style={{ position: "relative", flex: "none", display: "flex", alignItems: "center" }}>
+                {hasCustom ? (
+                  <button type="button" aria-label={`커스텀 색 ${customColor}`}
+                    onClick={() => { setColor(customColor as string); setPickerOpen(false); }}
+                    style={{ position: "relative", width: 24, height: 24, borderRadius: 7, flex: "none",
+                      border: `1px solid ${customSelected ? "transparent" : "rgba(0,0,0,.08)"}`,
+                      boxShadow: customSelected ? `0 0 0 2px ${theme.surface}, 0 0 0 4px ${customColor}` : "none",
+                      background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
+                    <span role="button" aria-label="커스텀 색 수정" title="색 수정"
+                      onClick={(e) => { e.stopPropagation(); setColor(customColor as string); setPickerOpen((o) => !o); setEmojiOpen(false); }}
+                      style={{ position: "absolute", right: -1.5, bottom: -1.5, width: 12, height: 12, borderRadius: "50%",
+                        background: rainbowGradient, boxShadow: "0 0 0 1px rgba(255,255,255,.9)", cursor: "pointer" }} />
+                  </button>
+                ) : (
+                  <button type="button" aria-label="색상 직접 선택" onClick={() => { setPickerOpen((o) => !o); setEmojiOpen(false); }}
+                    style={{ width: 24, height: 24, borderRadius: 7, border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint,
+                      cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
+                    ＋
+                  </button>
+                )}
+                {pickerOpen && (
+                  <div onClick={(e) => e.stopPropagation()}
+                    style={{ position: "absolute", ...(colorPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
+                      left: 0, zIndex: 50, width: 240,
+                      maxWidth: "calc(100vw - 48px)", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
+                      padding: 14, boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
+                    <ColorPicker value={color} onChange={(c) => { setColor(c); if (!SWATCHES.includes(c)) setCustomColor(c); }} />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={divider} />
+
+          {/* 크기·위치 — 아이콘 슬라이더 3개(크기/좌우/상하). */}
+          <div style={{ padding: "11px 0" }}>
+            <div style={{ ...rowLabel, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
+              <span>크기·위치</span>
+              <button type="button" title="초기화" aria-label="크기·위치 초기화" onClick={() => { setIconScale(100); setIconX(0); setIconY(0); }}
+                style={{ border: "none", background: "none", cursor: "pointer", color: theme.textFaint, display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10.5, fontWeight: 400, padding: 0 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+                초기화
               </button>
-              <div style={{ fontSize: 10.5, color: theme.textFaint }}>편집기에서 이모지를 끌어 위치를 옮기세요.</div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {/* 크기: 상자 + 대각 화살표 */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={sliderIcon} title="크기"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="13" width="7" height="7" rx="1.3"/><path d="M11.5 12.5L19 5"/><path d="M13.5 5H19v5.5"/></svg></span>
+                <input type="range" min={ICON_SCALE_MIN} max={ICON_SCALE_MAX} value={iconScale} onChange={(e) => setIconScale(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
+                <span style={sliderVal}>{iconScale}%</span>
+              </div>
+              {/* 좌우: 원 + 좌우 화살촉 */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={sliderIcon} title="좌우"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M6 8.5L2.5 12 6 15.5"/><path d="M18 8.5L21.5 12 18 15.5"/></svg></span>
+                <input type="range" min={-ICON_OFFSET_MAX} max={ICON_OFFSET_MAX} value={iconX} onChange={(e) => setIconX(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
+                <span style={sliderVal}>{iconX}</span>
+              </div>
+              {/* 상하: 원 + 상하 화살촉 */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={sliderIcon} title="상하"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M8.5 6L12 2.5 15.5 6"/><path d="M8.5 18L12 21.5 15.5 18"/></svg></span>
+                <input type="range" min={-ICON_OFFSET_MAX} max={ICON_OFFSET_MAX} value={iconY} onChange={(e) => setIconY(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
+                <span style={sliderVal}>{iconY}</span>
+              </div>
             </div>
           </div>
         </div>
