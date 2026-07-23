@@ -37,7 +37,7 @@ import {
   copyCollection, moveCollectionToSpace,
   createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
-  listOrganizations, createOrganization, updateOrganization, listMyOrgMemberships, listOrgMembers, removeOrgMember, updateOrgMemberRole,
+  listOrganizations, createOrganization, updateOrganization, deleteOrganization, listMyOrgMemberships, listOrgMembers, removeOrgMember, updateOrgMemberRole,
   inviteToOrg, listOrgInvitations, cancelOrgInvitation, listMyOrgInvitations, acceptOrgInvitation, declineOrgInvitation,
   type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
   type Organization, type OrganizationMember, type OrgMemberWithProfile, type OrganizationInvitation, type OrgInvitationWithOrg,
@@ -115,6 +115,7 @@ export function NewTab() {
   // 조직 생성/편집 다이얼로그 상태.
   const [orgFormOpen, setOrgFormOpen] = useState(false);
   const [orgFormMode, setOrgFormMode] = useState<"create" | "edit">("create");
+  const [orgDeleteOpen, setOrgDeleteOpen] = useState(false);
   const { activeOrgId, setActiveOrgId, loaded: orgLoaded } = useActiveOrg();
   // 스페이스 목록 로드 완료 여부. 0개(신규 가입·전부 삭제)와 "아직 로딩 중"을 구분해
   // 온보딩 화면과 스켈레톤을 올바르게 가른다.
@@ -333,6 +334,23 @@ export function NewTab() {
       setOrganizations((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
     }
     setOrgFormOpen(false);
+  }
+
+  async function deleteOrg() {
+    if (!activeOrg || activeOrg.is_personal) return;
+    const id = activeOrg.id;
+    const personal = organizations.find((o) => o.is_personal);
+    try {
+      await deleteOrganization(supabase, id);
+      setOrganizations((prev) => prev.filter((o) => o.id !== id));
+      setActiveOrgId(personal ? personal.id : null);
+      setActiveSpaceId(null);
+      setOrgDeleteOpen(false);
+      toast.show("조직을 삭제했어요.");
+    } catch (e) {
+      console.error(e);
+      toast.show("조직을 삭제하지 못했어요.");
+    }
   }
 
   async function renameSpace(id: string, name: string) {
@@ -1072,6 +1090,18 @@ export function NewTab() {
         initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color, icon_scale: activeOrg.icon_scale, icon_x: activeOrg.icon_x, icon_y: activeOrg.icon_y } : undefined}
         onSubmit={submitOrgForm}
         onClose={() => setOrgFormOpen(false)}
+        onDelete={orgFormMode === "edit" && activeOrg && !activeOrg.is_personal && myOrgRole === "owner"
+          ? () => { setOrgFormOpen(false); setOrgDeleteOpen(true); }
+          : undefined}
+      />
+      <ConfirmDialog
+        open={orgDeleteOpen}
+        danger
+        title="조직 삭제"
+        message={<>'{activeOrg?.name}' 조직을 삭제할까요?<br />조직의 모든 스페이스·컬렉션·멤버가 삭제되며 되돌릴 수 없습니다.</>}
+        confirmLabel="삭제"
+        onConfirm={deleteOrg}
+        onCancel={() => setOrgDeleteOpen(false)}
       />
       <MemberDialog
         open={orgMemberDialogOpen}

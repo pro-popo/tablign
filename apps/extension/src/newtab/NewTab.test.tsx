@@ -43,6 +43,7 @@ const listOrganizations = vi.fn();
 const listMyOrgMemberships = vi.fn();
 const createOrganization = vi.fn();
 const updateOrganization = vi.fn();
+const deleteOrganization = vi.fn();
 const listOrgMembers = vi.fn();
 const listOrgInvitations = vi.fn();
 const listMyOrgInvitations = vi.fn();
@@ -74,6 +75,7 @@ vi.mock("@tablign/core", async (importOriginal) => {
     listMyOrgMemberships: (...a: unknown[]) => listMyOrgMemberships(...a),
     createOrganization: (...a: unknown[]) => createOrganization(...a),
     updateOrganization: (...a: unknown[]) => updateOrganization(...a),
+    deleteOrganization: (...a: unknown[]) => deleteOrganization(...a),
     listOrgMembers: (...a: unknown[]) => listOrgMembers(...a),
     listOrgInvitations: (...a: unknown[]) => listOrgInvitations(...a),
     listMyOrgInvitations: (...a: unknown[]) => listMyOrgInvitations(...a),
@@ -139,6 +141,8 @@ beforeEach(() => {
       created_at: "x",
     }),
   );
+  deleteOrganization.mockReset();
+  deleteOrganization.mockResolvedValue(undefined);
   listOrgMembers.mockReset();
   listOrgMembers.mockResolvedValue([]);
   listOrgInvitations.mockReset();
@@ -463,5 +467,41 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
       expect(updateOrganization).toHaveBeenCalledWith(expect.anything(), "org-team", expect.objectContaining({ name: "우리팀2" })),
     );
     expect((await screen.findAllByText("우리팀2")).length).toBeGreaterThan(0);
+  });
+
+  it("팀 조직 소유자는 설정 다이얼로그에서 '조직 삭제' → 확인 시 deleteOrganization을 호출한다", async () => {
+    listOrganizations.mockResolvedValue([
+      { id: "org-personal", name: "개인", icon: null, color: null, owner_id: "u1", is_personal: true, created_at: "" },
+      { id: "org-team", name: "우리팀", icon: null, color: "#20a97e", owner_id: "u1", is_personal: false, created_at: "x" },
+    ]);
+    listMyOrgMemberships.mockResolvedValue([
+      { org_id: "org-team", user_id: "u1", role: "owner", created_at: "x" },
+    ]);
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+    ]);
+    renderNewTab();
+    await screen.findAllByText("개인");
+
+    fireEvent.click(screen.getByText("우리팀"));
+    fireEvent.click(await screen.findByRole("button", { name: "조직 편집" }));
+    const dialog = await screen.findByRole("dialog", { name: "조직 설정" });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "조직 삭제" }));
+    // 확인 모달의 삭제 버튼
+    fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+
+    await waitFor(() =>
+      expect(deleteOrganization).toHaveBeenCalledWith(expect.anything(), "org-team"),
+    );
+  });
+
+  it("개인 조직에서는 '조직 편집'/'조직 삭제'가 노출되지 않는다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+    ]);
+    renderNewTab();
+    await screen.findAllByText("개인");
+    expect(screen.queryByRole("button", { name: "조직 편집" })).not.toBeInTheDocument();
   });
 });

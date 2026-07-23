@@ -33,6 +33,8 @@ export interface OrgFormDialogProps {
   initial?: OrgFormValue;
   onSubmit: (v: OrgFormValue) => void;
   onClose: () => void;
+  /** 편집 모드에서 삭제 가능(소유자·팀 조직)일 때만 전달 — "조직 삭제" 버튼 노출. */
+  onDelete?: () => void;
 }
 
 // 대표 색: 살짝 파스텔 톤 8색. 웜→쿨 순서(핑크·오렌지·옐로우 → 그린·틸·시안·블루·바이올렛).
@@ -113,7 +115,7 @@ function computePlacement(triggerRef: React.RefObject<HTMLElement | null>, neede
   return "down";
 }
 
-export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFormDialogProps) {
+export function OrgFormDialog({ open, mode, initial, onSubmit, onClose, onDelete }: OrgFormDialogProps) {
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<string>(() => (mode === "edit" ? (initial?.icon ?? randomIcon()) : randomIcon()));
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
@@ -410,9 +412,17 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
           </div>
         </div>
 
-        <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <Button variant="outline" onClick={onClose}>취소</Button>
-          <Button onClick={submit} disabled={!name.trim()}>{submitLabel}</Button>
+        <div style={{ marginTop: 18, display: "flex", alignItems: "center", justifyContent: onDelete ? "space-between" : "flex-end", gap: 8 }}>
+          {onDelete && (
+            <button type="button" onClick={onDelete}
+              style={{ border: "none", background: "none", cursor: "pointer", color: "#e03131", fontSize: 12.5, fontWeight: 600, padding: "6px 4px" }}>
+              조직 삭제
+            </button>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button variant="outline" onClick={onClose}>취소</Button>
+            <Button onClick={submit} disabled={!name.trim()}>{submitLabel}</Button>
+          </div>
         </div>
       </div>
     </div>
