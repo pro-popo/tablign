@@ -70,9 +70,9 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace,
   const [pendingDelete, setPendingDelete] = useState<Space | null>(null);
   return (
     <>
-      <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${theme.border}`, boxSizing: "border-box" }}>
+      <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 2, borderBottom: `1px solid ${theme.border}`, boxSizing: "border-box" }}>
         <div style={{ flex: 1, minWidth: 0 }}>{orgHeaderSlot}</div>
-        <button type="button" title="사이드바 접기" aria-label="사이드바 접기" onClick={onCollapse} style={{ flexShrink: 0, border: "none", background: "none", cursor: "pointer", display: "flex" }}>
+        <button type="button" title="사이드바 접기" aria-label="사이드바 접기" onClick={onCollapse} style={{ flexShrink: 0, border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3 }}>
           <PanelLeftClose size={16} color={theme.textFaint} />
         </button>
       </div>

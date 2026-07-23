@@ -348,7 +348,7 @@ describe("NewTab — 멤버 관리·초대 알림", () => {
 });
 
 describe("NewTab — 조직(팀) 협업", () => {
-  it("팀 조직 선택 시 역할칩·멤버 아바타가 보이고, 멤버 버튼 클릭 시 조직 멤버 다이얼로그가 열린다", async () => {
+  it("팀 조직 선택 시 조직 관리 메뉴에서 멤버 관리 다이얼로그가 열린다", async () => {
     listOrganizations.mockResolvedValue([
       { id: "org-personal", name: "개인", icon: null, color: null, owner_id: "u1", is_personal: true, created_at: "" },
       { id: "org-team", name: "우리팀", icon: null, color: null, owner_id: "owner-x", is_personal: false, created_at: "x" },
@@ -366,9 +366,8 @@ describe("NewTab — 조직(팀) 협업", () => {
     await screen.findAllByText("개인");
 
     fireEvent.click(screen.getByText("우리팀"));
-    expect(await screen.findByText("관리자")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "조직 관리" }));
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "멤버 관리" }));
     expect(await screen.findByRole("dialog", { name: "멤버 관리" })).toBeInTheDocument();
   });
@@ -455,9 +454,8 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     await screen.findAllByText("개인");
 
     fireEvent.click(screen.getByText("우리팀"));
-    await screen.findByText("관리자"); // 팀 헤더 로드 대기
 
-    fireEvent.click(screen.getByRole("button", { name: "조직 관리" }));
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" })); // 팀 헤더 로드 대기 겸
     fireEvent.click(await screen.findByRole("menuitem", { name: "조직 설정" }));
     const dialog = await screen.findByRole("dialog", { name: "조직 설정" });
     expect(within(dialog).getByPlaceholderText("조직 이름")).toHaveValue("우리팀");

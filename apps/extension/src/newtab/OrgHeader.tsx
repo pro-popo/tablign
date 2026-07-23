@@ -1,26 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import type { Organization, OrgMemberWithProfile } from "@tablign/core";
-import { MemberAvatars, theme } from "@tablign/ui";
+import type { Organization } from "@tablign/core";
+import { theme } from "@tablign/ui";
 import { orgIconStyle } from "./orgIcon";
 
 export type OrgRole = "owner" | "admin" | "member";
-const ROLE_CHIP: Record<OrgRole, { label: string; bg: string; fg: string }> = {
-  owner:  { label: "소유자", bg: "#fff4e6", fg: "#e8590c" },
-  admin:  { label: "관리자", bg: "#edf0fe", fg: "#3b5bdb" },
-  member: { label: "멤버",   bg: "#f1f3f5", fg: "#868e96" },
-};
 
 export interface OrgHeaderProps {
   org: Organization;
-  members: OrgMemberWithProfile[];
   myRole: OrgRole;
   onOpenMembers: () => void;
   onEditOrg?: () => void;
   onDeleteOrg?: () => void;
 }
 
-export function OrgHeader({ org, members, myRole, onOpenMembers, onEditOrg, onDeleteOrg }: OrgHeaderProps) {
-  const chip = ROLE_CHIP[myRole];
+export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg }: OrgHeaderProps) {
   const isPersonal = org.is_personal;
   // 멤버는 조직 관리 권한이 없어 메뉴를 열 수 없으므로 톱니바퀴를 숨긴다.
   // 개인 조직은 단일 사용자 전용(멤버 초대·관리 개념이 없음)이라 소유자여도 톱니바퀴를 숨긴다.
@@ -52,26 +45,18 @@ export function OrgHeader({ org, members, myRole, onOpenMembers, onEditOrg, onDe
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
       <span aria-hidden="true" style={{
-        boxSizing: "border-box", flexShrink: 0, width: 22, height: 22, borderRadius: 6, overflow: "hidden",
-        background: isPersonal ? theme.textFaint : (org.color ?? "#20a97e"), color: "#fff", fontSize: 12, fontWeight: 700,
+        boxSizing: "border-box", flexShrink: 0, width: 28, height: 28, borderRadius: 8, overflow: "hidden",
+        background: isPersonal ? theme.textFaint : (org.color ?? "#20a97e"), color: "#fff", fontSize: 15, fontWeight: 700,
         display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
       }}>
         {iconContent}
       </span>
       <strong style={{ fontSize: 15, color: theme.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{org.name}</strong>
-      {!isPersonal && (
-        <>
-          {members.length > 0 && <MemberAvatars people={members} />}
-          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: chip.bg, color: chip.fg, boxSizing: "border-box" }}>
-            {chip.label}
-          </span>
-        </>
-      )}
       {showGear && (
         <div ref={menuWrapRef} style={{ position: "relative", marginLeft: "auto", flexShrink: 0 }}>
           <button type="button" title="조직 관리" aria-label="조직 관리" aria-haspopup="menu" aria-expanded={menuOpen}
             onClick={() => setMenuOpen((o) => !o)}
-            style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3, color: menuOpen ? theme.text : theme.textFaint }}>
+            style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3, color: menuOpen ? "#868e96" : theme.textFaint }}>
             {/* lucide settings(톱니) */}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>

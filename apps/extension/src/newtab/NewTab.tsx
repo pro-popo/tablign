@@ -796,15 +796,6 @@ export function NewTab() {
        : (orgMemberships.find((m) => m.org_id === activeOrgId)?.role ?? "member"))
     : "member";
 
-  // 헤더 멤버 아바타에 본인 포함 — 소유자는 organization_members 행이 없을 수 있어 목록에서 빠지므로 앞에 추가한다.
-  const orgMembersWithSelf: OrgMemberWithProfile[] = (!activeOrg || activeOrg.is_personal || orgMembers.some((m) => m.user_id === userId))
-    ? orgMembers
-    : [{
-        org_id: activeOrg.id, user_id: userId, role: myOrgRole, position: -1, created_at: "",
-        display_name: (session.user.user_metadata?.name as string | undefined) ?? (session.user.user_metadata?.full_name as string | undefined) ?? session.user.email ?? null,
-        avatar_url: (session.user.user_metadata?.avatar_url as string | undefined) ?? null,
-      }, ...orgMembers];
-
   // 조직(팀) 스페이스는 조직 역할이 편집 가능 여부의 기준(멤버는 편집 불가, RLS가 최종 방어선).
   // 개인/공유 스페이스는 기존 스페이스 멤버십 기준(오너는 항상 편집 가능, 멤버는 editor만 편집 가능)을 유지.
   // 역할은 '활성 스페이스가 속한 조직'(activeSpaceOrg) 기준으로 계산한다. 레일 선택(activeOrgId)과
@@ -881,7 +872,6 @@ export function NewTab() {
                 orgHeaderSlot={activeOrg ? (
                   <OrgHeader
                     org={activeOrg}
-                    members={orgMembersWithSelf}
                     myRole={myOrgRole}
                     onOpenMembers={openOrgMemberDialog}
                     onEditOrg={(!activeOrg?.is_personal && (myOrgRole === "owner" || myOrgRole === "admin")) ? openEditOrg : undefined}
@@ -1100,9 +1090,6 @@ export function NewTab() {
         initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color, icon_scale: activeOrg.icon_scale, icon_x: activeOrg.icon_x, icon_y: activeOrg.icon_y } : undefined}
         onSubmit={submitOrgForm}
         onClose={() => setOrgFormOpen(false)}
-        onDelete={orgFormMode === "edit" && activeOrg && !activeOrg.is_personal && myOrgRole === "owner"
-          ? () => { setOrgFormOpen(false); setOrgDeleteOpen(true); }
-          : undefined}
       />
       <ConfirmDialog
         open={orgDeleteOpen}
