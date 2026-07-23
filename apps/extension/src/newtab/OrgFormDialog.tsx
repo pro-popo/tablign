@@ -243,7 +243,8 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   }
 
   return (
-    <div role="presentation" onClick={onClose}
+    <div role="presentation"
+      onClick={() => { if (emojiOpen) { setEmojiOpen(false); return; } if (pickerOpen) { setPickerOpen(false); return; } onClose(); }}
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
       <style>{overlayAnimationCss}</style>
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
