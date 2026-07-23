@@ -34,7 +34,7 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg }
 
   // 이모지면 위치·크기 조정 transform 적용, 아니면 이름 첫 글자. 프로필 아이콘은 표시 전용(편집은 톱니 메뉴에서).
   const iconContent = org.icon
-    ? <span style={orgIconStyle(org, 22)}>{org.icon}</span>
+    ? <span style={orgIconStyle(org, 28)}>{org.icon}</span>
     : (org.name.trim().slice(0, 1) || "?").toUpperCase();
 
   const menuItem: React.CSSProperties = {
