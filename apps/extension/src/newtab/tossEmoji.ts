@@ -1,6 +1,8 @@
 import emojiData from "@emoji-mart/data";
 
-/** 토스페이스 커버 범위(Unicode 14.0). emoji-mart 데이터의 version 필드 기준. */
+/** 토스페이스 커버 범위(Unicode 14.0). emoji-mart 데이터의 version 필드 기준.
+ *  주의: 이는 폰트의 실제 unicode-range가 아니라 근사치다 — version<=14라도 Tossface가
+ *  선언한 범위 밖 글리프는 시스템 이모지로 fallback될 수 있다(실무상 잔여 불일치는 작음). */
 const MAX_VERSION = 14;
 
 /** 카테고리 id → 한글 라벨 + 대표 탭 이모지. 여기 없는 카테고리(frequent 등)는 제외된다. */

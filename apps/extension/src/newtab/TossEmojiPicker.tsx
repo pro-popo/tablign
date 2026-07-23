@@ -28,6 +28,8 @@ export function TossEmojiPicker({ onSelect }: TossEmojiPickerProps) {
             aria-label={c.label}
             style={{ ...tabBtn, fontFamily: ORG_ICON_FONT }}
             onClick={() => {
+              // 탭 이동 시 검색을 초기화한다. setQuery("")의 재렌더가 rAF보다 먼저 커밋되어
+              // 해당 섹션 ref가 채워진 뒤 스크롤된다(전체 섹션이 다시 보이므로 ref 존재 보장).
               setQuery("");
               requestAnimationFrame(() => sectionRefs.current[c.id]?.scrollIntoView({ block: "start" }));
             }}
