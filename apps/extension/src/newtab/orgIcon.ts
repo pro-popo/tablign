@@ -2,6 +2,9 @@ import type { CSSProperties } from "react";
 
 /** 아이콘 위치·크기 조정값의 기준 박스 크기(px). 저장된 오프셋은 이 크기 기준. */
 export const ICON_REF_BOX = 100;
+/** 박스 크기 대비 이모지 기준 글자 크기 비율. 다이얼로그 프리뷰(박스 44 / 이모지 25 ≈ 0.57) 기준으로
+ *  레일·헤더 등 모든 렌더 지점에서 같은 비율을 써야 "설정한 크기"가 동일하게 보인다. */
+const ICON_EMOJI_RATIO = 0.57;
 
 type IconTransform = { icon_scale?: number | null; icon_x?: number | null; icon_y?: number | null };
 
@@ -14,7 +17,14 @@ export function orgIconTransform(o: IconTransform, boxSize: number): string {
   return `translate(${x}px, ${y}px) scale(${scale})`;
 }
 
-/** 조직 이모지를 감싸는 span 스타일 — 박스 안에서 transform으로 위치·크기 조정. */
+/** 조직 이모지를 감싸는 span 스타일 — 박스 안에서 transform으로 위치·크기 조정.
+ *  기준 글자 크기도 박스 크기에 비례해 지정하여, 렌더 지점(레일·헤더·다이얼로그)마다 이모지-박스 비율을 통일한다. */
 export function orgIconStyle(o: IconTransform, boxSize: number): CSSProperties {
-  return { display: "inline-flex", transform: orgIconTransform(o, boxSize), willChange: "transform" };
+  return {
+    display: "inline-flex",
+    fontSize: Math.round(boxSize * ICON_EMOJI_RATIO),
+    lineHeight: 1,
+    transform: orgIconTransform(o, boxSize),
+    willChange: "transform",
+  };
 }
