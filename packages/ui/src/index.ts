@@ -23,6 +23,7 @@ export * from "./MemberAvatars";
 export * from "./MemberDialog";
 export * from "./InvitationList";
 export * from "./ColorPicker";
+export * from "./ColorGradientPicker";
 export * from "./color";
 export * from "./colorValue";
 export * from "./overlayAnimation";
