@@ -24,11 +24,19 @@ export function ColorGradientPicker({ value, onChange, previewIcon }: ColorGradi
   // ColorPicker와 동일한 self-echo 패턴으로 로컬 값을 두고, 외부 value가 내가 emit한 값과 다를 때만 동기화한다.
   const [localValue, setLocalValue] = useState(value);
   const lastEmit = useRef(value);
-  useEffect(() => {
-    if (value === lastEmit.current) return;
-    setLocalValue(value);
-    lastEmit.current = value;
-  }, [value]);
+  // 직전 렌더에서 본 value prop — "prop 자체가 바뀌었는지"를 useEffect의 deps 배열 없이 렌더 중 판별하기 위함.
+  // (emit()이 매 렌더 lastEmit을 최신 로컬값으로 갱신하므로, lastEmit만으로는 self-echo 대기 중인
+  // 재렌더와 실제 외부 변경을 구분할 수 없다.)
+  const prevValueProp = useRef(value);
+
+  // 외부에서 value가 바뀌면(내가 emit한 self-echo가 아니면) 렌더 중 동기화 — useEffect보다 깜빡임 없음.
+  if (value !== prevValueProp.current) {
+    prevValueProp.current = value;
+    if (value !== lastEmit.current) {
+      lastEmit.current = value;
+      setLocalValue(value);
+    }
+  }
 
   const parsed = parseColorValue(localValue);
   const [active, setActive] = useState<ActiveStop>(null);

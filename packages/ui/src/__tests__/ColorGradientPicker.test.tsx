@@ -41,4 +41,13 @@ describe("ColorGradientPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: "시작 끝 색 교환" }));
     expect(onChange).toHaveBeenCalledWith("linear-gradient(135deg, #9775FA, #748FFC)");
   });
+
+  it("마운트 후 부모가 value를 외부에서 바꾸면 그 값을 반영한다", () => {
+    const { rerender } = render(<ColorGradientPicker value="#748FFC" onChange={() => {}} />);
+    expect(screen.getByRole("button", { name: "색" })).toBeInTheDocument();
+    rerender(<ColorGradientPicker value="linear-gradient(135deg, #748FFC, #9775FA)" onChange={() => {}} />);
+    expect(screen.getByRole("button", { name: "시작 색" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "끝 색" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "색" })).not.toBeInTheDocument();
+  });
 });
