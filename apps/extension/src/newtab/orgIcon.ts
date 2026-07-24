@@ -15,20 +15,14 @@ export const PERSONAL_DEFAULT_COLOR = "linear-gradient(135deg,#ffd43b,#f59f00)";
 
 type IconTransform = { icon_scale?: number | null; icon_x?: number | null; icon_y?: number | null };
 
-/** 로컬 번들 토스페이스 글리프는 line-height 1 span의 위쪽으로 비대칭 오버플로우해 위로 떠 보인다.
- *  박스 대비 이 비율만큼 아래로 내려 시각적 정중앙에 맞춘다.
- *  값 0.05는 실제 렌더 크기(다이얼로그 44px)·실제 번들 폰트로 스윕 실측(0.04 높음·0.06 낮음·0.05 중앙),
- *  canvas 픽셀 측정(Δ/em ≈ -0.0875 → 0.05)과도 일치. 주의: (1) 큰 크기에서 재면 힌팅 때문에 값이 커지므로
- *  반드시 소형(28~44px)에서 잰다. (2) CDN(jsDelivr) 토스페이스는 메트릭이 달라 이 값이 안 맞는다 — 로컬 번들 기준.
- *  글리프가 scale로 커지면 치우침도 비례해 커지므로 scale을 곱해 보정한다. */
-const EMOJI_Y_NUDGE = 0.05;
-
-/** 저장된 스케일·오프셋을 렌더 박스 크기(boxSize)에 비례해 CSS transform 문자열로 변환. */
+/** 저장된 스케일·오프셋을 렌더 박스 크기(boxSize)에 비례해 CSS transform 문자열로 변환.
+ *  ※ 세로 중앙 보정 nudge는 두지 않는다: 실제 사용 크기(28·32·44px)에서 토스 글리프는 힌팅이
+ *  중앙에 스냅시켜 nudge가 오히려 소형(레일·헤더)을 어긋나게 했다(박스 비례 상수로는 세 크기 동시 보정 불가). */
 export function orgIconTransform(o: IconTransform, boxSize: number): string {
   const scale = (o.icon_scale ?? 100) / 100;
   const ratio = boxSize / ICON_REF_BOX;
   const x = (o.icon_x ?? 0) * ratio;
-  const y = (o.icon_y ?? 0) * ratio + boxSize * EMOJI_Y_NUDGE * scale;
+  const y = (o.icon_y ?? 0) * ratio;
   return `translate(${x}px, ${y}px) scale(${scale})`;
 }
 
