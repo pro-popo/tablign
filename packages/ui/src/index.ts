@@ -24,4 +24,5 @@ export * from "./MemberDialog";
 export * from "./InvitationList";
 export * from "./ColorPicker";
 export * from "./color";
+export * from "./colorValue";
 export * from "./overlayAnimation";
