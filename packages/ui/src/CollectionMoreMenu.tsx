@@ -10,10 +10,12 @@ export interface CollectionMoreMenuProps {
   onMove: (spaceId: string) => void;
   onCopy: (spaceId: string) => void;
   onShare?: () => void;
+  isPrivate?: boolean;
+  onTogglePrivate?: () => void;
 }
 
 /** 컬렉션 헤더의 ⋯ 메뉴. 이동/복사 → 스페이스 선택 2단계 팝오버. */
-export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare }: CollectionMoreMenuProps) {
+export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare, isPrivate, onTogglePrivate }: CollectionMoreMenuProps) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"move" | "copy" | null>(null);
   const rootRef = useRef<HTMLSpanElement>(null);
@@ -63,6 +65,11 @@ export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare }: Collecti
               )}
               {onShare && (
                 <button type="button" style={itemStyle} onClick={() => { onShare(); close(); }}>공유 코드</button>
+              )}
+              {onTogglePrivate && (
+                <button type="button" style={itemStyle} onClick={() => { onTogglePrivate(); close(); }}>
+                  {isPrivate ? "공개로 전환" : "비공개로 전환"}
+                </button>
               )}
             </>
           ) : (

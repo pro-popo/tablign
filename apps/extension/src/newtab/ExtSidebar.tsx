@@ -2,22 +2,21 @@ import { useState, type ReactNode } from "react";
 import type { Space } from "@tablign/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Hash, Plus, Pencil, Trash2, PanelLeftClose, LogOut, InlineInput, ConfirmDialog, theme, Logo, Download } from "@tablign/ui";
+import { Hash, Plus, Pencil, Trash2, PanelLeftClose, LogOut, InlineInput, ConfirmDialog, theme, Download } from "@tablign/ui";
 
 export interface ExtSidebarProps {
   spaces: Space[];
   sharedSpaces: Space[];
   activeSpaceId: string | null;
-  userEmail: string;
   onSelectSpace: (id: string) => void;
   onAddSpace: (name: string) => void;
   onRenameSpace: (id: string, name: string) => void;
   onDeleteSpace: (id: string) => void;
   onLeaveSpace: (id: string) => void;
   onCollapse: () => void;
-  onSignOut: () => void;
   onImportCode: () => void;
   searchSlot: ReactNode;
+  orgHeaderSlot?: ReactNode;
 }
 
 /** 스페이스 행을 드래그로 재정렬할 수 있게 감싸는 sortable 래퍼.
@@ -65,15 +64,15 @@ function SortableSpace({ space, active, onSelect, onStartEdit, onDelete }: {
   );
 }
 
-export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, userEmail, onSelectSpace, onAddSpace, onRenameSpace, onDeleteSpace, onLeaveSpace, onCollapse, onSignOut, onImportCode, searchSlot }: ExtSidebarProps) {
+export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace, onAddSpace, onRenameSpace, onDeleteSpace, onLeaveSpace, onCollapse, onImportCode, searchSlot, orgHeaderSlot }: ExtSidebarProps) {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Space | null>(null);
   return (
     <>
-      <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${theme.border}` }}>
-        <Logo size={24} />
-        <button type="button" title="사이드바 접기" aria-label="사이드바 접기" onClick={onCollapse} style={{ border: "none", background: "none", cursor: "pointer", display: "flex" }}>
+      <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 2, borderBottom: `1px solid ${theme.border}`, boxSizing: "border-box" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>{orgHeaderSlot}</div>
+        <button type="button" title="사이드바 접기" aria-label="사이드바 접기" onClick={onCollapse} style={{ flexShrink: 0, border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3 }}>
           <PanelLeftClose size={16} color={theme.textFaint} />
         </button>
       </div>
@@ -153,15 +152,6 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, userEmail, onS
           }}
         >
           <Download size={14} /> 코드로 가져오기
-        </button>
-      </div>
-
-      <div style={{ padding: "12px 14px", borderTop: `1px solid ${theme.border}`, display: "flex", alignItems: "center", gap: 8, color: theme.textMuted }}>
-        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#dfe2ea", flexShrink: 0 }} />
-        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>{userEmail || "내 계정"}</span>
-        <button type="button" title="로그아웃" aria-label="로그아웃" onClick={onSignOut}
-          style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3, flexShrink: 0 }}>
-          <LogOut size={15} color={theme.textFaint} />
         </button>
       </div>
 

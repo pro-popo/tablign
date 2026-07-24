@@ -10,19 +10,20 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@tablign/core": "workspace:*",
-    "@tablign/ui": "workspace:*",
     "@dnd-kit/core": "^6.1.0",
     "@dnd-kit/sortable": "^8.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@emoji-mart/data": "^1.2.1",
     "@supabase/supabase-js": "^2.45.0",
+    "@tablign/core": "workspace:*",
+    "@tablign/ui": "workspace:*",
     "lucide-react": "^0.460.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.0.0",
     "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/react": "^16.0.0",
     "@types/chrome": "^0.0.270",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",

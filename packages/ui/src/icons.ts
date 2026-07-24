@@ -3,6 +3,7 @@ export {
   Hash,
   Tag,
   Plus,
+  Home,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -20,4 +21,5 @@ export {
   ArrowLeft,
   Users,
   Check,
+  Lock,
 } from "lucide-react";

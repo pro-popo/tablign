@@ -37,17 +37,24 @@ import {
   copyCollection, moveCollectionToSpace,
   createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
+  listOrganizations, createOrganization, updateOrganization, deleteOrganization, listMyOrgMemberships, listOrgMembers, removeOrgMember, updateOrgMemberRole,
+  inviteToOrg, listOrgInvitations, cancelOrgInvitation, listMyOrgInvitations, acceptOrgInvitation, declineOrgInvitation,
   type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
+  type Organization, type OrganizationMember, type OrgMemberWithProfile, type OrganizationInvitation, type OrgInvitationWithOrg,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
 import { usePanelState } from "../lib/usePanelState";
 import { useActiveSpace } from "../lib/useActiveSpace";
+import { useActiveOrg } from "../lib/useActiveOrg";
 import { OpenTabsPanel } from "./OpenTabsPanel";
 import { ExtSidebar } from "./ExtSidebar";
+import { OrgRail } from "./OrgRail";
 import { ExtSearchBar } from "./ExtSearchBar";
 import { DndLinkList } from "./DndLinkList";
 import { AuthScreen } from "./AuthScreen";
+import { OrgHeader, type OrgRole } from "./OrgHeader";
+import { OrgFormDialog, type OrgFormValue } from "./OrgFormDialog";
 
 interface DragPreview { label: string; faviconUrl: string | null; domain: string }
 
@@ -100,6 +107,16 @@ export function NewTab() {
   const [authLoaded, setAuthLoaded] = useState(false);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [memberships, setMemberships] = useState<SpaceMember[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [orgMemberships, setOrgMemberships] = useState<OrganizationMember[]>([]);
+  const [orgMembers, setOrgMembers] = useState<OrgMemberWithProfile[]>([]);
+  // 조직 멤버 관리 다이얼로그 열림 상태(다이얼로그 본체는 Task 5에서 추가).
+  const [orgMemberDialogOpen, setOrgMemberDialogOpen] = useState(false);
+  // 조직 생성/편집 다이얼로그 상태.
+  const [orgFormOpen, setOrgFormOpen] = useState(false);
+  const [orgFormMode, setOrgFormMode] = useState<"create" | "edit">("create");
+  const [orgDeleteOpen, setOrgDeleteOpen] = useState(false);
+  const { activeOrgId, setActiveOrgId, loaded: orgLoaded } = useActiveOrg();
   // 스페이스 목록 로드 완료 여부. 0개(신규 가입·전부 삭제)와 "아직 로딩 중"을 구분해
   // 온보딩 화면과 스켈레톤을 올바르게 가른다.
   const [spacesLoaded, setSpacesLoaded] = useState(false);
@@ -142,6 +159,20 @@ export function NewTab() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // 조직 로드: 활성 조직을 chrome.storage에서 읽은 뒤 실행. 저장값이 없으면 개인 조직으로 폴백.
+  useEffect(() => {
+    if (!session || !orgLoaded) return;
+    (async () => {
+      const [orgs, oms] = await Promise.all([listOrganizations(supabase), listMyOrgMemberships(supabase)]);
+      setOrganizations(orgs);
+      setOrgMemberships(oms);
+      const keep = activeOrgId && orgs.some((o) => o.id === activeOrgId);
+      const personal = orgs.find((o) => o.is_personal);
+      setActiveOrgId(keep ? activeOrgId : (personal?.id ?? orgs[0]?.id ?? null));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, orgLoaded]);
+
   // 스페이스 로드
   // chrome.storage에서 활성 스페이스를 읽은 뒤(spaceLoaded) 실행해, 저장된 스페이스가
   // 아직 존재하면 그대로 유지하고, 없거나 삭제됐으면 첫 스페이스로 폴백한다.
@@ -152,11 +183,24 @@ export function NewTab() {
       setSpaces(sp);
       setMemberships(ms);
       setSpacesLoaded(true);
+      // 다른 조직의 스페이스로 폴백하지 않도록, 활성 조직 내 첫 스페이스로만 대체한다(없으면 null).
+      const first = sp.find((s) => s.org_id === (activeOrgId ?? "")) ?? null;
       const keep = activeSpaceId && sp.some((s) => s.id === activeSpaceId);
-      setActiveSpaceId(keep ? activeSpaceId : (sp[0]?.id ?? null));
+      setActiveSpaceId(keep ? activeSpaceId : (first?.id ?? null));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, spaceLoaded]);
+
+  // 정합성 보정: 조직 로드가 activeOrgId를 교정(삭제·탈퇴된 조직 → 개인 조직 폴백)해도
+  // activeSpaceId는 자동으로 재검증되지 않는다. 조직·스페이스가 모두 로드된 뒤,
+  // 활성 스페이스가 활성 조직에 속하지 않으면(또는 더 이상 존재하지 않으면) 그 조직의 첫 스페이스로 되돌린다.
+  useEffect(() => {
+    if (!orgLoaded || !spacesLoaded || !activeOrgId) return;
+    if (activeSpaceId && spaces.some((s) => s.id === activeSpaceId && s.org_id === activeOrgId)) return;
+    const fallback = spaces.find((s) => s.org_id === activeOrgId)?.id ?? null;
+    if (fallback !== activeSpaceId) setActiveSpaceId(fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgLoaded, spacesLoaded, activeOrgId, activeSpaceId, spaces]);
 
   async function loadCollections() {
     if (!activeSpaceId) { setCollections([]); setLinksByCol({}); setCollectionsLoaded(true); return; }
@@ -166,8 +210,10 @@ export function NewTab() {
     setLinksByCol(Object.fromEntries(entries));
     setCollectionsLoaded(true);
   }
-  // 세션/스페이스가 바뀌면 스켈레톤부터 다시 보여준 뒤 로드한다(재조회 핸들러는 플래그를 건드리지 않음).
-  useEffect(() => { if (session && activeSpaceId) { setCollectionsLoaded(false); loadCollections(); } /* eslint-disable-next-line */ }, [session, activeSpaceId]);
+  // 세션/스페이스/조직이 바뀌면 스켈레톤부터 다시 보여준 뒤 로드한다(재조회 핸들러는 플래그를 건드리지 않음).
+  // activeOrgId도 의존성에 둬, 조직만 전환돼도 메인 보드가 반드시 재로드된다. activeSpaceId가 null이면
+  // loadCollections가 컬렉션을 비워, 이전 조직의 컬렉션이 남는 것을 막는다.
+  useEffect(() => { if (session) { setCollectionsLoaded(false); loadCollections(); } /* eslint-disable-next-line */ }, [session, activeSpaceId, activeOrgId]);
 
   async function reloadCollection(collectionId: string) {
     const links = await listLinks(supabase, collectionId);
@@ -188,9 +234,21 @@ export function NewTab() {
   }, [session]);
 
   useEffect(() => {
+    if (!session) return;
+    listMyOrgInvitations(supabase).then(setMyOrgInvitations).catch(console.error);
+  }, [session]);
+
+  useEffect(() => {
     if (!activeSpaceId) { setMembers([]); return; }
     listMembers(supabase, activeSpaceId).then(setMembers).catch(() => setMembers([]));
   }, [activeSpaceId]);
+
+  // 활성 조직의 멤버 로드(오너 제외). 개인 조직은 팀 멤버 개념이 없으므로 건너뛴다.
+  useEffect(() => {
+    const org = organizations.find((o) => o.id === activeOrgId);
+    if (!org || org.is_personal) { setOrgMembers([]); return; }
+    listOrgMembers(supabase, activeOrgId!).then(setOrgMembers).catch(() => setOrgMembers([]));
+  }, [activeOrgId, organizations]);
 
   async function openMemberDialog() {
     if (!activeSpaceId) return;
@@ -203,8 +261,8 @@ export function NewTab() {
     const [ms, invs] = await Promise.all([listMembers(supabase, activeSpaceId), listSpaceInvitations(supabase, activeSpaceId)]);
     setMembers(ms); setPendingInvites(invs);
   }
-  async function handleInvite(email: string, role: "editor" | "viewer") {
-    try { await inviteToSpace(supabase, activeSpaceId!, email, role); toast.show("초대를 보냈어요"); reloadMembers(); }
+  async function handleInvite(email: string, role: string) {
+    try { await inviteToSpace(supabase, activeSpaceId!, email, role as "editor" | "viewer"); toast.show("초대를 보냈어요"); reloadMembers(); }
     catch (e) { console.error(e); toast.show("초대하지 못했어요. 이미 멤버이거나 잘못된 이메일일 수 있어요."); }
   }
   async function refreshAll() {
@@ -213,13 +271,87 @@ export function NewTab() {
     toast.show("스페이스에 참여했어요");
   }
 
+  async function openOrgMemberDialog() {
+    if (!activeOrgId) return;
+    setOrgMemberDialogOpen(true);
+    const [ms, invs] = await Promise.all([listOrgMembers(supabase, activeOrgId), listOrgInvitations(supabase, activeOrgId)]);
+    setOrgMembers(ms); setOrgPendingInvites(invs);
+  }
+  async function reloadOrgMembers() {
+    if (!activeOrgId) return;
+    const [ms, invs] = await Promise.all([listOrgMembers(supabase, activeOrgId), listOrgInvitations(supabase, activeOrgId)]);
+    setOrgMembers(ms); setOrgPendingInvites(invs);
+  }
+  async function handleOrgInvite(email: string, role: string) {
+    try { await inviteToOrg(supabase, activeOrgId!, email, role as "admin" | "member"); toast.show("초대를 보냈어요"); reloadOrgMembers(); }
+    catch (e) { console.error(e); toast.show("초대하지 못했어요. 이미 멤버이거나 잘못된 이메일일 수 있어요."); }
+  }
+  // 조직 초대 수락: 새 조직이 레일에 바로 보이도록 조직 목록·조직 멤버십·내 조직 초대를 함께 재조회.
+  async function acceptOrgInv(id: string) {
+    await acceptOrgInvitation(supabase, id);
+    const [orgs, oms, oInvs] = await Promise.all([listOrganizations(supabase), listMyOrgMemberships(supabase), listMyOrgInvitations(supabase)]);
+    setOrganizations(orgs); setOrgMemberships(oms); setMyOrgInvitations(oInvs);
+    toast.show("조직에 참여했어요");
+  }
+
   async function addSpace(name: string) {
     if (!session) return;
-    const s = await createSpace(supabase, { user_id: session.user.id, name });
+    const s = await createSpace(supabase, { user_id: session.user.id, name, org_id: activeOrgId ?? undefined });
     // 새 스페이스에는 기본 컬렉션을 하나 만들어 둔다.
     await createCollection(supabase, { user_id: session.user.id, space_id: s.id, title: "새 컬렉션" });
     setSpaces((prev) => [...prev, s]);
     setActiveSpaceId(s.id);
+  }
+
+  function selectOrg(id: string) {
+    setActiveOrgId(id);
+    const firstInOrg = spaces.find((s) => s.org_id === id) ?? null;
+    setActiveSpaceId(firstInOrg?.id ?? null);
+  }
+
+  function openCreateOrg() {
+    setOrgFormMode("create");
+    setOrgFormOpen(true);
+  }
+
+  function openEditOrg() {
+    // 팀 조직 = 조직 설정, 개인 조직 = 프로필 설정 — 같은 편집 다이얼로그를 연다.
+    if (activeOrg) {
+      setOrgFormMode("edit");
+      setOrgFormOpen(true);
+    }
+  }
+
+  async function submitOrgForm(v: OrgFormValue) {
+    if (!session) return;
+    const transform = { icon_scale: v.icon_scale, icon_x: v.icon_x, icon_y: v.icon_y };
+    if (orgFormMode === "create") {
+      const org = await createOrganization(supabase, { name: v.name || "새 조직", owner_id: session.user.id, icon: v.icon, color: v.color, ...transform });
+      setOrganizations((prev) => [...prev, org]);
+      setActiveOrgId(org.id);
+      setActiveSpaceId(null);
+    } else if (activeOrg) {
+      const updated = await updateOrganization(supabase, activeOrg.id, { name: v.name || activeOrg.name, icon: v.icon, color: v.color, ...transform });
+      setOrganizations((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+    }
+    setOrgFormOpen(false);
+  }
+
+  async function deleteOrg() {
+    if (!activeOrg || activeOrg.is_personal) return;
+    const id = activeOrg.id;
+    const personal = organizations.find((o) => o.is_personal);
+    try {
+      await deleteOrganization(supabase, id);
+      setOrganizations((prev) => prev.filter((o) => o.id !== id));
+      setActiveOrgId(personal ? personal.id : null);
+      setActiveSpaceId(null);
+      setOrgDeleteOpen(false);
+      toast.show("조직을 삭제했어요.");
+    } catch (e) {
+      console.error(e);
+      toast.show("조직을 삭제하지 못했어요.");
+    }
   }
 
   async function renameSpace(id: string, name: string) {
@@ -281,6 +413,9 @@ export function NewTab() {
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
   const [pendingInvites, setPendingInvites] = useState<SpaceInvitation[]>([]);
   const [myInvitations, setMyInvitations] = useState<InvitationWithSpace[]>([]);
+  // 조직 멤버 관리 다이얼로그의 대기 중 초대 + 받은 조직 초대(알림 팝오버용)
+  const [orgPendingInvites, setOrgPendingInvites] = useState<OrganizationInvitation[]>([]);
+  const [myOrgInvitations, setMyOrgInvitations] = useState<OrgInvitationWithOrg[]>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
   // 경합 가드: 사전조회 응답이 도착할 때 현재 대상과 다르면 버린다.
   const shareTargetRef = useRef<string | null>(null);
@@ -351,7 +486,7 @@ export function NewTab() {
     if (!session) return;
     let spaceId = activeSpaceId;
     if (!spaceId) {
-      const s = await createSpace(supabase, { user_id: session.user.id, name: "개인" });
+      const s = await createSpace(supabase, { user_id: session.user.id, name: "개인", org_id: activeOrgId ?? undefined });
       setSpaces((prev) => [...prev, s]);
       setActiveSpaceId(s.id);
       spaceId = s.id;
@@ -605,7 +740,7 @@ export function NewTab() {
     if (!session) return;
     let spaceId = activeSpaceId;
     if (!spaceId) {
-      const s = await createSpace(supabase, { user_id: session.user.id, name: "개인" });
+      const s = await createSpace(supabase, { user_id: session.user.id, name: "개인", org_id: activeOrgId ?? undefined });
       setSpaces((prev) => [...prev, s]);
       setActiveSpaceId(s.id);
       spaceId = s.id;
@@ -653,12 +788,31 @@ export function NewTab() {
 
   const activeSpace = spaces.find((s) => s.id === activeSpaceId) ?? null;
   const myMembership = memberships.find((m) => m.space_id === activeSpaceId) ?? null;
-  // 오너(멤버십에 없음)면 편집 가능, 멤버면 editor만 편집 가능
-  const canEdit = activeSpace ? (myMembership ? myMembership.role === "editor" : true) : true;
   const isOwner = activeSpace ? activeSpace.user_id === userId : false;
 
-  const ownedSpaces = spaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
-  const sharedSpaces = spaces.filter((s) => memberships.some((m) => m.space_id === s.id));
+  const activeOrg = organizations.find((o) => o.id === activeOrgId) ?? null;
+  // 오너면 owner, 멤버십이 있으면 그 role, 둘 다 아니면(방금 로드 전 등) 기본 member로 취급.
+  const myOrgRole: OrgRole = activeOrg
+    ? (activeOrg.owner_id === userId ? "owner"
+       : (orgMemberships.find((m) => m.org_id === activeOrgId)?.role ?? "member"))
+    : "member";
+
+  // 조직(팀) 스페이스는 조직 역할이 편집 가능 여부의 기준(멤버는 편집 불가, RLS가 최종 방어선).
+  // 개인/공유 스페이스는 기존 스페이스 멤버십 기준(오너는 항상 편집 가능, 멤버는 editor만 편집 가능)을 유지.
+  // 역할은 '활성 스페이스가 속한 조직'(activeSpaceOrg) 기준으로 계산한다. 레일 선택(activeOrgId)과
+  // 초기 로드 한 프레임 어긋나더라도 편집 판정이 잘못 나오지 않도록 activeOrgId에 결합하지 않는다.
+  const activeSpaceOrg = organizations.find((o) => o.id === activeSpace?.org_id) ?? null;
+  const activeSpaceOrgRole: OrgRole = activeSpaceOrg
+    ? (activeSpaceOrg.owner_id === userId ? "owner"
+       : (orgMemberships.find((m) => m.org_id === activeSpaceOrg.id)?.role ?? "member"))
+    : "member";
+  const canEdit = activeSpaceOrg && !activeSpaceOrg.is_personal
+    ? activeSpaceOrgRole !== "member"
+    : activeSpace ? (myMembership ? myMembership.role === "editor" : true) : true;
+
+  const orgSpaces = spaces.filter((s) => s.org_id === activeOrgId);
+  const ownedSpaces = orgSpaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
+  const sharedSpaces = orgSpaces.filter((s) => memberships.some((m) => m.space_id === s.id));
 
   // 커서 미리보기(오버레이)용 데이터 (탭/링크 카드용. 컬렉션은 별도 칩으로 렌더)
   const preview =
@@ -678,128 +832,183 @@ export function NewTab() {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <AppShell
-        leftOpen={panels.left}
-        rightOpen={panels.right}
-        onToggleLeft={toggleLeft}
-        onToggleRight={toggleRight}
-        leftWidth={panels.leftWidth}
-        rightWidth={panels.rightWidth}
-        onResizeLeft={setLeftWidth}
-        onResizeRight={setRightWidth}
-        left={
-          <ExtSidebar
-            spaces={ownedSpaces}
-            sharedSpaces={sharedSpaces}
-            activeSpaceId={activeSpaceId}
+      <div style={{ display: "flex", height: "100vh" }}>
+        {/* 조직 레일: 항상 보이는 상시 영역. AppShell의 접기 대상에서 제외해 사이드바를 접어도 로고·조직·계정이 유지된다. */}
+        <div style={{ position: "relative", width: 54, flexShrink: 0 }}>
+          <OrgRail
+            organizations={organizations}
+            memberships={orgMemberships}
+            activeOrgId={activeOrgId}
             userEmail={session.user.email ?? ""}
-            onSelectSpace={(id) => { setActiveSpaceId(id); }}
-            onAddSpace={addSpace}
-            onRenameSpace={renameSpace}
-            onDeleteSpace={deleteSpace}
-            onLeaveSpace={handleLeaveSpace}
+            currentUserId={session.user.id}
+            avatarUrl={session.user.user_metadata?.avatar_url ?? null}
+            onSelectOrg={selectOrg}
+            onCreateOrg={openCreateOrg}
             onSignOut={async () => { await supabase.auth.signOut(); }}
-            onCollapse={toggleLeft}
-            onImportCode={() => setImportOpen(true)}
-            searchSlot={<ExtSearchBar />}
           />
-        }
-        right={
-          <OpenTabsPanel groups={groups} onSaveWindow={saveWindow} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab} onCollapse={toggleRight} />
-        }
-      >
-        <Board>
-          {spacesLoaded && spaces.length === 0 ? (
-            // 스페이스 0개(신규 가입 직후 또는 전부 삭제): 온보딩 빈 상태.
-            <SpaceOnboarding onCreate={() => addSpace("개인")} />
-          ) : (
-            <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
-                <span style={{ color: theme.textFaint }}>· {collectionsLoaded ? collections.length : "—"} 컬렉션</span>
-              </div>
-              <span ref={inviteRef} style={{ position: "relative" }}>
-                <Button variant="outline" onClick={() => setInviteOpen((v) => !v)}>초대 {myInvitations.length > 0 ? `(${myInvitations.length})` : ""}</Button>
-                {inviteOpen && (
-                  <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 60, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: "0 8px 20px rgba(20,30,60,.14)" }}>
-                    <InvitationList
-                      invitations={myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role }))}
-                      onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
-                      onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
-                    />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <AppShell
+            leftOpen={panels.left}
+            rightOpen={panels.right}
+            onToggleLeft={toggleLeft}
+            onToggleRight={toggleRight}
+            leftWidth={panels.leftWidth}
+            rightWidth={panels.rightWidth}
+            onResizeLeft={setLeftWidth}
+            onResizeRight={setRightWidth}
+            left={
+              <ExtSidebar
+                spaces={ownedSpaces}
+                sharedSpaces={sharedSpaces}
+                activeSpaceId={activeSpaceId}
+                onSelectSpace={(id) => { setActiveSpaceId(id); }}
+                onAddSpace={addSpace}
+                onRenameSpace={renameSpace}
+                onDeleteSpace={deleteSpace}
+                onLeaveSpace={handleLeaveSpace}
+                onCollapse={toggleLeft}
+                onImportCode={() => setImportOpen(true)}
+                searchSlot={<ExtSearchBar />}
+                orgHeaderSlot={activeOrg ? (
+                  <OrgHeader
+                    org={activeOrg}
+                    myRole={myOrgRole}
+                    onOpenMembers={openOrgMemberDialog}
+                    onEditOrg={(myOrgRole === "owner" || myOrgRole === "admin") ? openEditOrg : undefined}
+                    onDeleteOrg={(!activeOrg?.is_personal && myOrgRole === "owner") ? () => setOrgDeleteOpen(true) : undefined}
+                  />
+                ) : null}
+              />
+            }
+            right={
+              <OpenTabsPanel groups={groups} onSaveWindow={saveWindow} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab} onCollapse={toggleRight} />
+            }
+          >
+            <Board>
+              {spacesLoaded && orgSpaces.length === 0 ? (
+                // 활성 조직에 스페이스가 0개(신규 가입 직후, 전부 삭제, 또는 방금 만든 빈 조직): 온보딩 빈 상태.
+                <SpaceOnboarding onCreate={() => addSpace("개인")} />
+              ) : (
+                <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
+                    <span style={{ color: theme.textFaint }}>· {collectionsLoaded ? collections.length : "—"} 컬렉션</span>
                   </div>
-                )}
-              </span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {members.length > 0 && <MemberAvatars people={members} />}
-              {isOwner && (
-                <Button variant="outline" onClick={openMemberDialog}><Users size={15} /> 멤버</Button>
-              )}
-              {canEdit && <Button onClick={addCollection}><Plus size={15} /> 컬렉션</Button>}
-            </div>
-          </div>
-          {(() => {
-            const visibleCollections = collections;
-            return !collectionsLoaded ? (
-              <CollectionSkeleton />
-            ) : visibleCollections.length === 0 ? (
-              <EmptyState title="컬렉션이 없어요. ‘＋ 컬렉션’으로 영역을 만든 뒤, 열린 탭을 드래그해 넣어보세요." />
-            ) : (
-              <SortableContext items={visibleCollections.map((c) => `col:${c.id}`)} strategy={verticalListSortingStrategy}>
-                {visibleCollections.map((c) => (
-                <SortableCollection key={c.id} collection={c}>
-                  {(drag) => {
-                    const links = linksByCol[c.id] ?? [];
-                    return (
-                      <CollectionSection
-                        collection={c}
-                        links={links}
-                        isOver={dragOverCol === c.id}
-                        autoEditTitle={autoEditId === c.id}
-                        titleDragRef={drag.ref}
-                        titleDragProps={drag.props}
-                        readOnly={!canEdit}
-                        onRenameCollection={canEdit ? async (id, title) => { await updateCollection(supabase, id, { title }); setAutoEditId(null); loadCollections(); } : undefined}
-                        onOpenLink={openUrl}
-                        onDeleteLink={canEdit ? async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); } : undefined}
-                        onAddLink={async (url) => { if (canEdit) { await createLink(supabase, { user_id: userId, collection_id: c.id, url }); reloadCollection(c.id); } }}
-                        onOpenAll={() => links.forEach((l) => openUrl(l.url))}
-                        onDeleteCollection={canEdit ? () => setDeleteColTarget(c) : undefined}
-                        linksSlot={
-                          <DndLinkList
-                            collectionId={c.id}
+                  <span ref={inviteRef} style={{ position: "relative" }}>
+                    <Button variant="outline" onClick={() => setInviteOpen((v) => !v)}>
+                      초대 {(myInvitations.length + myOrgInvitations.length) > 0 ? `(${myInvitations.length + myOrgInvitations.length})` : ""}
+                    </Button>
+                    {inviteOpen && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 60, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: "0 8px 20px rgba(20,30,60,.14)" }}>
+                        {myInvitations.length === 0 && myOrgInvitations.length === 0 ? (
+                          <InvitationList
+                            invitations={[]}
+                            roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
+                            onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
+                            onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
+                          />
+                        ) : (
+                          <>
+                            {myInvitations.length > 0 && (
+                              <InvitationList
+                                invitations={myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role }))}
+                                roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
+                                onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
+                                onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
+                              />
+                            )}
+                            {myOrgInvitations.length > 0 && (
+                              <InvitationList
+                                invitations={myOrgInvitations.map((i) => ({ id: i.id, space_name: i.org_name, inviter_name: i.inviter_name, role: i.role }))}
+                                roles={[{ value: "admin", label: "관리자" }, { value: "member", label: "멤버" }]}
+                                onAccept={async (id) => { await acceptOrgInv(id); setInviteOpen(false); }}
+                                onDecline={async (id) => { await declineOrgInvitation(supabase, id); setMyOrgInvitations((prev) => prev.filter((x) => x.id !== id)); }}
+                              />
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {members.length > 0 && <MemberAvatars people={members} />}
+                  {isOwner && activeSpaceOrg?.is_personal && (
+                    <Button variant="outline" onClick={openMemberDialog}><Users size={15} /> 멤버</Button>
+                  )}
+                  {canEdit && <Button onClick={addCollection}><Plus size={15} /> 컬렉션</Button>}
+                </div>
+              </div>
+              {(() => {
+                const visibleCollections = collections;
+                return !collectionsLoaded ? (
+                  <CollectionSkeleton />
+                ) : visibleCollections.length === 0 ? (
+                  <EmptyState title="컬렉션이 없어요. ‘＋ 컬렉션’으로 영역을 만든 뒤, 열린 탭을 드래그해 넣어보세요." />
+                ) : (
+                  <SortableContext items={visibleCollections.map((c) => `col:${c.id}`)} strategy={verticalListSortingStrategy}>
+                    {visibleCollections.map((c) => (
+                    <SortableCollection key={c.id} collection={c}>
+                      {(drag) => {
+                        const links = linksByCol[c.id] ?? [];
+                        return (
+                          <CollectionSection
+                            collection={c}
                             links={links}
+                            isOver={dragOverCol === c.id}
+                            isPrivate={c.is_private}
+                            autoEditTitle={autoEditId === c.id}
+                            titleDragRef={drag.ref}
+                            titleDragProps={drag.props}
+                            readOnly={!canEdit}
+                            onRenameCollection={canEdit ? async (id, title) => { await updateCollection(supabase, id, { title }); setAutoEditId(null); loadCollections(); } : undefined}
                             onOpenLink={openUrl}
                             onDeleteLink={canEdit ? async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); } : undefined}
-                            onUpdateLink={canEdit ? async (id, patch) => { await updateLink(supabase, id, patch); reloadCollection(c.id); } : undefined}
-                            readOnly={!canEdit}
+                            onAddLink={async (url) => { if (canEdit) { await createLink(supabase, { user_id: userId, collection_id: c.id, url }); reloadCollection(c.id); } }}
+                            onOpenAll={() => links.forEach((l) => openUrl(l.url))}
+                            onDeleteCollection={canEdit ? () => setDeleteColTarget(c) : undefined}
+                            linksSlot={
+                              <DndLinkList
+                                collectionId={c.id}
+                                links={links}
+                                onOpenLink={openUrl}
+                                onDeleteLink={canEdit ? async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); } : undefined}
+                                onUpdateLink={canEdit ? async (id, patch) => { await updateLink(supabase, id, patch); reloadCollection(c.id); } : undefined}
+                                readOnly={!canEdit}
+                              />
+                            }
+                            moreMenuSlot={canEdit ? (
+                              <CollectionMoreMenu
+                                spaces={spaces
+                                  .filter((s) => s.id !== activeSpaceId)
+                                  .map((s) => ({ id: s.id, name: s.name, icon: s.icon }))}
+                                onMove={(sid) => moveCollectionTo(c, sid)}
+                                onCopy={(sid) => copyCollectionTo(c, sid)}
+                                onShare={() => openShareDialog(c)}
+                                isPrivate={c.is_private}
+                                onTogglePrivate={c.user_id === userId ? async () => {
+                                  await updateCollection(supabase, c.id, { is_private: !c.is_private });
+                                  loadCollections();
+                                } : undefined}
+                              />
+                            ) : undefined}
                           />
-                        }
-                        moreMenuSlot={canEdit ? (
-                          <CollectionMoreMenu
-                            spaces={spaces
-                              .filter((s) => s.id !== activeSpaceId)
-                              .map((s) => ({ id: s.id, name: s.name, icon: s.icon }))}
-                            onMove={(sid) => moveCollectionTo(c, sid)}
-                            onCopy={(sid) => copyCollectionTo(c, sid)}
-                            onShare={() => openShareDialog(c)}
-                          />
-                        ) : undefined}
-                      />
-                    );
-                  }}
-                </SortableCollection>
-                ))}
-              </SortableContext>
-            );
-          })()}
-            </>
-          )}
-        </Board>
-      </AppShell>
+                        );
+                      }}
+                    </SortableCollection>
+                    ))}
+                  </SortableContext>
+                );
+              })()}
+                </>
+              )}
+            </Board>
+          </AppShell>
+        </div>
+      </div>
       <DragOverlay dropAnimation={null}>
         {active?.type === "collection" ? (
           <div style={{
@@ -867,13 +1076,43 @@ export function NewTab() {
       <MemberDialog
         open={memberDialogOpen}
         spaceName={activeSpace?.name ?? ""}
+        roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
         members={members.map((m) => ({ user_id: m.user_id, role: m.role, display_name: m.display_name, avatar_url: m.avatar_url }))}
         pendingInvites={pendingInvites.map((i) => ({ id: i.id, invitee_email: i.invitee_email, role: i.role }))}
         onInvite={handleInvite}
-        onChangeRole={async (uid, role) => { try { await updateMemberRole(supabase, activeSpaceId!, uid, role); reloadMembers(); } catch (e) { console.error(e); toast.show("역할을 변경하지 못했어요."); } }}
+        onChangeRole={async (uid, role) => { try { await updateMemberRole(supabase, activeSpaceId!, uid, role as "editor" | "viewer"); reloadMembers(); } catch (e) { console.error(e); toast.show("역할을 변경하지 못했어요."); } }}
         onRemove={async (uid) => { try { await removeMember(supabase, activeSpaceId!, uid); reloadMembers(); } catch (e) { console.error(e); toast.show("멤버를 제거하지 못했어요."); } }}
         onCancelInvite={async (id) => { try { await cancelInvitation(supabase, id); reloadMembers(); } catch (e) { console.error(e); toast.show("초대를 취소하지 못했어요."); } }}
         onClose={() => setMemberDialogOpen(false)}
+      />
+      <OrgFormDialog
+        open={orgFormOpen}
+        mode={orgFormMode}
+        initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color, icon_scale: activeOrg.icon_scale, icon_x: activeOrg.icon_x, icon_y: activeOrg.icon_y } : undefined}
+        personal={orgFormMode === "edit" && !!activeOrg?.is_personal}
+        onSubmit={submitOrgForm}
+        onClose={() => setOrgFormOpen(false)}
+      />
+      <ConfirmDialog
+        open={orgDeleteOpen}
+        danger
+        title="조직 삭제"
+        message={<>'{activeOrg?.name}' 조직을 삭제할까요?<br />조직의 모든 스페이스·컬렉션·멤버가 삭제되며 되돌릴 수 없습니다.</>}
+        confirmLabel="삭제"
+        onConfirm={deleteOrg}
+        onCancel={() => setOrgDeleteOpen(false)}
+      />
+      <MemberDialog
+        open={orgMemberDialogOpen}
+        spaceName={activeOrg?.name ?? ""}
+        roles={[{ value: "admin", label: "관리자" }, { value: "member", label: "멤버" }]}
+        members={orgMembers.map((m) => ({ user_id: m.user_id, role: m.role, display_name: m.display_name, avatar_url: m.avatar_url }))}
+        pendingInvites={orgPendingInvites.map((i) => ({ id: i.id, invitee_email: i.invitee_email, role: i.role }))}
+        onInvite={handleOrgInvite}
+        onChangeRole={async (uid, role) => { try { await updateOrgMemberRole(supabase, activeOrgId!, uid, role as "admin" | "member"); reloadOrgMembers(); } catch (e) { console.error(e); toast.show("역할을 변경하지 못했어요."); } }}
+        onRemove={async (uid) => { try { await removeOrgMember(supabase, activeOrgId!, uid); reloadOrgMembers(); } catch (e) { console.error(e); toast.show("멤버를 제거하지 못했어요."); } }}
+        onCancelInvite={async (id) => { try { await cancelOrgInvitation(supabase, id); reloadOrgMembers(); } catch (e) { console.error(e); toast.show("초대를 취소하지 못했어요."); } }}
+        onClose={() => setOrgMemberDialogOpen(false)}
       />
     </DndContext>
   );

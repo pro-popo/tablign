@@ -14,10 +14,11 @@ const styles: Record<Variant, React.CSSProperties> = {
   outline: { background: "#fff", color: "#5c636b", border: `1px solid ${theme.border}` },
 };
 
-export function Button({ variant = "primary", children, style, ...rest }: ButtonProps) {
+export function Button({ variant = "primary", children, style, disabled, ...rest }: ButtonProps) {
   return (
     <button
       {...rest}
+      disabled={disabled}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -26,8 +27,9 @@ export function Button({ variant = "primary", children, style, ...rest }: Button
         borderRadius: theme.radiusBtn,
         fontWeight: 600,
         fontSize: 13,
-        cursor: "pointer",
+        cursor: disabled ? "not-allowed" : "pointer",
         ...styles[variant],
+        ...(disabled ? { opacity: 0.4 } : null),
         ...style,
       }}
     >
