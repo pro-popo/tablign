@@ -21,15 +21,15 @@ describe("orgIconStyle", () => {
   const transformY = (t: unknown) => Number(/translate\(0px, ([\d.]+)px\)/.exec(String(t))![1]);
 
   it("이모지 위쪽 치우침을 박스 비례로 아래로 보정한다(수직 nudge)", () => {
-    // 44px 박스, scale 1 → y = 0 + 44*0.1*1 = 4.4px 아래로(로컬 번들 폰트 실측 nudge 0.1).
+    // 44px 박스, scale 1 → y = 0 + 44*0.05*1 = 2.2px 아래로(로컬 번들 폰트 44px 실측 nudge 0.05).
     const s = orgIconStyle({ icon_scale: 100, icon_x: 0, icon_y: 0 }, 44);
-    expect(transformY(s.transform)).toBeCloseTo(4.4, 5);
+    expect(transformY(s.transform)).toBeCloseTo(2.2, 5);
   });
 
   it("nudge는 scale에 비례한다(글리프가 커지면 치우침도 커짐)", () => {
-    // scale 1.5 → y = 0 + 44*0.1*1.5 = 6.6px.
+    // scale 1.5 → y = 0 + 44*0.05*1.5 = 3.3px.
     const s = orgIconStyle({ icon_scale: 150, icon_x: 0, icon_y: 0 }, 44);
-    expect(transformY(s.transform)).toBeCloseTo(6.6, 5);
+    expect(transformY(s.transform)).toBeCloseTo(3.3, 5);
     expect(String(s.transform)).toContain("scale(1.5)");
   });
 });

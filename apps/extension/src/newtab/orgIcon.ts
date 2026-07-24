@@ -17,10 +17,11 @@ type IconTransform = { icon_scale?: number | null; icon_x?: number | null; icon_
 
 /** 로컬 번들 토스페이스 글리프는 line-height 1 span의 위쪽으로 비대칭 오버플로우해 위로 떠 보인다.
  *  박스 대비 이 비율만큼 아래로 내려 시각적 정중앙에 맞춘다.
- *  값 0.10은 실제 번들 폰트로 여러 이모지(😎·🏢·🧍·🎯) 스윕 실측으로 확정(box140 기준 0.09 높음·0.11 낮음·0.10 중앙).
- *  주의: CDN(jsDelivr) 토스페이스는 글리프 세로 메트릭이 달라 이 값이 맞지 않는다 — 반드시 로컬 번들 기준.
+ *  값 0.05는 실제 렌더 크기(다이얼로그 44px)·실제 번들 폰트로 스윕 실측(0.04 높음·0.06 낮음·0.05 중앙),
+ *  canvas 픽셀 측정(Δ/em ≈ -0.0875 → 0.05)과도 일치. 주의: (1) 큰 크기에서 재면 힌팅 때문에 값이 커지므로
+ *  반드시 소형(28~44px)에서 잰다. (2) CDN(jsDelivr) 토스페이스는 메트릭이 달라 이 값이 안 맞는다 — 로컬 번들 기준.
  *  글리프가 scale로 커지면 치우침도 비례해 커지므로 scale을 곱해 보정한다. */
-const EMOJI_Y_NUDGE = 0.1;
+const EMOJI_Y_NUDGE = 0.05;
 
 /** 저장된 스케일·오프셋을 렌더 박스 크기(boxSize)에 비례해 CSS transform 문자열로 변환. */
 export function orgIconTransform(o: IconTransform, boxSize: number): string {
