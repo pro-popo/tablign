@@ -11,12 +11,18 @@ export const ORG_ICON_FONT =
 
 type IconTransform = { icon_scale?: number | null; icon_x?: number | null; icon_y?: number | null };
 
+/** 토스페이스 이모지 글리프는 모두 em 기하중심보다 약 0.10em 위쪽에 그려지도록 디자인돼 있어,
+ *  기본값에서 박스 대비 균일하게 위로 떠 보인다(canvas 측정: 7개 이모지 전부 Δ/em ≈ -0.10).
+ *  박스 대비 이 비율(≈ -0.10 × 폰트비율 0.57)만큼 아래로 내려 시각적 정중앙에 맞춘다.
+ *  글리프가 scale로 커지면 치우침도 비례해 커지므로 scale을 곱해 보정한다. */
+const EMOJI_Y_NUDGE = 0.058;
+
 /** 저장된 스케일·오프셋을 렌더 박스 크기(boxSize)에 비례해 CSS transform 문자열로 변환. */
 export function orgIconTransform(o: IconTransform, boxSize: number): string {
   const scale = (o.icon_scale ?? 100) / 100;
   const ratio = boxSize / ICON_REF_BOX;
   const x = (o.icon_x ?? 0) * ratio;
-  const y = (o.icon_y ?? 0) * ratio;
+  const y = (o.icon_y ?? 0) * ratio + boxSize * EMOJI_Y_NUDGE * scale;
   return `translate(${x}px, ${y}px) scale(${scale})`;
 }
 
