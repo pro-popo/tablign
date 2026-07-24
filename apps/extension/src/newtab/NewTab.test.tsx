@@ -506,7 +506,7 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     expect(screen.queryByRole("menuitem", { name: "조직 삭제" })).not.toBeInTheDocument();
   });
 
-  it("개인 조직 프로필 설정 다이얼로그는 이름 입력이 없고, 저장 시 updateOrganization이 name: '개인'으로 호출된다", async () => {
+  it("개인 조직 프로필 설정 다이얼로그는 이름 입력이 없고, 저장 시 name: '개인'·개인 기본색(옐로우 그라데이션)으로 호출된다", async () => {
     listSpaces.mockResolvedValue([
       { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
@@ -521,7 +521,8 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
 
     await waitFor(() =>
-      expect(updateOrganization).toHaveBeenCalledWith(expect.anything(), "org-personal", expect.objectContaining({ name: "개인" })),
+      // 개인은 color=null이라 다이얼로그가 개인 기본색(옐로우 그라데이션)으로 떠야 레일·헤더 배경과 일치한다(인디고 기본색 아님).
+      expect(updateOrganization).toHaveBeenCalledWith(expect.anything(), "org-personal", expect.objectContaining({ name: "개인", color: expect.stringMatching(/ffd43b/i) })),
     );
   });
 
@@ -544,10 +545,8 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: "프로필 설정" }));
     const dialog = await screen.findByRole("dialog", { name: "프로필 설정" });
 
-    // 팀 기본색(#20a97e)은 프리셋에 없어 커스텀 색 슬롯이 이미 표시되므로,
-    // 슬롯 안쪽 수정 배지를 눌러 편집기를 연다.
-    fireEvent.click(within(dialog).getByRole("button", { name: "커스텀 색 수정" }));
-    fireEvent.click(await within(dialog).findByRole("button", { name: "그라데이션" }));
+    // 색상 섹션의 '그라데이션' 줄에서 그라데이션 프리셋을 클릭해 지정한다.
+    fireEvent.click(within(dialog).getByRole("button", { name: "그라데이션 1" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
 
     await waitFor(() =>
