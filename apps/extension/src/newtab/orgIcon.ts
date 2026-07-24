@@ -15,11 +15,12 @@ export const PERSONAL_DEFAULT_COLOR = "linear-gradient(135deg,#ffd43b,#f59f00)";
 
 type IconTransform = { icon_scale?: number | null; icon_x?: number | null; icon_y?: number | null };
 
-/** 토스페이스 이모지 글리프는 모두 em 기하중심보다 약 0.10em 위쪽에 그려지도록 디자인돼 있어,
- *  기본값에서 박스 대비 균일하게 위로 떠 보인다(canvas 측정: 7개 이모지 전부 Δ/em ≈ -0.10).
- *  박스 대비 이 비율(≈ -0.10 × 폰트비율 0.57)만큼 아래로 내려 시각적 정중앙에 맞춘다.
+/** 로컬 번들 토스페이스 글리프는 line-height 1 span의 위쪽으로 비대칭 오버플로우해 위로 떠 보인다.
+ *  박스 대비 이 비율만큼 아래로 내려 시각적 정중앙에 맞춘다.
+ *  값 0.10은 실제 번들 폰트로 여러 이모지(😎·🏢·🧍·🎯) 스윕 실측으로 확정(box140 기준 0.09 높음·0.11 낮음·0.10 중앙).
+ *  주의: CDN(jsDelivr) 토스페이스는 글리프 세로 메트릭이 달라 이 값이 맞지 않는다 — 반드시 로컬 번들 기준.
  *  글리프가 scale로 커지면 치우침도 비례해 커지므로 scale을 곱해 보정한다. */
-const EMOJI_Y_NUDGE = 0.058;
+const EMOJI_Y_NUDGE = 0.1;
 
 /** 저장된 스케일·오프셋을 렌더 박스 크기(boxSize)에 비례해 CSS transform 문자열로 변환. */
 export function orgIconTransform(o: IconTransform, boxSize: number): string {
