@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker } from "@tablign/ui";
-import { orgIconStyle } from "./orgIcon";
+import { orgIconStyle, PERSONAL_DEFAULT_ICON } from "./orgIcon";
 import { TossEmojiPicker } from "./TossEmojiPicker";
 import { buildTossCategories } from "./tossEmoji";
 
@@ -9,6 +9,8 @@ export interface OrgFormDialogProps {
   open: boolean;
   mode: "create" | "edit";
   initial?: OrgFormValue;
+  /** 개인 조직 프로필 편집 — 이름 '개인' 고정, 이모지·색상·크기/위치만 편집. */
+  personal?: boolean;
   onSubmit: (v: OrgFormValue) => void;
   onClose: () => void;
 }
@@ -58,9 +60,11 @@ function computePlacement(triggerRef: React.RefObject<HTMLElement | null>, neede
   return "down";
 }
 
-export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFormDialogProps) {
+export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit, onClose }: OrgFormDialogProps) {
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState<string>(() => (mode === "edit" ? (initial?.icon ?? randomIcon()) : randomIcon()));
+  const [icon, setIcon] = useState<string>(() =>
+    mode === "edit" ? (initial?.icon ?? (personal ? PERSONAL_DEFAULT_ICON : randomIcon())) : randomIcon(),
+  );
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
   // 직접 고른 커스텀 색을 기억한다 — 프리셋을 다시 눌러도 스와치 목록에 남겨두기 위해 현재 선택(color)과 분리해서 보관.
   const [customColor, setCustomColor] = useState<string | null>(null);
@@ -103,8 +107,9 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
   useEffect(() => {
     if (open && !wasOpen.current) {
       setName(initial?.name ?? "");
-      // 생성 모드는 열릴 때마다 새로운 무작위 기본 이모지를 뽑는다. 편집 모드는 기존 아이콘을 유지한다.
-      const initialIcon = mode === "edit" ? (initial?.icon ?? randomIcon()) : randomIcon();
+      // 생성 모드는 열릴 때마다 새로운 무작위 기본 이모지를 뽑는다. 편집 모드는 기존 아이콘을 유지하되,
+      // 개인 조직은 아이콘이 없으면 무작위 대신 기본 🏠를 쓴다.
+      const initialIcon = mode === "edit" ? (initial?.icon ?? (personal ? PERSONAL_DEFAULT_ICON : randomIcon())) : randomIcon();
       setIcon(initialIcon);
       // 대표 칩에 없는 이모지면 커스텀 슬롯에 표시한다.
       setCustomEmoji(PRESET_EMOJIS.includes(initialIcon) ? null : initialIcon);
@@ -119,7 +124,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
       setPickerOpen(false);
     }
     wasOpen.current = open;
-  }, [open, initial, mode]);
+  }, [open, initial, mode, personal]);
 
   useEffect(() => {
     if (!open) return;
@@ -161,7 +166,7 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
 
   if (!open) return null;
 
-  const title = mode === "create" ? "새 조직 만들기" : "조직 설정";
+  const title = mode === "create" ? "새 조직 만들기" : "프로필 설정";
   const submitLabel = mode === "create" ? "만들기" : "저장";
   // 커스텀 색 슬롯 표시 여부는 "기억된 커스텀 색"(customColor)으로 결정한다 — 프리셋을 골라도 유지됨.
   // 선택 링은 현재 선택색이 그 커스텀 색과 같을 때만 켠다.
@@ -204,8 +209,12 @@ export function OrgFormDialog({ open, mode, initial, onSubmit, onClose }: OrgFor
             display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 25, fontWeight: 700, flexShrink: 0, boxSizing: "border-box" }}>
             <span style={orgIconStyle({ icon_scale: iconScale, icon_x: iconX, icon_y: iconY }, 44)}>{icon}</span>
           </div>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="조직 이름" autoFocus
-            style={{ flex: 1, padding: "9px 11px", border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
+          {personal ? (
+            <span style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{name}</span>
+          ) : (
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="조직 이름" autoFocus
+              style={{ flex: 1, padding: "9px 11px", border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
+          )}
         </div>
 
         {/* 아이콘 편집 통합 패널: 이모지 · 색상 · 크기·위치 */}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Organization, OrganizationMember } from "@tablign/core";
-import { LogoMark, Home, Plus, LogOut, theme } from "@tablign/ui";
-import { orgIconStyle } from "./orgIcon";
+import { LogoMark, Plus, LogOut, theme } from "@tablign/ui";
+import { orgIconStyle, PERSONAL_DEFAULT_ICON } from "./orgIcon";
 
 export interface OrgRailProps {
   organizations: Organization[];
@@ -74,7 +74,9 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
         return (
           <div style={row(active)} onClick={() => onSelectOrg(personal.id)}>
             {active && <span style={activeBar} />}
-            <span style={box("linear-gradient(135deg,#ffd43b,#f59f00)")}><Home size={16} /></span>
+            <span style={{ ...box(personal.color ?? "linear-gradient(135deg,#ffd43b,#f59f00)"), overflow: "hidden" }}>
+              <span style={orgIconStyle(personal, 32)}>{personal.icon ?? PERSONAL_DEFAULT_ICON}</span>
+            </span>
             <span style={label(active)}>개인</span>
           </div>
         );

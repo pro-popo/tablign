@@ -455,8 +455,8 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     fireEvent.click(screen.getByText("우리팀"));
 
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" })); // 팀 헤더 로드 대기 겸
-    fireEvent.click(await screen.findByRole("menuitem", { name: "조직 설정" }));
-    const dialog = await screen.findByRole("dialog", { name: "조직 설정" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "프로필 설정" }));
+    const dialog = await screen.findByRole("dialog", { name: "프로필 설정" });
     expect(within(dialog).getByPlaceholderText("조직 이름")).toHaveValue("우리팀");
 
     fireEvent.change(within(dialog).getByPlaceholderText("조직 이름"), { target: { value: "우리팀2" } });
@@ -493,12 +493,35 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     );
   });
 
-  it("개인 조직에서는 '조직 관리'(톱니 메뉴)가 노출되지 않는다", async () => {
+  it("개인 조직도 '조직 관리'(톱니 메뉴)가 노출되고, 메뉴에는 '프로필 설정'만 있다(멤버 관리·조직 삭제 없음)", async () => {
     listSpaces.mockResolvedValue([
       { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
     renderNewTab();
     await screen.findAllByText("개인");
-    expect(screen.queryByRole("button", { name: "조직 관리" })).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
+    expect(await screen.findByRole("menuitem", { name: "프로필 설정" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "멤버 관리" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "조직 삭제" })).not.toBeInTheDocument();
+  });
+
+  it("개인 조직 프로필 설정 다이얼로그는 이름 입력이 없고, 저장 시 updateOrganization이 name: '개인'으로 호출된다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+    ]);
+    renderNewTab();
+    await screen.findAllByText("개인");
+
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "프로필 설정" }));
+    const dialog = await screen.findByRole("dialog", { name: "프로필 설정" });
+    expect(within(dialog).queryByPlaceholderText("조직 이름")).not.toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
+
+    await waitFor(() =>
+      expect(updateOrganization).toHaveBeenCalledWith(expect.anything(), "org-personal", expect.objectContaining({ name: "개인" })),
+    );
   });
 });

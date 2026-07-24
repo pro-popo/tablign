@@ -8,6 +8,8 @@ const ICON_EMOJI_RATIO = 0.57;
 /** 이모지 렌더 폰트 스택 — 토스페이스 1순위, 없으면 시스템 컬러 이모지로 fallback. 모든 렌더 지점 공통. */
 export const ORG_ICON_FONT =
   '"Tossface", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+/** 개인 조직 기본 아이콘 — 커스텀 아이콘을 고르지 않았을 때 표시되는 집 이모지. */
+export const PERSONAL_DEFAULT_ICON = "🏠";
 
 type IconTransform = { icon_scale?: number | null; icon_x?: number | null; icon_y?: number | null };
 

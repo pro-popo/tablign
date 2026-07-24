@@ -315,7 +315,8 @@ export function NewTab() {
   }
 
   function openEditOrg() {
-    if (activeOrg && !activeOrg.is_personal) {
+    // 팀 조직 = 조직 설정, 개인 조직 = 프로필 설정 — 같은 편집 다이얼로그를 연다.
+    if (activeOrg) {
       setOrgFormMode("edit");
       setOrgFormOpen(true);
     }
@@ -874,7 +875,7 @@ export function NewTab() {
                     org={activeOrg}
                     myRole={myOrgRole}
                     onOpenMembers={openOrgMemberDialog}
-                    onEditOrg={(!activeOrg?.is_personal && (myOrgRole === "owner" || myOrgRole === "admin")) ? openEditOrg : undefined}
+                    onEditOrg={(myOrgRole === "owner" || myOrgRole === "admin") ? openEditOrg : undefined}
                     onDeleteOrg={(!activeOrg?.is_personal && myOrgRole === "owner") ? () => setOrgDeleteOpen(true) : undefined}
                   />
                 ) : null}
@@ -1088,6 +1089,7 @@ export function NewTab() {
         open={orgFormOpen}
         mode={orgFormMode}
         initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color, icon_scale: activeOrg.icon_scale, icon_x: activeOrg.icon_x, icon_y: activeOrg.icon_y } : undefined}
+        personal={orgFormMode === "edit" && !!activeOrg?.is_personal}
         onSubmit={submitOrgForm}
         onClose={() => setOrgFormOpen(false)}
       />
