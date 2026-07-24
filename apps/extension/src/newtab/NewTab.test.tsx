@@ -524,4 +524,37 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
       expect(updateOrganization).toHaveBeenCalledWith(expect.anything(), "org-personal", expect.objectContaining({ name: "개인" })),
     );
   });
+
+  it("프로필 설정에서 그라데이션을 지정하면 그라데이션 문자열로 저장된다", async () => {
+    listOrganizations.mockResolvedValue([
+      { id: "org-personal", name: "개인", icon: null, color: null, owner_id: "u1", is_personal: true, created_at: "" },
+      { id: "org-team", name: "우리팀", icon: null, color: "#20a97e", owner_id: "owner-x", is_personal: false, created_at: "x" },
+    ]);
+    listMyOrgMemberships.mockResolvedValue([
+      { org_id: "org-team", user_id: "u1", role: "admin", created_at: "x" },
+    ]);
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+    ]);
+    renderNewTab();
+    await screen.findAllByText("개인");
+
+    fireEvent.click(screen.getByText("우리팀"));
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "프로필 설정" }));
+    const dialog = await screen.findByRole("dialog", { name: "프로필 설정" });
+
+    // 팀 기본색(#20a97e)은 프리셋에 없어 커스텀 색 슬롯이 이미 표시되므로,
+    // 슬롯 안쪽 수정 배지를 눌러 편집기를 연다.
+    fireEvent.click(within(dialog).getByRole("button", { name: "커스텀 색 수정" }));
+    fireEvent.click(await within(dialog).findByRole("button", { name: "그라데이션" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
+
+    await waitFor(() =>
+      expect(updateOrganization).toHaveBeenCalledWith(
+        expect.anything(), "org-team",
+        expect.objectContaining({ color: expect.stringMatching(/^linear-gradient\(135deg,/) }),
+      ),
+    );
+  });
 });
