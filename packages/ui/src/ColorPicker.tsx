@@ -2,9 +2,9 @@ import { useRef, useState, useEffect } from "react";
 import { theme } from "./theme";
 import { hexToHsv, hsvToHex, normalizeHex } from "./color";
 
-export interface ColorPickerProps { value: string; onChange: (hex: string) => void }
+export interface ColorPickerProps { value: string; onChange: (hex: string) => void; hideHex?: boolean }
 
-export function ColorPicker({ value, onChange }: ColorPickerProps) {
+export function ColorPicker({ value, onChange, hideHex = false }: ColorPickerProps) {
   const init = hexToHsv(value) ?? { h: 222, s: 0.8, v: 0.9 };
   const [h, setH] = useState(init.h);
   const [s, setS] = useState(init.s);
@@ -65,15 +65,17 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
         <span style={{ position: "absolute", width: 16, height: 16, borderRadius: "50%", border: "2px solid #fff", boxShadow: "0 0 0 1px #0004",
           left: `calc(${(h / 360) * 100}% - 8px)`, top: -1, background: hueHex, boxSizing: "border-box" }} />
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 12 }}>
-        <span style={{ width: 28, height: 28, borderRadius: 8, background: current, boxSizing: "border-box" }} />
-        <input value={hexText} onChange={(e) => {
-            setHexText(e.target.value);
-            const n = normalizeHex(e.target.value);
-            if (n) { const c = hexToHsv(n)!; setH(c.h); setS(c.s); setV(c.v); onChange(n); }
-          }}
-          style={{ flex: 1, border: `1px solid ${theme.border}`, borderRadius: 8, padding: "6px 9px", fontSize: 12, fontFamily: "monospace", boxSizing: "border-box" }} />
-      </div>
+      {!hideHex && (
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 12 }}>
+          <span style={{ width: 28, height: 28, borderRadius: 8, background: current, boxSizing: "border-box" }} />
+          <input value={hexText} onChange={(e) => {
+              setHexText(e.target.value);
+              const n = normalizeHex(e.target.value);
+              if (n) { const c = hexToHsv(n)!; setH(c.h); setS(c.s); setV(c.v); onChange(n); }
+            }}
+            style={{ flex: 1, border: `1px solid ${theme.border}`, borderRadius: 8, padding: "6px 9px", fontSize: 12, fontFamily: "monospace", boxSizing: "border-box" }} />
+        </div>
+      )}
     </div>
   );
 }
