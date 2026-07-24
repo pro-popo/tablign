@@ -15,14 +15,20 @@ export const PERSONAL_DEFAULT_COLOR = "linear-gradient(135deg,#ffd43b,#f59f00)";
 
 type IconTransform = { icon_scale?: number | null; icon_x?: number | null; icon_y?: number | null };
 
-/** 저장된 스케일·오프셋을 렌더 박스 크기(boxSize)에 비례해 CSS transform 문자열로 변환.
- *  ※ 세로 중앙 보정 nudge는 두지 않는다: 실제 사용 크기(28·32·44px)에서 토스 글리프는 힌팅이
- *  중앙에 스냅시켜 nudge가 오히려 소형(레일·헤더)을 어긋나게 했다(박스 비례 상수로는 세 크기 동시 보정 불가). */
+/** 스케일 확대 시 세로 드리프트 보정 계수(박스 대비).
+ *  이모지는 baseline 기준이라 span 안에서 편차 δ만큼 위에 있고, scale(s)가 이를 δ×s로 증폭한다
+ *  → 배율을 키울수록 위로 뜬다. 그 증폭분(= δ×(s−1))만 아래로 상쇄한다.
+ *  scale 1에서는 항상 0이라 소형(레일·헤더)의 정중앙을 절대 건드리지 않고, 200%까지 위치를 유지한다.
+ *  값은 실측 근사치 — 필요 시 이 상수만 조정한다. */
+const EMOJI_Y_SCALE_NUDGE = 0.04;
+
+/** 저장된 스케일·오프셋을 렌더 박스 크기(boxSize)에 비례해 CSS transform 문자열로 변환. */
 export function orgIconTransform(o: IconTransform, boxSize: number): string {
   const scale = (o.icon_scale ?? 100) / 100;
   const ratio = boxSize / ICON_REF_BOX;
   const x = (o.icon_x ?? 0) * ratio;
-  const y = (o.icon_y ?? 0) * ratio;
+  // 기본 크기(scale 1)엔 보정 없음 — 소형 힌팅이 이미 중앙에 맞춘다. 확대분의 드리프트만 상쇄.
+  const y = (o.icon_y ?? 0) * ratio + boxSize * EMOJI_Y_SCALE_NUDGE * (scale - 1);
   return `translate(${x}px, ${y}px) scale(${scale})`;
 }
 
