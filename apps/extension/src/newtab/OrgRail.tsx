@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Organization, OrganizationMember } from "@tablign/core";
 import { LogoMark, Plus, LogOut, theme } from "@tablign/ui";
-import { orgIconStyle, PERSONAL_DEFAULT_ICON, PERSONAL_DEFAULT_COLOR } from "./orgIcon";
+import { OrgIconBox } from "./OrgIconBox";
 
 export interface OrgRailProps {
   organizations: Organization[];
@@ -17,11 +17,6 @@ export interface OrgRailProps {
 
 const RAIL_REST = 54;
 const RAIL_HOVER = 196;
-const TEAM_COLORS = ["#20a97e", "#e8590c", "#7048e8", "#1098ad", "#e64980"];
-
-function initials(name: string): string {
-  return name.trim().slice(0, 1).toUpperCase() || "?";
-}
 
 export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, avatarUrl, onSelectOrg, onCreateOrg, onSignOut }: OrgRailProps) {
   const [expanded, setExpanded] = useState(false);
@@ -74,9 +69,7 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
         return (
           <div style={row(active)} onClick={() => onSelectOrg(personal.id)}>
             {active && <span style={activeBar} />}
-            <span style={{ ...box(personal.color ?? PERSONAL_DEFAULT_COLOR), overflow: "hidden" }}>
-              <span style={orgIconStyle(personal, 32)}>{personal.icon ?? PERSONAL_DEFAULT_ICON}</span>
-            </span>
+            <OrgIconBox org={personal} size={32} />
             <span style={label(active)}>개인</span>
           </div>
         );
@@ -84,14 +77,12 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
 
       {/* 팀 조직: listOrganizations 순서(created_at)대로 렌더. 멤버십 position 정렬은 2단계(초대·멤버 흐름) 과제.
           memberships·currentUserId prop은 2단계 정렬·권한 표시용 전방 배선(현재 본문 미사용). */}
-      {teams.map((o, i) => {
+      {teams.map((o) => {
         const active = o.id === activeOrgId;
         return (
           <div key={o.id} style={row(active)} onClick={() => onSelectOrg(o.id)}>
             {active && <span style={activeBar} />}
-            <span style={{ ...box(o.color ?? TEAM_COLORS[i % TEAM_COLORS.length]), overflow: "hidden" }}>
-              {o.icon ? <span style={orgIconStyle(o, 32)}>{o.icon}</span> : initials(o.name)}
-            </span>
+            <OrgIconBox org={o} size={32} />
             <span style={label(active)}>{o.name}</span>
           </div>
         );

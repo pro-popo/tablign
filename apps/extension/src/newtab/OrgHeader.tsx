@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Organization } from "@tablign/core";
 import { theme } from "@tablign/ui";
-import { orgIconStyle, PERSONAL_DEFAULT_ICON, PERSONAL_DEFAULT_COLOR } from "./orgIcon";
+import { OrgIconBox } from "./OrgIconBox";
 
 export type OrgRole = "owner" | "admin" | "member";
 
@@ -32,13 +32,6 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg }
     return () => { document.removeEventListener("mousedown", onDown); window.removeEventListener("keydown", onKey); };
   }, [menuOpen]);
 
-  // 개인 조직은 커스텀 아이콘이 없으면 기본 🏠로 표시. 이모지면 위치·크기 조정 transform 적용,
-  // 아니면(팀 조직에서 아이콘 미설정) 이름 첫 글자. 프로필 아이콘은 표시 전용(편집은 톱니 메뉴에서).
-  const displayIcon = org.icon ?? (isPersonal ? PERSONAL_DEFAULT_ICON : null);
-  const iconContent = displayIcon
-    ? <span style={orgIconStyle(org, 28)}>{displayIcon}</span>
-    : (org.name.trim().slice(0, 1) || "?").toUpperCase();
-
   const menuItem: React.CSSProperties = {
     display: "flex", alignItems: "center", width: "100%", textAlign: "left", border: "none", background: "none",
     padding: "9px 12px", fontSize: 13, color: theme.text, cursor: "pointer", whiteSpace: "nowrap", boxSizing: "border-box",
@@ -46,13 +39,7 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg }
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-      <span aria-hidden="true" style={{
-        boxSizing: "border-box", flexShrink: 0, width: 28, height: 28, borderRadius: 8, overflow: "hidden",
-        background: isPersonal ? (org.color ?? PERSONAL_DEFAULT_COLOR) : (org.color ?? "#20a97e"), color: "#fff", fontSize: 15, fontWeight: 700,
-        display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
-      }}>
-        {iconContent}
-      </span>
+      <OrgIconBox org={org} size={28} />
       <strong style={{ fontSize: 15, color: theme.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{org.name}</strong>
       {showGear && (
         <div ref={menuWrapRef} style={{ position: "relative", marginLeft: "auto", flexShrink: 0 }}>
