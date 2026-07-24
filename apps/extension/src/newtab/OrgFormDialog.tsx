@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker } from "@tablign/ui";
+import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorGradientPicker } from "@tablign/ui";
 import { orgIconStyle, PERSONAL_DEFAULT_ICON } from "./orgIcon";
 import { TossEmojiPicker } from "./TossEmojiPicker";
 import { buildTossCategories } from "./tossEmoji";
@@ -44,7 +44,7 @@ function randomIcon(): string {
 // 팝오버가 열릴 위치(아래/위)를 정할 때 필요한 대략적인 높이 추정치.
 // 토스 피커 본문(264px) + 탭·검색·프리뷰 영역을 포함해 넉넉히 잡는다.
 const EMOJI_POPOVER_HEIGHT = 380;
-const COLOR_POPOVER_HEIGHT = 300;
+const COLOR_POPOVER_HEIGHT = 420;
 
 type Placement = "down" | "up";
 
@@ -283,7 +283,7 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
                     onClick={() => { setColor(customColor as string); setPickerOpen(false); }}
                     style={{ position: "relative", width: 24, height: 24, borderRadius: 7, flex: "none",
                       border: `1px solid ${customSelected ? "transparent" : "rgba(0,0,0,.08)"}`,
-                      boxShadow: customSelected ? `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${customColor}` : "none",
+                      boxShadow: customSelected ? `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${(customColor as string).startsWith("#") ? customColor : theme.accent}` : "none",
                       background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
                     <span role="button" aria-label="커스텀 색 수정" title="색 수정"
                       onClick={(e) => { e.stopPropagation(); setColor(customColor as string); setPickerOpen((o) => !o); setEmojiOpen(false); }}
@@ -300,10 +300,10 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
                 {pickerOpen && (
                   <div onClick={(e) => e.stopPropagation()}
                     style={{ position: "absolute", ...(colorPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
-                      left: 0, zIndex: 50, width: 240,
+                      left: 0, zIndex: 50, width: 256,
                       maxWidth: "calc(100vw - 48px)", background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 14,
                       padding: 14, boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
-                    <ColorPicker value={color} onChange={(c) => { setColor(c); if (!SWATCHES.includes(c)) setCustomColor(c); }} />
+                    <ColorGradientPicker value={color} previewIcon={icon} onChange={(c) => { setColor(c); if (!SWATCHES.includes(c)) setCustomColor(c); }} />
                   </div>
                 )}
               </div>
