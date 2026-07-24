@@ -11,6 +11,10 @@ export interface ColorGradientPickerProps {
 
 type ActiveStop = "start" | "end" | null;
 
+const MIN_GAP = 10;      // 두 스톱 최소 간격(%)
+const DRAG_THRESHOLD = 3; // px — 이보다 크게 움직이면 드래그로 간주(탭 아님)
+const HANDLE_INSET = 16;  // px — 핸들 반지름만큼 트랙 안으로
+
 // 시작 색에서 살짝 변형한 기본 끝 색 — 단색→그라데이션 전환 시 사용.
 function deriveEndColor(hex: string): string {
   // 마지막 바이트를 회전시켜 시각적으로 구분되는 색을 만든다(단순·결정적).
@@ -41,6 +45,8 @@ export function ColorGradientPicker({ value, onChange, previewIcon }: ColorGradi
   const parsed = parseColorValue(localValue);
   const [active, setActive] = useState<ActiveStop>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ stop: "start" | "end"; moved: boolean } | null>(null);
 
   useEffect(() => {
     if (!active) return;
@@ -88,6 +94,42 @@ export function ColorGradientPicker({ value, onChange, previewIcon }: ColorGradi
     emit({ ...parsed, start: parsed.end, end: parsed.start });
   }
 
+  function posFromClientX(clientX: number): number {
+    const el = barRef.current; if (!el) return 0;
+    const r = el.getBoundingClientRect();
+    const usable = r.width - HANDLE_INSET * 2;
+    const raw = (clientX - r.left - HANDLE_INSET) / (usable || 1);
+    return Math.max(0, Math.min(100, Math.round(raw * 100)));
+  }
+
+  function onHandlePointerDown(stop: "start" | "end", e: React.PointerEvent) {
+    if (parsed.kind !== "gradient") { setActive(active ? null : "start"); return; }
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    dragRef.current = { stop, moved: false };
+    const startX = e.clientX;
+    function move(ev: PointerEvent) {
+      if (!dragRef.current) return;
+      if (Math.abs(ev.clientX - startX) > DRAG_THRESHOLD) dragRef.current.moved = true;
+      if (!dragRef.current.moved) return;
+      if (parsed.kind !== "gradient") return;
+      let p = posFromClientX(ev.clientX);
+      if (dragRef.current.stop === "start") p = Math.min(p, parsed.endPos - MIN_GAP);
+      else p = Math.max(p, parsed.startPos + MIN_GAP);
+      p = Math.max(0, Math.min(100, p));
+      if (dragRef.current.stop === "start") emit({ ...parsed, startPos: p });
+      else emit({ ...parsed, endPos: p });
+    }
+    function up() {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      const wasDrag = dragRef.current?.moved;
+      dragRef.current = null;
+      if (!wasDrag) setActive((a) => (a === stop ? null : stop)); // 탭 = 팔레트 토글
+    }
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
   const seg = (on: boolean): CSSProperties => ({
     flex: 1, textAlign: "center", padding: "6px 0", fontSize: 11.5, fontWeight: 600, cursor: "pointer",
     border: "none", background: on ? theme.accent : "transparent", color: on ? "#fff" : theme.textMuted,
@@ -113,19 +155,19 @@ export function ColorGradientPicker({ value, onChange, previewIcon }: ColorGradi
       </div>
 
       {/* 바 + 인셋 핸들 */}
-      <div style={{ position: "relative", height: 34, borderRadius: 9, background: isGradient
+      <div ref={barRef} data-testid="gradient-bar" style={{ position: "relative", height: 34, borderRadius: 9, background: isGradient
           ? `linear-gradient(90deg, ${parsed.start} ${parsed.startPos}%, ${parsed.end} ${parsed.endPos}%)`
           : (parsed.kind === "solid" ? parsed.hex : ""),
         boxShadow: "0 0 0 1px rgba(0,0,0,.06)" }}>
         {parsed.kind === "solid" ? (
           <button type="button" aria-label="색" style={handleStyle(parsed.hex, active === "start", "50%")}
-            onClick={() => setActive(active ? null : "start")} />
+            onPointerDown={(e) => onHandlePointerDown("start", e)} />
         ) : (
           <>
-            <button type="button" aria-label="시작 색" style={handleStyle(parsed.start, active === "start", "16px")}
-              onClick={() => setActive(active === "start" ? null : "start")} />
-            <button type="button" aria-label="끝 색" style={handleStyle(parsed.end, active === "end", "calc(100% - 16px)")}
-              onClick={() => setActive(active === "end" ? null : "end")} />
+            <button type="button" aria-label="시작 색" style={handleStyle(parsed.start, active === "start", `${HANDLE_INSET}px`)}
+              onPointerDown={(e) => onHandlePointerDown("start", e)} />
+            <button type="button" aria-label="끝 색" style={handleStyle(parsed.end, active === "end", `calc(100% - ${HANDLE_INSET}px)`)}
+              onPointerDown={(e) => onHandlePointerDown("end", e)} />
           </>
         )}
       </div>
