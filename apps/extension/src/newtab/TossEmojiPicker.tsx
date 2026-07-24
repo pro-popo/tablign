@@ -19,6 +19,7 @@ export function TossEmojiPicker({ onSelect }: TossEmojiPickerProps) {
 
   return (
     <div style={wrap}>
+      <style>{scrollCss}</style>
       <div style={tabsBar}>
         {categories.map((c) => (
           <button
@@ -40,16 +41,22 @@ export function TossEmojiPicker({ onSelect }: TossEmojiPickerProps) {
       </div>
 
       <div style={searchWrap}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="검색"
-          aria-label="이모지 검색"
-          style={searchInput}
-        />
+        <div style={searchBox}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#adb5bd" strokeWidth={2} strokeLinecap="round" style={{ flex: "none" }} aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="검색"
+            aria-label="이모지 검색"
+            style={searchInput}
+          />
+        </div>
       </div>
 
-      <div style={bodyBox}>
+      <div className="toss-picker-body" style={bodyBox}>
         {visible.length === 0 ? (
           <div style={emptyBox}>검색 결과가 없어요</div>
         ) : (
@@ -86,14 +93,24 @@ export function TossEmojiPicker({ onSelect }: TossEmojiPickerProps) {
   );
 }
 
-const wrap: CSSProperties = { width: 352, maxWidth: "calc(100vw - 48px)", background: "#fff", borderRadius: 14, overflow: "hidden", boxSizing: "border-box" };
-const tabsBar: CSSProperties = { display: "flex", gap: 2, padding: "6px 8px", borderBottom: "1px solid #f1f3f5" };
-const tabBtn: CSSProperties = { flex: 1, border: "none", background: "none", fontSize: 18, lineHeight: 1, padding: "6px 0", borderRadius: 8, cursor: "pointer" };
-const searchWrap: CSSProperties = { padding: "9px 12px" };
-const searchInput: CSSProperties = { width: "100%", padding: "8px 11px", border: "1px solid #e2e5ea", borderRadius: 9, fontSize: 13, outline: "none", boxSizing: "border-box" };
-const bodyBox: CSSProperties = { height: 264, overflowY: "auto", padding: "0 8px 10px" };
-const catLabel: CSSProperties = { fontSize: 11, fontWeight: 600, color: "#adb5bd", padding: "8px 4px 4px", position: "sticky", top: 0, background: "#fff" };
-const grid: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 2 };
+// 얇은 스크롤바 — inline 스타일로는 ::-webkit-scrollbar를 지정할 수 없어 클래스 스코프 CSS로 주입.
+const scrollCss = `
+  .toss-picker-body { scrollbar-width: thin; scrollbar-color: #d0d4da transparent; }
+  .toss-picker-body::-webkit-scrollbar { width: 8px; }
+  .toss-picker-body::-webkit-scrollbar-thumb { background: #d0d4da; border-radius: 8px; border: 2px solid #fff; }
+  .toss-picker-body::-webkit-scrollbar-track { background: transparent; }
+`;
+
+const wrap: CSSProperties = { width: 376, maxWidth: "calc(100vw - 48px)", background: "#fff", borderRadius: 14, overflow: "hidden", boxSizing: "border-box" };
+const tabsBar: CSSProperties = { display: "flex", gap: 2, padding: "6px 10px", borderBottom: "1px solid #f1f3f5" };
+const tabBtn: CSSProperties = { flex: 1, border: "none", background: "none", fontSize: 18, lineHeight: 1, padding: "6px 0", borderRadius: 8, cursor: "pointer", color: "#868e96" };
+const searchWrap: CSSProperties = { padding: "10px 12px" };
+// emoji-mart 스타일: 회색 필드 + 좌측 돋보기 아이콘, 테두리 없음.
+const searchBox: CSSProperties = { display: "flex", alignItems: "center", gap: 8, background: "#f1f3f5", borderRadius: 10, padding: "9px 12px" };
+const searchInput: CSSProperties = { flex: 1, border: "none", background: "none", outline: "none", fontSize: 13.5, color: "#343a40", minWidth: 0 };
+const bodyBox: CSSProperties = { height: 280, overflowY: "auto", padding: "0 10px 10px" };
+const catLabel: CSSProperties = { fontSize: 12, fontWeight: 600, color: "#868e96", padding: "10px 2px 6px", position: "sticky", top: 0, background: "#fff" };
+const grid: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: 2 };
 const cell: CSSProperties = { border: "none", background: "none", fontSize: 22, lineHeight: 1, padding: "5px 0", borderRadius: 7, cursor: "pointer" };
 const emptyBox: CSSProperties = { padding: "24px 8px", textAlign: "center", color: "#adb5bd", fontSize: 12.5 };
 const footBox: CSSProperties = { borderTop: "1px solid #f1f3f5", padding: "8px 12px", display: "flex", alignItems: "center", gap: 10, minHeight: 44 };
