@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Organization } from "@tablign/core";
 import { theme } from "@tablign/ui";
-import { orgIconStyle, PERSONAL_DEFAULT_ICON } from "./orgIcon";
+import { orgIconStyle, PERSONAL_DEFAULT_ICON, PERSONAL_DEFAULT_COLOR } from "./orgIcon";
 
 export type OrgRole = "owner" | "admin" | "member";
 
@@ -48,7 +48,7 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg }
     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
       <span aria-hidden="true" style={{
         boxSizing: "border-box", flexShrink: 0, width: 28, height: 28, borderRadius: 8, overflow: "hidden",
-        background: isPersonal ? (org.color ?? "linear-gradient(135deg,#ffd43b,#f59f00)") : (org.color ?? "#20a97e"), color: "#fff", fontSize: 15, fontWeight: 700,
+        background: isPersonal ? (org.color ?? PERSONAL_DEFAULT_COLOR) : (org.color ?? "#20a97e"), color: "#fff", fontSize: 15, fontWeight: 700,
         display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
       }}>
         {iconContent}

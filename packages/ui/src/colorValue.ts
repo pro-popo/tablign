@@ -7,7 +7,7 @@ export type ColorValue =
 export const DEFAULT_COLOR_VALUE: ColorValue = { kind: "solid", hex: "#748FFC" };
 
 // linear-gradient(135deg, #AAA[ p%], #BBB[ q%]) 형태만 인식한다(각도 135° 고정 가정).
-const GRAD_RE = /^linear-gradient\(\s*135deg\s*,\s*(#[0-9a-fA-F]{3,6})(?:\s+(\d{1,3})%)?\s*,\s*(#[0-9a-fA-F]{3,6})(?:\s+(\d{1,3})%)?\s*\)$/;
+const GRAD_RE = /^linear-gradient\(\s*135deg\s*,\s*(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}))(?:\s+(\d{1,3})%)?\s*,\s*(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}))(?:\s+(\d{1,3})%)?\s*\)$/;
 
 export function parseColorValue(value: string | null | undefined): ColorValue {
   if (!value) return DEFAULT_COLOR_VALUE;

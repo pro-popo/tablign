@@ -10,6 +10,8 @@ export const ORG_ICON_FONT =
   '"Tossface", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
 /** 개인 조직 기본 아이콘 — 커스텀 아이콘을 고르지 않았을 때 표시되는 집 이모지. */
 export const PERSONAL_DEFAULT_ICON = "🏠";
+/** 개인 조직 기본 색 — 커스텀 색을 고르지 않았을 때 아이콘 박스 배경(옐로우 그라데이션). 레일·헤더 공통. */
+export const PERSONAL_DEFAULT_COLOR = "linear-gradient(135deg,#ffd43b,#f59f00)";
 
 type IconTransform = { icon_scale?: number | null; icon_x?: number | null; icon_y?: number | null };
 
