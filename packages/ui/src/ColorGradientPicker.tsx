@@ -6,14 +6,13 @@ import { parseColorValue, buildColorValue, type ColorValue } from "./colorValue"
 export interface ColorGradientPickerProps {
   value: string;
   onChange: (value: string) => void;
-  previewIcon?: string;
 }
 
 type ActiveStop = "start" | "end";
 
 const MIN_GAP = 10;      // 두 스톱 최소 간격(%)
 const DRAG_THRESHOLD = 3; // px — 이보다 크게 움직이면 드래그로 간주(탭 아님)
-const HANDLE_INSET = 16;  // px — 핸들 반지름만큼 트랙 안으로
+const HANDLE_INSET = 12;  // px — 핸들 반지름만큼 트랙 안으로
 
 // 단색 값이 넘어오면 표시용 끝 색을 만들 때 쓴다 — 시작 색을 살짝 변형(항상 시작≠끝).
 function deriveEndColor(hex: string): string {
@@ -30,7 +29,7 @@ function asGradient(v: ColorValue): GradientValue {
   return { kind: "gradient", start: v.hex, end: deriveEndColor(v.hex), startPos: 0, endPos: 100 };
 }
 
-export function ColorGradientPicker({ value, onChange, previewIcon }: ColorGradientPickerProps) {
+export function ColorGradientPicker({ value, onChange }: ColorGradientPickerProps) {
   // 완전 제어형이면 클릭이 emit만 하고 로컬 재렌더를 유발하지 않아 즉시 반영되지 않는다.
   // ColorPicker와 동일한 self-echo 패턴으로 로컬 값을 두고, 외부 value가 내가 emit한 값과 다를 때만 동기화한다.
   const [localValue, setLocalValue] = useState(value);
@@ -51,8 +50,6 @@ export function ColorGradientPicker({ value, onChange, previewIcon }: ColorGradi
   const [active, setActive] = useState<ActiveStop>("end");
   const barRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ stop: ActiveStop; moved: boolean } | null>(null);
-
-  const preview = buildColorValue(parsed);
 
   function emit(next: GradientValue) {
     const s = buildColorValue(next);
@@ -103,8 +100,8 @@ export function ColorGradientPicker({ value, onChange, previewIcon }: ColorGradi
   }
 
   const handleStyle = (bg: string, isActive: boolean, left: string): CSSProperties => ({
-    position: "absolute", top: "50%", left, transform: "translate(-50%,-50%)", width: 24, height: 24, borderRadius: "50%",
-    border: "3px solid #fff", background: bg, cursor: "pointer", padding: 0, boxSizing: "border-box",
+    position: "absolute", top: "50%", left, transform: "translate(-50%,-50%)", width: 18, height: 18, borderRadius: "50%",
+    border: "2px solid #fff", background: bg, cursor: "pointer", padding: 0, boxSizing: "border-box",
     boxShadow: isActive ? `0 0 0 2px ${theme.accent}, 0 2px 5px rgba(0,0,0,.25)` : "0 0 0 1px rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.25)",
   });
   // 핸들의 가로 위치 — 스톱 %를 인셋 트랙 안(HANDLE_INSET ~ 폭-HANDLE_INSET)으로 매핑.
@@ -127,14 +124,9 @@ export function ColorGradientPicker({ value, onChange, previewIcon }: ColorGradi
 
   return (
     <div style={{ position: "relative", width: 224, boxSizing: "border-box" }}>
-      {/* 사각 미리보기 */}
-      <div style={{ width: 46, height: 46, borderRadius: 12, margin: "0 auto 12px", background: preview,
-        display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 26, boxSizing: "border-box" }}>
-        {previewIcon ?? ""}
-      </div>
-
+      {/* 미리보기는 소비자(OrgFormDialog)가 실제 프로필 아바타로 렌더한다 — 여기선 편집 컨트롤만. */}
       {/* 바 + 인셋 핸들 (드래그=비율, 탭=선택) */}
-      <div ref={barRef} data-testid="gradient-bar" style={{ position: "relative", height: 34, borderRadius: 9,
+      <div ref={barRef} data-testid="gradient-bar" style={{ position: "relative", height: 24, borderRadius: 7,
         background: `linear-gradient(90deg, ${parsed.start} ${parsed.startPos}%, ${parsed.end} ${parsed.endPos}%)`,
         boxShadow: "0 0 0 1px rgba(0,0,0,.06)" }}>
         <button type="button" aria-label="시작 색" style={handleStyle(parsed.start, active === "start", stopLeft(parsed.startPos))}
