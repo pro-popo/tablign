@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker, ColorGradientPicker } from "@tablign/ui";
-import { PERSONAL_DEFAULT_ICON, PERSONAL_DEFAULT_COLOR } from "./orgIcon";
+import { PERSONAL_DEFAULT_ICON, PERSONAL_DEFAULT_COLOR, ORG_ICON_FONT } from "./orgIcon";
 import { OrgIconBox } from "./OrgIconBox";
 import { TossEmojiPicker } from "./TossEmojiPicker";
 import { buildTossCategories } from "./tossEmoji";
@@ -19,21 +19,23 @@ export interface OrgFormDialogProps {
 // 대표 색: 살짝 파스텔 톤 8색. 웜→쿨 순서(핑크·오렌지·옐로우 → 그린·틸·시안·블루·바이올렛).
 const SWATCHES = ["#F783AC", "#FFA94D", "#FFD43B", "#69DB7C", "#38D9A9", "#66D9E8", "#748FFC", "#9775FA"];
 const DEFAULT_COLOR = "#748FFC";
-// 그라데이션 프리셋 — 인접 대표색을 이어붙인 135° 6종. 문자열 포맷은 buildColorValue와 동일(라운드트립 시 링 유지).
+// 그라데이션 프리셋 — 8색 휠의 인접 대표색을 이어붙인 135° 8종(웜→쿨 순환 완성). 문자열 포맷은 buildColorValue와 동일(라운드트립 시 링 유지).
 const GRADIENT_PRESETS = [
   "linear-gradient(135deg, #F783AC, #FFA94D)",
   "linear-gradient(135deg, #FFA94D, #FFD43B)",
   "linear-gradient(135deg, #FFD43B, #69DB7C)",
+  "linear-gradient(135deg, #69DB7C, #38D9A9)",
   "linear-gradient(135deg, #38D9A9, #66D9E8)",
   "linear-gradient(135deg, #66D9E8, #748FFC)",
   "linear-gradient(135deg, #748FFC, #9775FA)",
+  "linear-gradient(135deg, #9775FA, #F783AC)",
 ];
 const isSolid = (c: string) => c.startsWith("#");
 
 // 아이콘 조정: 오프셋 한계(±, @100px 기준), 스케일(%) 범위.
 const ICON_OFFSET_MAX = 25;
 const ICON_SCALE_MIN = 60;
-const ICON_SCALE_MAX = 140;
+const ICON_SCALE_MAX = 200;
 // 이모지 빠른 선택 대표 칩(색상 프리셋과 대응). 그 외는 ＋(토스 피커)에서 고른다.
 const PRESET_EMOJIS = ["🚀", "💡", "🎯", "🏢", "🌱", "🎨"];
 // 이모지 선택 링 색 — 대표색(#3b5bdb)의 파스텔 인디고. 색상은 자기색 링을 쓰므로 이모지에만 적용.
@@ -55,7 +57,6 @@ function randomIcon(): string {
 // 팝오버가 열릴 위치(아래/위)를 정할 때 필요한 대략적인 높이 추정치.
 // 토스 피커 본문(264px) + 탭·검색·프리뷰 영역을 포함해 넉넉히 잡는다.
 const EMOJI_POPOVER_HEIGHT = 380;
-const COLOR_POPOVER_HEIGHT = 480;
 
 type Placement = "down" | "up";
 
@@ -91,7 +92,8 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
   const [iconX, setIconX] = useState(0);
   const [iconY, setIconY] = useState(0);
   const [emojiPlacement, setEmojiPlacement] = useState<Placement>("down");
-  const [colorPlacement, setColorPlacement] = useState<Placement>("down");
+  // 커스텀 색 편집 초안 — 편집 중엔 이 값만 바뀌고, '확인'을 눌러야 실제 color에 적용된다.
+  const [colorDraft, setColorDraft] = useState<string>(DEFAULT_COLOR);
 
   const emojiWrapRef = useRef<HTMLDivElement>(null);
   const solidWrapRef = useRef<HTMLDivElement>(null);
@@ -107,17 +109,6 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, [emojiOpen]);
-
-  useLayoutEffect(() => {
-    if (!colorEditor) return;
-    const ref = colorEditor === "solid" ? solidWrapRef : gradWrapRef;
-    function update() {
-      setColorPlacement(computePlacement(ref, COLOR_POPOVER_HEIGHT));
-    }
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [colorEditor]);
 
   const wasOpen = useRef(false);
   useEffect(() => {
@@ -192,6 +183,24 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
   const hasCustomGradient = customColor !== null && !isSolid(customColor);
   const customSolidSelected = hasCustomSolid && color === customColor;
   const customGradientSelected = hasCustomGradient && color === customColor;
+
+  // 커스텀 편집기 열기 — 같은 편집기가 열려 있으면 닫고, 아니면 초안(draft)을 씨앗값으로 채워 연다.
+  // seed 없으면 현재 색이 해당 종류면 그 값, 아니면 기본값에서 시작.
+  function openColorEditor(mode: "solid" | "gradient", seed?: string) {
+    if (colorEditor === mode) { setColorEditor(null); return; }
+    const start = seed ?? (mode === "solid"
+      ? (isSolid(color) ? color : DEFAULT_COLOR)
+      : (!isSolid(color) ? color : GRADIENT_PRESETS[0]));
+    setColorDraft(start);
+    setColorEditor(mode);
+    setEmojiOpen(false);
+  }
+  // 확인 — 초안을 실제 색·커스텀 슬롯에 적용하고 팝오버를 닫는다.
+  function applyColorDraft() {
+    setColor(colorDraft);
+    setCustomColor(colorDraft);
+    setColorEditor(null);
+  }
   const hasCustomEmoji = customEmoji !== null;
   const customEmojiSelected = hasCustomEmoji && icon === customEmoji;
   // 커스텀 스와치의 "직접 고른 색" 표식(프리셋 색을 이어붙인 스펙트럼). 스와치 안쪽에 배치해 크기는 그대로 둔다.
@@ -200,7 +209,7 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
   // 패널 행 공용 스타일
   const rowLabel: CSSProperties = { fontSize: 10, letterSpacing: ".2px", color: "#8a929c", fontWeight: 600, marginBottom: 8 };
   const divider: CSSProperties = { borderTop: "1px solid #f1f3f5" };
-  const emojiChip: CSSProperties = { width: 24, height: 24, borderRadius: 7, flex: "none", border: "1px solid rgba(0,0,0,.08)", background: "#f7f8fa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, cursor: "pointer", padding: 0, boxSizing: "border-box" };
+  const emojiChip: CSSProperties = { width: 24, height: 24, borderRadius: 7, flex: "none", border: "1px solid rgba(0,0,0,.08)", background: "#f7f8fa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontFamily: ORG_ICON_FONT, cursor: "pointer", padding: 0, boxSizing: "border-box" };
   // 선택: 회색 보더 유지 + 흰 간격 1.5 + 파스텔 인디고 링(3px 지점까지). 색상 스와치 링과 같은 굵기.
   const emojiChipSel: CSSProperties = { boxShadow: `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${EMOJI_RING}` };
   const plusChip: CSSProperties = { width: 24, height: 24, borderRadius: 7, flex: "none", border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, cursor: "pointer", boxSizing: "border-box", padding: 0 };
@@ -307,12 +316,12 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
                       boxShadow: customSolidSelected ? `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${customColor}` : "none",
                       background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
                     <span role="button" aria-label="커스텀 색 수정" title="색 수정"
-                      onClick={(e) => { e.stopPropagation(); setColor(customColor as string); setColorEditor((m) => (m === "solid" ? null : "solid")); setEmojiOpen(false); }}
+                      onClick={(e) => { e.stopPropagation(); openColorEditor("solid", customColor as string); }}
                       style={{ position: "absolute", right: -1.5, bottom: -1.5, width: 12, height: 12, borderRadius: "50%",
                         background: rainbowGradient, boxShadow: "0 0 0 1px rgba(255,255,255,.9)", cursor: "pointer" }} />
                   </button>
                 ) : (
-                  <button type="button" aria-label="색상 직접 선택" onClick={() => { setColorEditor((m) => (m === "solid" ? null : "solid")); setEmojiOpen(false); }}
+                  <button type="button" aria-label="색상 직접 선택" onClick={() => openColorEditor("solid")}
                     style={{ width: 24, height: 24, borderRadius: 7, border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint,
                       cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
                     ＋
@@ -320,13 +329,16 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
                 )}
                 {colorEditor === "solid" && (
                   <div onClick={(e) => e.stopPropagation()}
-                    style={{ position: "absolute", ...(colorPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
+                    style={{ position: "absolute", top: "calc(100% + 8px)",
                       right: 0, zIndex: 50, width: 256, maxWidth: "calc(100vw - 48px)", background: theme.surface,
                       border: `1px solid ${theme.border}`, borderRadius: 14, padding: 14, boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
                     <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-                      <OrgIconBox org={{ id: "preview", name, icon, color, icon_scale: iconScale, icon_x: iconX, icon_y: iconY, is_personal: personal }} size={44} />
+                      <OrgIconBox org={{ id: "preview", name, icon, color: colorDraft, icon_scale: iconScale, icon_x: iconX, icon_y: iconY, is_personal: personal }} size={44} />
                     </div>
-                    <ColorPicker value={color} onChange={(c) => { setColor(c); setCustomColor(c); }} />
+                    <ColorPicker value={colorDraft} onChange={setColorDraft} />
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                      <Button onClick={applyColorDraft}>확인</Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -352,24 +364,29 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
                       boxShadow: customGradientSelected ? `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${theme.accent}` : "none",
                       background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
                     <span role="button" aria-label="커스텀 그라데이션 수정" title="그라데이션 수정"
-                      onClick={(e) => { e.stopPropagation(); setColor(customColor as string); setColorEditor((m) => (m === "gradient" ? null : "gradient")); setEmojiOpen(false); }}
+                      onClick={(e) => { e.stopPropagation(); openColorEditor("gradient", customColor as string); }}
                       style={{ position: "absolute", right: -1.5, bottom: -1.5, width: 12, height: 12, borderRadius: "50%",
                         background: rainbowGradient, boxShadow: "0 0 0 1px rgba(255,255,255,.9)", cursor: "pointer" }} />
                   </button>
                 ) : (
-                  <button type="button" aria-label="그라데이션 직접 선택" onClick={() => { setColorEditor((m) => (m === "gradient" ? null : "gradient")); setEmojiOpen(false); }}
-                    style={{ position: "relative", width: 24, height: 24, borderRadius: 7, border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint,
+                  <button type="button" aria-label="그라데이션 직접 선택" onClick={() => openColorEditor("gradient")}
+                    style={{ width: 24, height: 24, borderRadius: 7, border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint,
                       cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
                     ＋
-                    <span aria-hidden="true" style={{ position: "absolute", right: -3, bottom: -3, width: 11, height: 11, borderRadius: "50%", background: rainbowGradient, boxShadow: "0 0 0 1.5px rgba(255,255,255,.95)" }} />
                   </button>
                 )}
                 {colorEditor === "gradient" && (
                   <div onClick={(e) => e.stopPropagation()}
-                    style={{ position: "absolute", ...(colorPlacement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
+                    style={{ position: "absolute", top: "calc(100% + 8px)",
                       right: 0, zIndex: 50, width: 256, maxWidth: "calc(100vw - 48px)", background: theme.surface,
                       border: `1px solid ${theme.border}`, borderRadius: 14, padding: 14, boxShadow: "0 16px 40px rgba(0,0,0,.28)", boxSizing: "border-box" }}>
-                    <ColorGradientPicker value={color} previewIcon={icon} onChange={(c) => { setColor(c); setCustomColor(c); }} />
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                      <OrgIconBox org={{ id: "preview", name, icon, color: colorDraft, icon_scale: iconScale, icon_x: iconX, icon_y: iconY, is_personal: personal }} size={44} />
+                    </div>
+                    <ColorGradientPicker value={colorDraft} onChange={setColorDraft} />
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                      <Button onClick={applyColorDraft}>확인</Button>
+                    </div>
                   </div>
                 )}
               </div>
