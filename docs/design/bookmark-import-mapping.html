@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — Chrome 북마크 가져오기 · 폴더 매핑 설정 시안</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accent-weak:#edf0fe; --lav:#c9d4ff; --ink:#1f2430; --muted:#868e96;
+    --faint:#adb5bd; --border:#eaecef; --border-card:#e9ebee; --bg:#fcfcfd;
+    --surface:#fff; --surface2:#f1f3f5; --danger:#e03131; --amber:#f4c66a; --green:#7bc47f;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:#eef0f4; color:var(--ink); padding:28px 20px 80px; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1100px; margin:0 auto}
+  h1{font-size:16px; font-weight:740; letter-spacing:-.02em; margin-bottom:5px}
+  .lead{font-size:12.5px; color:var(--muted); line-height:1.65; margin-bottom:8px}
+  .lead b{color:var(--ink)}
+  h2{font-size:13px; font-weight:740; letter-spacing:-.01em; margin:40px 0 3px}
+  h2 .badge{display:inline-block; vertical-align:2px; margin-right:7px; background:#8a929c; color:#fff;
+    font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:8px; letter-spacing:0}
+  h2 .badge.rec{background:var(--accent)}
+  h2 .badge.fixed{background:#2b7a3d}
+  .sub{font-size:12px; color:var(--muted); line-height:1.6; margin-bottom:14px}
+  .sub b{color:var(--ink)}
+  .why{font-size:12px; color:var(--muted); line-height:1.7; margin-top:12px; max-width:790px}
+  .why b{color:var(--ink)} .why .bad{color:var(--danger)} .why .good{color:#2b7a3d}
+  .why ul{margin:5px 0 0 16px} .why li{margin-bottom:4px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.94em;
+    background:var(--surface2); padding:1px 4px; border-radius:4px; color:#495057}
+
+  /* 무대: 흐려진 뉴탭 위에 실제 크기 다이얼로그 */
+  .stage{position:relative; border-radius:14px; overflow:hidden; background:var(--bg);
+    border:1px solid var(--border); box-shadow:0 10px 30px rgba(20,30,60,.09);
+    display:flex; align-items:center; justify-content:center; padding:26px 20px}
+  .stage::before{content:""; position:absolute; inset:0; background:
+    linear-gradient(90deg,#f6f7f9 0 44px, transparent 44px),
+    linear-gradient(90deg,transparent 0 44px,#fbfbfc 44px 222px, transparent 222px);
+    opacity:.9}
+  .stage::after{content:""; position:absolute; inset:0; background:rgba(15,18,25,.34)}
+  .dlg{position:relative; z-index:2; background:#fff; border-radius:14px;
+    box-shadow:0 18px 50px rgba(0,0,0,.26)}
+
+  .dh{padding:17px 18px 0}
+  .dt{font-size:15px; font-weight:700; letter-spacing:-.01em}
+  .ds{font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.5}
+  .df{display:flex; align-items:center; gap:8px; padding:13px 18px 15px; border-top:1px solid var(--border)}
+  .df .sum{font-size:12px; color:var(--muted); margin-right:auto; line-height:1.45}
+  .df .sum b{color:var(--ink); font-weight:700}
+
+  .btn{display:inline-flex; align-items:center; gap:5px; padding:7px 13px; border-radius:8px;
+    font-size:13px; font-weight:600; white-space:nowrap; border:1px solid transparent; cursor:pointer;
+    font-family:inherit}
+  .btn.pri{background:var(--accent); color:#fff}
+  .btn.pri:hover{background:#3450c8}
+  .btn.out{background:#fff; color:#5c636b; border-color:var(--border)}
+  .btn.gh{background:transparent; color:var(--muted); font-weight:600; padding:6px 4px}
+  .btn.gh:hover{color:var(--accent)}
+
+  /* ── 트리 공통 ── */
+  .tree{font-size:13px}
+  .tr{display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:8px; min-height:31px}
+  .tr:hover{background:var(--surface2)}
+  .tr.d1{margin-left:0} .tr.d2{margin-left:19px} .tr.d3{margin-left:38px}
+  .tr .cb{width:15px; height:15px; border-radius:4.5px; border:1.5px solid #ccd2da; background:#fff;
+    flex:none; display:flex; align-items:center; justify-content:center; cursor:pointer}
+  .tr .cb.on{background:var(--accent); border-color:var(--accent)}
+  .tr .cb.on::after{content:""; width:7px; height:4px; border-left:1.6px solid #fff;
+    border-bottom:1.6px solid #fff; transform:rotate(-45deg) translate(0,-1px)}
+  .tr .fi{flex:none; color:var(--faint); display:flex}
+  .tr .nm{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500}
+  .tr .ct{font-size:11.5px; color:var(--faint); flex:none}
+  .tr.off .nm,.tr.off .ct{color:var(--faint)} .tr.off .fi{opacity:.5}
+  .tr .rt{margin-left:auto; flex:none}
+  .grp{padding:9px 9px 4px; font-size:10.5px; font-weight:800; letter-spacing:.06em; color:var(--faint)}
+
+  /* 역할 배지 */
+  .role{display:inline-flex; align-items:center; gap:4px; height:23px; padding:0 7px; border-radius:7px;
+    font-size:11px; font-weight:700; letter-spacing:-.01em; border:1px solid transparent; cursor:pointer;
+    font-family:inherit; background:var(--surface2); color:var(--muted)}
+  .role.sp{background:var(--accent-weak); color:var(--accent); border-color:var(--lav)}
+  .role.co{background:#fff; color:#5c636b; border-color:var(--border)}
+  .role.mg{background:#fff; color:var(--faint); border-color:var(--border); font-weight:600}
+  .role.ex{background:transparent; color:var(--faint); border-color:transparent}
+  .role .cr{opacity:.55}
+  .hint{font-size:11px; color:var(--faint); margin-left:auto; flex:none}
+  .tr .rt + .hint, .tr .hint + .rt{margin-left:8px}
+
+  /* ══════ A안 ══════ */
+  #a .dlg{width:470px}
+  #a .body{padding:10px 12px 4px; max-height:334px; overflow-y:auto}
+  #a .rule{margin:11px 12px 0; padding:9px 11px; background:var(--bg); border:1px solid var(--border);
+    border-radius:9px; font-size:11.5px; color:var(--muted); line-height:1.55}
+  #a .rule b{color:var(--ink)}
+
+  /* ══════ B안 ══════ */
+  #b .dlg{width:730px}
+  #b .cols{display:flex; border-top:1px solid var(--border); margin-top:15px}
+  #b .lft{width:336px; flex:none; border-right:1px solid var(--border); display:flex; flex-direction:column}
+  #b .rgt{flex:1; min-width:0; background:var(--bg); display:flex; flex-direction:column}
+  #b .ph{display:flex; align-items:center; gap:6px; padding:9px 13px 8px; font-size:11px;
+    font-weight:800; letter-spacing:.05em; color:var(--faint)}
+  #b .ph .n{margin-left:auto; font-weight:700; letter-spacing:0; font-size:11px}
+  #b .lst{padding:2px 8px 10px; overflow-y:auto; height:344px}
+  #b .pv{padding:8px 12px 12px; overflow-y:auto; height:344px}
+
+  /* 미리보기: 스페이스 카드 + 컬렉션 줄 */
+  .psp{background:#fff; border:1px solid var(--border-card); border-radius:10px; padding:9px 10px;
+    margin-bottom:8px; box-shadow:0 1px 2px rgba(20,30,60,.03)}
+  .psp .sh{display:flex; align-items:center; gap:6px; margin-bottom:8px}
+  .psp .si{width:16px; height:16px; border-radius:5px; background:var(--accent-weak);
+    border:1px solid var(--lav); flex:none}
+  .psp .sn{font-size:12.5px; font-weight:700; letter-spacing:-.01em}
+  .psp .sm{font-size:11px; color:var(--faint); margin-left:auto}
+  .psp .cls{display:flex; flex-direction:column; gap:5px}
+  .pco{display:flex; align-items:center; gap:7px; border:1px solid var(--border-card); border-radius:8px;
+    background:var(--bg); padding:6px 8px}
+  .pco .ci{width:9px; height:9px; border-radius:3px; background:var(--lav); flex:none}
+  .pco .ci.o{background:var(--amber)} .pco .ci.g{background:var(--green)}
+  .pco .cn{font-size:11.5px; font-weight:600; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+  .pco .cc{font-size:11px; color:var(--faint); margin-left:auto; flex:none}
+  /* 중복 제거로 빠진 개수 */
+  .pco .dup{font-size:10px; font-weight:700; color:#a13030; background:#fdeeee;
+    border:1px solid #f5d0d0; border-radius:5px; padding:1px 5px; flex:none; margin-left:auto}
+  .pco .dup + .cc{margin-left:6px}
+  .pco.shared .cn{color:#5c636b; font-weight:600}
+  /* 미리보기 숨김. 트리 행의 .off(회색 처리)와 겹치지 않게 별도 클래스를 쓴다. */
+  .hid{display:none}
+  .pempty{padding:26px 10px; text-align:center; font-size:11.5px; color:var(--faint); line-height:1.6}
+
+  /* ══════ C안 ══════ */
+  #c .two{display:flex; gap:18px; align-items:flex-start; position:relative; z-index:2}
+  #c .dlg{width:376px}
+  #c .steps{display:flex; align-items:center; gap:6px; margin-top:11px}
+  #c .st{height:3px; border-radius:2px; background:var(--surface2); flex:1}
+  #c .st.on{background:var(--accent)}
+  #c .stl{font-size:11px; font-weight:700; color:var(--faint); flex:none}
+  #c .stl.on{color:var(--accent)}
+  #c .body{padding:12px 10px 4px; max-height:300px; overflow-y:auto}
+  #c .cap{font-size:11px; color:var(--faint); padding:6px 10px 3px; font-weight:700; letter-spacing:.04em}
+  #c .spsel{display:flex; align-items:center; gap:9px; padding:9px 10px; border:1px solid var(--border);
+    border-radius:10px; background:#fff; margin:0 2px 7px; cursor:pointer}
+  #c .spsel.on{border-color:var(--lav); background:var(--accent-weak)}
+  #c .spsel .ico{width:26px; height:26px; border-radius:8px; flex:none; background:var(--surface2);
+    display:flex; align-items:center; justify-content:center; color:var(--muted)}
+  #c .spsel.on .ico{background:var(--accent); color:#fff}
+  #c .spsel .tx{min-width:0}
+  #c .spsel .t{font-size:12.5px; font-weight:700; display:block}
+  #c .spsel .s{font-size:11px; color:var(--muted); margin-top:1px; display:block}
+  #c .arrow{align-self:center; color:#fff; opacity:.5; z-index:2; flex:none}
+
+  /* 안내 줄 */
+  .warn{display:flex; gap:7px; align-items:flex-start; margin:8px 12px 2px; padding:8px 10px;
+    background:#fff8ea; border:1px solid #f2e0b8; border-radius:9px; font-size:11.5px;
+    color:#7a5a15; line-height:1.5}
+  .warn.info{background:var(--accent-weak); border-color:var(--lav); color:#31459c}
+  .warn svg{flex:none; margin-top:1px}
+
+  /* ══════ 정한 규칙 카드 ══════ */
+  .rules{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start}
+  .rc{background:#fff; border:1px solid var(--lav); border-radius:12px; padding:15px 16px 16px;
+    box-shadow:0 8px 22px rgba(59,91,219,.11)}
+  .rc .rt2{display:flex; align-items:center; gap:7px; margin-bottom:3px}
+  .rc .pill{font-size:10px; font-weight:800; padding:2px 8px; border-radius:7px;
+    background:var(--accent); color:#fff}
+  .rc .rn{font-size:12.5px; font-weight:740; letter-spacing:-.01em}
+  .rc .rd{font-size:11.5px; color:var(--muted); line-height:1.6; margin-bottom:12px}
+  .rc .rd b{color:var(--ink)}
+  .rc .verdict{font-size:11.5px; line-height:1.6; color:var(--muted)}
+  .rc .verdict b{color:var(--ink)} .rc .verdict .bad{color:var(--danger)} .rc .verdict .good{color:#2b7a3d}
+
+  /* 규칙 카드 안 사이드바+보드 축소 도해 */
+  .mini{display:flex; gap:9px; background:var(--bg); border:1px solid var(--border);
+    border-radius:10px; padding:9px; margin-bottom:11px}
+  .mini .mside{width:106px; flex:none; background:#fff; border:1px solid var(--border-card);
+    border-radius:8px; padding:6px 5px}
+  .mini .mlbl{font-size:8.5px; font-weight:800; letter-spacing:.08em; color:var(--faint); padding:1px 5px 4px}
+  .mini .mrow{display:flex; align-items:center; gap:5px; padding:4px 5px; border-radius:6px;
+    font-size:10.5px; color:#495057; font-weight:500}
+  .mini .mrow.on{background:var(--accent-weak); color:var(--accent); font-weight:700}
+  .mini .mrow i{width:9px; height:9px; border-radius:3px; background:var(--surface2);
+    border:1px solid var(--border-card); flex:none}
+  .mini .mrow.on i{background:var(--accent); border-color:var(--accent)}
+  .mini .mboard{flex:1; min-width:0; background:#fff; border:1px solid var(--border-card);
+    border-radius:8px; padding:7px}
+  .mini .mcol{display:flex; align-items:center; gap:6px; border:1px solid var(--border-card);
+    border-radius:6px; background:var(--bg); padding:4px 6px; margin-bottom:4px; font-size:10.5px}
+  .mini .mcol:last-child{margin-bottom:0}
+  .mini .mcol s{margin-left:auto; color:var(--faint); text-decoration:none; font-size:10px}
+  .mini .mcol.shr{border-color:var(--lav); background:var(--accent-weak); color:var(--accent); font-weight:700}
+
+  /* 중복 제거 도해 */
+  .dedup{background:var(--bg); border:1px solid var(--border); border-radius:10px;
+    padding:11px; margin-bottom:11px; font-size:10.5px}
+  .dedup .dr{display:flex; align-items:center; gap:7px; padding:4px 6px; border-radius:6px;
+    background:#fff; border:1px solid var(--border-card); margin-bottom:5px}
+  .dedup .dr:last-child{margin-bottom:0}
+  .dedup .dr .p{color:var(--faint); flex:none}
+  .dedup .dr .u{font-family:ui-monospace,Menlo,monospace; font-size:10px; color:#495057;
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .dedup .dr .vd{margin-left:auto; flex:none; font-weight:800; font-size:9.5px;
+    padding:1.5px 6px; border-radius:5px}
+  .dedup .dr .vd.keep{background:#eaf6ec; color:#2b7a3d; border:1px solid #c5e3cb}
+  .dedup .dr .vd.drop{background:#fdeeee; color:#a13030; border:1px solid #f5d0d0}
+
+  @media (max-width:900px){ .rules{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Chrome 북마크 가져오기 — 폴더 매핑을 사용자가 직접 지정하는 설정 UI</h1>
+  <p class="lead">
+    tablign은 <b>스페이스 → 컬렉션 → 링크</b> 3단인데 Chrome 북마크는 폴더가 임의 깊이로 중첩된다.
+    그래서 설정 UI가 답해야 하는 질문은 세 개다 —
+    <b>① 어떤 폴더를 가져올지</b>, <b>② 어떤 폴더가 스페이스인지</b>, <b>③ 깊이가 안 맞는 폴더는 어떻게 처리할지.</b>
+  </p>
+  <p class="lead">
+    세 시안 모두 아래 <b>같은 북마크 트리</b>를 쓴다 — 깊이 3단(<code>개발 › React › Hooks</code>),
+    <b>하위 폴더 없이 링크만 든 1단 폴더</b>(<code>뉴스</code>, <code>나중에 읽기</code>),
+    하위 폴더와 링크가 섞인 폴더(<code>개발</code>), 폴더에 안 담긴 루트 직속 링크,
+    <b>여러 폴더에 중복으로 들어간 URL</b>까지 실제로 흔한 형태를 넣었다.
+    <b>B안은 체크박스가 실제로 동작해서 오른쪽 결과가 바뀐다.</b>
+  </p>
+
+  <!-- ══════════════════════════════════════ 정한 규칙 ══════════════════════════════════════ -->
+  <h2 id="r-t"><span class="badge fixed">정한 규칙</span>1단 폴더는 무조건 스페이스 · 중복 URL 제거</h2>
+  <p class="sub">
+    앞선 논의에서 갈렸던 두 지점을 이렇게 정했다. 아래 세 시안은 모두 이 규칙을 적용한 상태다.
+  </p>
+
+  <div class="rules">
+    <div class="rc">
+      <div class="rt2"><span class="pill">규칙 ①</span><span class="rn">1단 폴더 = 스페이스, 직속 링크는 <code>공유 폴더</code>로</span></div>
+      <p class="rd">
+        1단 폴더는 하위 폴더가 있든 없든 <b>모두 스페이스</b>가 된다.
+        스페이스는 링크를 직접 담을 수 없으니, <b>폴더에 직접 들어있던 링크만 모아</b>
+        <code>공유 폴더</code>라는 컬렉션 하나로 넣는다.
+        <code>뉴스</code>처럼 하위 폴더가 아예 없는 폴더는 <code>공유 폴더</code> 하나만 갖는다.
+      </p>
+      <div class="mini">
+        <div class="mside">
+          <div class="mlbl">스페이스</div>
+          <div class="mrow"><i></i>개발</div>
+          <div class="mrow"><i></i>디자인</div>
+          <div class="mrow"><i></i>회사</div>
+          <div class="mrow on"><i></i>뉴스</div>
+          <div class="mrow"><i></i>북마크바</div>
+        </div>
+        <div class="mboard">
+          <div class="mlbl">개발 보드</div>
+          <div class="mcol"><span>React</span><s>8</s></div>
+          <div class="mcol"><span>React/Hooks</span><s>5</s></div>
+          <div class="mcol"><span>Node</span><s>5</s></div>
+          <div class="mcol shr"><span>공유 폴더</span><s>3</s></div>
+          <div class="mlbl" style="padding-top:7px">뉴스 보드</div>
+          <div class="mcol shr"><span>공유 폴더</span><s>10</s></div>
+        </div>
+      </div>
+      <p class="verdict">
+        <span class="good">이름이 겹치지 않는다</span> — <code>뉴스 › 뉴스</code>가 아니라 <code>뉴스 › 공유 폴더</code>다.
+        폴더 직속 링크가 어느 보드에서든 <b>항상 같은 이름·같은 자리</b>에 있으니 찾는 규칙이 하나로 고정된다.
+        <b>받아들인 비용</b>: 평탄한 폴더가 많은 사람은 스페이스가 그만큼 늘어난다(사이드바가 길어짐).
+      </p>
+    </div>
+
+    <div class="rc">
+      <div class="rt2"><span class="pill">규칙 ②</span><span class="rn">같은 URL은 한 번만 담는다</span></div>
+      <p class="rd">
+        여러 폴더에 같은 링크를 넣어둔 경우, <b>트리 순서상 처음 만난 것만</b> 남기고 나머지는 버린다.
+        Chrome 북마크는 원본이 그대로 남으니 잃는 건 없다.
+        빠진 개수는 미리보기와 푸터에 <b>숫자로 드러낸다</b> — 조용히 사라지면 안 된다.
+      </p>
+      <div class="dedup">
+        <div class="dr"><span class="p">개발 › React</span>
+          <span class="u">react.dev/reference/hooks</span><span class="vd keep">남김</span></div>
+        <div class="dr"><span class="p">개발 › Node</span>
+          <span class="u">react.dev/reference/hooks</span><span class="vd drop">중복</span></div>
+        <div class="dr"><span class="p">디자인 › 레퍼런스</span>
+          <span class="u">figma.com/community</span><span class="vd keep">남김</span></div>
+        <div class="dr"><span class="p">뉴스</span>
+          <span class="u">figma.com/community</span><span class="vd drop">중복</span></div>
+      </div>
+      <p class="verdict">
+        비교는 <b>URL 문자열 기준</b>이다. <code>?utm_source=</code> 같은 추적 파라미터나 끝의 <code>/</code>까지
+        정규화해서 볼지는 <span class="bad">아직 안 정했다</span> — 정규화를 세게 하면 의도적으로 다르게 저장한 링크까지 합쳐질 수 있다.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ A안 ══════════════════════════════════════════════ -->
+  <h2 id="a-t"><span class="badge">A안</span>단일 트리 + 역할 배지</h2>
+  <p class="sub">폴더 하나에 배지 하나. 배지를 누르면 <b>스페이스 / 컬렉션 / 제외</b>가 순환한다. 한 화면, 스크롤 하나.</p>
+
+  <div class="stage" id="a">
+    <div class="dlg">
+      <div class="dh">
+        <div class="dt">북마크 가져오기</div>
+        <div class="ds">폴더 14개 · 북마크 584개를 찾았어요. 어떻게 담을지 정해주세요.</div>
+      </div>
+
+      <div class="rule">
+        <b>1단 폴더</b>가 스페이스, 그 안쪽 폴더가 컬렉션이 돼요.
+        폴더에 직접 들어있던 링크는 <b>공유 폴더</b> 컬렉션으로 모여요.
+      </div>
+
+      <div class="body">
+        <div class="grp">북마크바</div>
+        <div class="tree">
+          <div class="tr d1"><span class="cb on"></span><span class="fi">📁</span>
+            <span class="nm">개발</span><span class="ct">3</span>
+            <span class="rt"><button class="role sp">스페이스 <span class="cr">▾</span></button></span></div>
+          <div class="tr d2"><span class="cb on"></span><span class="fi">📁</span>
+            <span class="nm">React</span><span class="ct">8</span>
+            <span class="rt"><button class="role co">컬렉션 <span class="cr">▾</span></button></span></div>
+          <div class="tr d3"><span class="cb on"></span><span class="fi">📁</span>
+            <span class="nm">Hooks</span><span class="ct">5</span>
+            <span class="rt"><button class="role mg">React/Hooks <span class="cr">▾</span></button></span></div>
+          <div class="tr d2"><span class="cb on"></span><span class="fi">📁</span>
+            <span class="nm">Node</span><span class="ct">6</span>
+            <span class="rt"><button class="role co">컬렉션 <span class="cr">▾</span></button></span></div>
+
+          <div class="tr d1"><span class="cb on"></span><span class="fi">📁</span>
+            <span class="nm">디자인</span><span class="ct">0</span>
+            <span class="rt"><button class="role sp">스페이스 <span class="cr">▾</span></button></span></div>
+          <div class="tr d2"><span class="cb on"></span><span class="fi">📁</span>
+            <span class="nm">레퍼런스</span><span class="ct">24</span>
+            <span class="rt"><button class="role co">컬렉션 <span class="cr">▾</span></button></span></div>
+          <div class="tr d2"><span class="cb on"></span><span class="fi">📁</span>
+            <span class="nm">폰트</span><span class="ct">7</span>
+            <span class="rt"><button class="role co">컬렉션 <span class="cr">▾</span></button></span></div>
+
+          <div class="tr d1"><span class="cb on"></span><span class="fi">📁</span>
+            <span class="nm">회사</span><span class="ct">0</span>
+            <span class="rt"><button class="role sp">스페이스 <span class="cr">▾</span></button></span></div>
+          <div class="tr d2"><span class="cb on"></span><span class="fi">📁</span>
+            <span class="nm">사내문서</span><span class="ct">12</span>
+            <span class="rt"><button class="role co">컬렉션 <span class="cr">▾</span></button></span></div>
+          <div class="tr d2"><span class="cb on"></span><span class="fi">📁</span>
+            <span class="nm">대시보드</span><span class="ct">4</span>
+            <span class="rt"><button class="role co">컬렉션 <span class="cr">▾</span></button></span></div>
+
+          <div class="tr d1"><span class="cb on"></span><span class="fi">📁</span>
+            <span class="nm">뉴스</span><span class="ct">12</span>
+            <span class="rt"><button class="role sp">스페이스 <span class="cr">▾</span></button></span></div>
+
+          <div class="tr d1 off"><span class="cb"></span><span class="fi">📁</span>
+            <span class="nm">나중에 읽기</span><span class="ct">156</span>
+            <span class="rt"><button class="role ex">제외 <span class="cr">▾</span></button></span></div>
+
+          <div class="tr d1"><span class="cb on"></span><span class="fi">⭐</span>
+            <span class="nm">폴더에 없는 링크</span><span class="ct">5</span>
+            <span class="rt"><button class="role sp">북마크바 <span class="cr">▾</span></button></span></div>
+        </div>
+
+        <div class="grp">기타 북마크</div>
+        <div class="tree">
+          <div class="tr d1 off"><span class="cb"></span><span class="fi">📁</span>
+            <span class="nm">예전에 본 것</span><span class="ct">340</span>
+            <span class="rt"><button class="role ex">제외 <span class="cr">▾</span></button></span></div>
+          <div class="tr d1 off"><span class="cb"></span><span class="fi">📁</span>
+            <span class="nm">임시</span><span class="ct">2</span>
+            <span class="rt"><button class="role ex">제외 <span class="cr">▾</span></button></span></div>
+        </div>
+      </div>
+
+      <div class="warn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#b8860b" stroke-width="2.2"
+          stroke-linecap="round"><path d="M12 9v5M12 17.5v.01"/><circle cx="12" cy="12" r="9.5"/></svg>
+        <span>링크 100개가 넘는 폴더(<b>나중에 읽기</b>, <b>예전에 본 것</b>)는 기본으로 빼뒀어요. 필요하면 켜세요.</span>
+      </div>
+
+      <div class="df">
+        <span class="sum">스페이스 <b>5</b> · 컬렉션 <b>10</b> · 링크 <b>82</b><br>
+          <span style="font-size:11px">중복 URL 4개는 한 번만 담아요</span></span>
+        <button class="btn out">취소</button>
+        <button class="btn pri">가져오기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="why">
+    <b>좋은 점</b> — 화면 하나, 스크롤 하나. 지금 있는 다이얼로그들(<code>ImportCodeDialog</code>)과 결이 같아서 구현이 가장 가볍다.
+    3단 폴더의 <code>React/Hooks</code> 합침 규칙이 배지에 그대로 적혀서 <span class="good">동작이 숨지 않는다.</span><br>
+    <b>약한 점</b> — <span class="bad">결과를 상상해야 한다.</span>
+    트리에는 <code>공유 폴더</code>라는 컬렉션이 어디에도 안 보이는데 푸터는 컬렉션 <b>10개</b>라고 말한다 —
+    직속 링크 3개가 컬렉션 하나로 빠지는 걸 머리로 계산해야 검산이 된다.
+    <span class="bad">중복 4개가 어느 컬렉션에서 빠졌는지도 알 수 없다.</span>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ B안 ══════════════════════════════════════════════ -->
+  <h2 id="b-t"><span class="badge rec">B안 · 추천</span>2단 — 왼쪽 트리, 오른쪽 결과 미리보기</h2>
+  <p class="sub">
+    왼쪽에서 켜고 끄면 <b>오른쪽에 만들어질 실제 보드가 즉시 바뀐다.</b>
+    아래 시안은 체크박스가 <b>정말 동작</b>한다 — 눌러보세요.
+  </p>
+
+  <div class="stage" id="b">
+    <div class="dlg">
+      <div class="dh">
+        <div class="dt">북마크 가져오기</div>
+        <div class="ds">폴더 14개 · 북마크 584개를 찾았어요. 왼쪽에서 고르면 오른쪽에 결과가 보여요.</div>
+      </div>
+
+      <div class="cols">
+        <div class="lft">
+          <div class="ph">내 북마크 <span class="n" id="b-picked">폴더 12개 켜짐</span></div>
+          <div class="lst">
+            <div class="tree" id="b-tree">
+              <div class="grp">북마크바</div>
+
+              <div class="tr d1" data-id="dev" data-space="dev"><span class="cb on"></span><span class="fi">📁</span>
+                <span class="nm">개발</span><span class="ct">3</span>
+                <span class="rt"><button class="role sp">스페이스 <span class="cr">▾</span></button></span></div>
+              <div class="tr d2" data-id="react"><span class="cb on"></span><span class="fi">📁</span>
+                <span class="nm">React</span><span class="ct">8</span></div>
+              <div class="tr d3" data-id="hooks"><span class="cb on"></span><span class="fi">📁</span>
+                <span class="nm">Hooks</span><span class="ct">5</span>
+                <span class="hint">React/Hooks</span></div>
+              <div class="tr d2" data-id="node"><span class="cb on"></span><span class="fi">📁</span>
+                <span class="nm">Node</span><span class="ct">6</span></div>
+
+              <div class="tr d1" data-id="design" data-space="design"><span class="cb on"></span><span class="fi">📁</span>
+                <span class="nm">디자인</span><span class="ct">0</span>
+                <span class="rt"><button class="role sp">스페이스 <span class="cr">▾</span></button></span></div>
+              <div class="tr d2" data-id="ref"><span class="cb on"></span><span class="fi">📁</span>
+                <span class="nm">레퍼런스</span><span class="ct">24</span></div>
+              <div class="tr d2" data-id="font"><span class="cb on"></span><span class="fi">📁</span>
+                <span class="nm">폰트</span><span class="ct">7</span></div>
+
+              <div class="tr d1" data-id="corp" data-space="corp"><span class="cb on"></span><span class="fi">📁</span>
+                <span class="nm">회사</span><span class="ct">0</span>
+                <span class="rt"><button class="role sp">스페이스 <span class="cr">▾</span></button></span></div>
+              <div class="tr d2" data-id="docs"><span class="cb on"></span><span class="fi">📁</span>
+                <span class="nm">사내문서</span><span class="ct">12</span></div>
+              <div class="tr d2" data-id="dash"><span class="cb on"></span><span class="fi">📁</span>
+                <span class="nm">대시보드</span><span class="ct">4</span></div>
+
+              <div class="tr d1" data-id="news"><span class="cb on"></span><span class="fi">📁</span>
+                <span class="nm">뉴스</span><span class="ct">12</span>
+                <span class="rt"><button class="role sp">스페이스 <span class="cr">▾</span></button></span></div>
+
+              <div class="tr d1 off" data-id="later"><span class="cb"></span><span class="fi">📁</span>
+                <span class="nm">나중에 읽기</span><span class="ct">156</span>
+                <span class="rt"><button class="role sp">스페이스 <span class="cr">▾</span></button></span></div>
+
+              <div class="tr d1" data-id="loose"><span class="cb on"></span><span class="fi">⭐</span>
+                <span class="nm">폴더에 없는 링크</span><span class="ct">5</span>
+                <span class="rt"><button class="role sp">북마크바 <span class="cr">▾</span></button></span></div>
+
+              <div class="grp">기타 북마크</div>
+              <div class="tr d1 off" data-id="old"><span class="cb"></span><span class="fi">📁</span>
+                <span class="nm">예전에 본 것</span><span class="ct">340</span>
+                <span class="rt"><button class="role sp">스페이스 <span class="cr">▾</span></button></span></div>
+              <div class="tr d1 off" data-id="tmp"><span class="cb"></span><span class="fi">📁</span>
+                <span class="nm">임시</span><span class="ct">2</span>
+                <span class="rt"><button class="role sp">스페이스 <span class="cr">▾</span></button></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rgt">
+          <div class="ph">이렇게 만들어져요 <span class="n" id="b-cnt">스페이스 5 · 컬렉션 10</span></div>
+          <div class="pv" id="b-pv">
+
+            <div class="psp" data-sp="dev">
+              <div class="sh"><span class="si"></span><span class="sn">개발</span><span class="sm">컬렉션 4</span></div>
+              <div class="cls">
+                <div class="pco" data-src="react"><span class="ci"></span><span class="cn">React</span><span class="cc">8</span></div>
+                <div class="pco" data-src="hooks"><span class="ci"></span><span class="cn">React/Hooks</span><span class="cc">5</span></div>
+                <div class="pco" data-src="node"><span class="ci o"></span><span class="cn">Node</span><span class="cc">5</span></div>
+                <div class="pco shared" data-src="dev"><span class="ci g"></span><span class="cn">공유 폴더</span><span class="cc">3</span></div>
+              </div>
+            </div>
+
+            <div class="psp" data-sp="design">
+              <div class="sh"><span class="si"></span><span class="sn">디자인</span><span class="sm">컬렉션 2</span></div>
+              <div class="cls">
+                <div class="pco" data-src="ref"><span class="ci"></span><span class="cn">레퍼런스</span><span class="cc">24</span></div>
+                <div class="pco" data-src="font"><span class="ci o"></span><span class="cn">폰트</span><span class="cc">7</span></div>
+              </div>
+            </div>
+
+            <div class="psp" data-sp="corp">
+              <div class="sh"><span class="si"></span><span class="sn">회사</span><span class="sm">컬렉션 2</span></div>
+              <div class="cls">
+                <div class="pco" data-src="docs"><span class="ci g"></span><span class="cn">사내문서</span><span class="cc">12</span></div>
+                <div class="pco" data-src="dash"><span class="ci"></span><span class="cn">대시보드</span><span class="cc">4</span></div>
+              </div>
+            </div>
+
+            <div class="psp" data-sp="news">
+              <div class="sh"><span class="si"></span><span class="sn">뉴스</span><span class="sm">컬렉션 1</span></div>
+              <div class="cls">
+                <div class="pco shared" data-src="news"><span class="ci"></span><span class="cn">공유 폴더</span><span class="cc">10</span></div>
+              </div>
+            </div>
+
+            <div class="psp" data-sp="bar">
+              <div class="sh"><span class="si"></span><span class="sn">북마크바</span><span class="sm">컬렉션 1</span></div>
+              <div class="cls">
+                <div class="pco shared" data-src="loose"><span class="ci g"></span><span class="cn">공유 폴더</span><span class="cc">4</span></div>
+              </div>
+            </div>
+
+            <div class="psp hid" data-sp="later">
+              <div class="sh"><span class="si"></span><span class="sn">나중에 읽기</span><span class="sm">컬렉션 1</span></div>
+              <div class="cls">
+                <div class="pco shared" data-src="later"><span class="ci o"></span><span class="cn">공유 폴더</span><span class="cc">156</span></div>
+              </div>
+            </div>
+
+            <div class="psp hid" data-sp="old">
+              <div class="sh"><span class="si"></span><span class="sn">예전에 본 것</span><span class="sm">컬렉션 1</span></div>
+              <div class="cls">
+                <div class="pco shared" data-src="old"><span class="ci"></span><span class="cn">공유 폴더</span><span class="cc">340</span></div>
+              </div>
+            </div>
+
+            <div class="psp hid" data-sp="tmp">
+              <div class="sh"><span class="si"></span><span class="sn">임시</span><span class="sm">컬렉션 1</span></div>
+              <div class="cls">
+                <div class="pco shared" data-src="tmp"><span class="ci g"></span><span class="cn">공유 폴더</span><span class="cc">2</span></div>
+              </div>
+            </div>
+
+            <div class="pempty hid" id="b-empty">가져올 폴더를 왼쪽에서 골라주세요.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="df">
+        <span class="sum" id="b-sum"></span>
+        <button class="btn out">취소</button>
+        <button class="btn pri">가져오기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="why">
+    <b>좋은 점</b> — 마이그레이션에서 사람이 제일 무서워하는 건 "<b>내 북마크가 어떻게 망가질지 모르겠다</b>"인데,
+    이 시안은 <span class="good">결과를 상상하지 않게 만든다.</span>
+    <code>공유 폴더</code>가 각 보드에 실제로 그려지니 규칙 ①을 글로 설명할 필요가 없고,
+    중복으로 빠진 링크는 해당 컬렉션에 <b>−n</b> 배지로 붙어서 <span class="good">어디서 몇 개가 빠졌는지가 보인다</span> —
+    A안이 못 하는 부분이다.<br>
+    <b>약한 점</b> — 다이얼로그가 730px로 넓다(뉴탭 전체 화면이라 자리는 충분).
+    미리보기 계산 로직이 실제 임포트 로직과 <b>같은 함수</b>여야 한다 — 어긋나면 거짓말하는 UI가 된다.
+    다만 이건 순수 함수 <code>planImport(tree, config) → Plan</code> 하나로 뽑으면 오히려 테스트가 쉬워지는 쪽이다.
+  </div>
+
+  <!-- ══════════════════════════════════════════════ C안 ══════════════════════════════════════════════ -->
+  <h2 id="c-t"><span class="badge">C안</span>2스텝 마법사</h2>
+  <p class="sub">한 번에 한 질문만. <b>1단계</b> 스페이스로 쓸 폴더 고르기 → <b>2단계</b> 그 안 컬렉션 다듬기.</p>
+
+  <div class="stage" id="c">
+    <div class="two">
+      <div class="dlg">
+        <div class="dh">
+          <div class="dt">어떤 폴더를 가져올까요?</div>
+          <div class="ds">고른 폴더가 각각 스페이스(보드 하나)가 돼요.</div>
+          <div class="steps">
+            <span class="stl on">1</span><span class="st on"></span>
+            <span class="stl">2</span><span class="st"></span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="cap">북마크바</div>
+          <div class="spsel on"><span class="ico">📁</span><span class="tx">
+            <span class="t">개발</span><span class="s">하위 폴더 3개 · 링크 22개</span></span></div>
+          <div class="spsel on"><span class="ico">📁</span><span class="tx">
+            <span class="t">디자인</span><span class="s">하위 폴더 2개 · 링크 31개</span></span></div>
+          <div class="spsel on"><span class="ico">📁</span><span class="tx">
+            <span class="t">회사</span><span class="s">하위 폴더 2개 · 링크 16개</span></span></div>
+          <div class="spsel on"><span class="ico">📁</span><span class="tx">
+            <span class="t">뉴스</span><span class="s">링크 12개 · 공유 폴더 하나로</span></span></div>
+          <div class="spsel"><span class="ico">📁</span><span class="tx">
+            <span class="t">나중에 읽기</span><span class="s">링크 156개 · 미리 빼뒀어요</span></span></div>
+          <div class="spsel on"><span class="ico">⭐</span><span class="tx">
+            <span class="t">북마크바</span><span class="s">폴더에 없는 링크 5개</span></span></div>
+          <div class="cap" style="margin-top:6px">기타 북마크</div>
+          <div class="spsel"><span class="ico">📁</span><span class="tx">
+            <span class="t">예전에 본 것</span><span class="s">링크 340개 · 미리 빼뒀어요</span></span></div>
+          <div class="spsel"><span class="ico">📁</span><span class="tx">
+            <span class="t">임시</span><span class="s">링크 2개</span></span></div>
+        </div>
+        <div class="df">
+          <span class="sum">스페이스 <b>5</b>개</span>
+          <button class="btn gh">취소</button>
+          <button class="btn pri">다음</button>
+        </div>
+      </div>
+
+      <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+
+      <div class="dlg">
+        <div class="dh">
+          <div class="dt">컬렉션을 확인해 주세요</div>
+          <div class="ds">스페이스 안쪽 폴더가 컬렉션이 돼요. 뺄 것만 끄세요.</div>
+          <div class="steps">
+            <span class="stl on">1</span><span class="st on"></span>
+            <span class="stl on">2</span><span class="st on"></span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="cap">개발</div>
+          <div class="tree">
+            <div class="tr"><span class="cb on"></span><span class="fi">📁</span>
+              <span class="nm">React</span><span class="ct">8</span></div>
+            <div class="tr"><span class="cb on"></span><span class="fi">📁</span>
+              <span class="nm">React/Hooks</span><span class="ct">5</span>
+              <span class="hint">3단 폴더</span></div>
+            <div class="tr"><span class="cb on"></span><span class="fi">📁</span>
+              <span class="nm">Node</span><span class="ct">5</span>
+              <span class="hint">중복 1개 제외</span></div>
+            <div class="tr"><span class="cb on"></span><span class="fi">🗂</span>
+              <span class="nm">공유 폴더</span><span class="ct">3</span></div>
+          </div>
+          <div class="cap">디자인</div>
+          <div class="tree">
+            <div class="tr"><span class="cb on"></span><span class="fi">📁</span>
+              <span class="nm">레퍼런스</span><span class="ct">24</span></div>
+            <div class="tr"><span class="cb on"></span><span class="fi">📁</span>
+              <span class="nm">폰트</span><span class="ct">7</span></div>
+          </div>
+          <div class="cap">회사</div>
+          <div class="tree">
+            <div class="tr"><span class="cb on"></span><span class="fi">📁</span>
+              <span class="nm">사내문서</span><span class="ct">12</span></div>
+            <div class="tr"><span class="cb on"></span><span class="fi">📁</span>
+              <span class="nm">대시보드</span><span class="ct">4</span></div>
+          </div>
+          <div class="cap">뉴스</div>
+          <div class="tree">
+            <div class="tr"><span class="cb on"></span><span class="fi">🗂</span>
+              <span class="nm">공유 폴더</span><span class="ct">10</span>
+              <span class="hint">중복 2개 제외</span></div>
+          </div>
+          <div class="cap">북마크바</div>
+          <div class="tree">
+            <div class="tr"><span class="cb on"></span><span class="fi">🗂</span>
+              <span class="nm">공유 폴더</span><span class="ct">4</span>
+              <span class="hint">중복 1개 제외</span></div>
+          </div>
+        </div>
+        <div class="df">
+          <span class="sum">컬렉션 <b>10</b> · 링크 <b>82</b></span>
+          <button class="btn gh">이전</button>
+          <button class="btn pri">가져오기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="why">
+    <b>좋은 점</b> — 한 화면에 질문이 하나뿐이라 <span class="good">폴더가 많아도 안 질린다.</span>
+    2단계에서 <code>공유 폴더</code>와 중복 제외 개수가 컬렉션 목록에 같이 나와서 A안보다 정직하다.
+    다이얼로그 폭(376px)도 지금 쓰는 것들과 같아서 이식이 쉽다.<br>
+    <b>약한 점</b> — <span class="bad">전체 결과를 끝까지 못 본다.</span> 2단계에서 1단계 선택을 후회하면 왕복해야 하고,
+    "다음"을 한 번 더 누르는 마찰이 온보딩 직후엔 이탈로 이어질 수 있다.
+    규칙 ①은 스페이스가 많아지는 쪽이라 <b>1단계 목록이 길어진다</b> — 스크롤 두 번 하는 마법사가 된다.
+  </div>
+
+  <h2 style="margin-top:44px">공통으로 정해둔 기본값</h2>
+  <div class="why" style="margin-top:6px">
+    시안 세 개가 모두 같은 전제를 깔고 있다. 이 기본값이 맞는지도 같이 봐주세요.
+    <ul>
+      <li><b>1단 폴더 = 스페이스.</b> 하위 폴더가 있든 없든 똑같이 적용한다. 사용자는 "고치는" 것만 한다 — 백지에서 지정하지 않는다.</li>
+      <li><b>폴더에 직접 들어있던 링크</b>는 <code>공유 폴더</code> 컬렉션으로 모인다. 직속 링크가 0개면 만들지 않는다.</li>
+      <li><b>루트 직속 링크</b>(폴더에 안 담긴 것)는 <code>북마크바</code> 스페이스의 <code>공유 폴더</code>가 된다.</li>
+      <li><b>3단 이하 폴더</b>는 <code>부모/자식</code> 이름으로 합쳐 컬렉션이 된다. 폴더가 사라지지도, 컬렉션이 폭발하지도 않는다.</li>
+      <li><b>같은 URL은 한 번만.</b> 트리 순서상 처음 만난 것만 남긴다. 빠진 개수는 컬렉션마다 <b>−n</b>으로 드러낸다.</li>
+      <li><b>링크 100개 넘는 폴더는 기본 해제.</b> 대개 "나중에 읽기" 같은 묘지라서, 켜면 첫 보드가 못 쓰게 된다.</li>
+      <li><b>빈 폴더는 트리에 아예 안 보인다</b>(링크 0개 + 하위 폴더 0개).</li>
+      <li>가져와도 <b>Chrome 북마크는 그대로 남는다.</b> 지우거나 옮기지 않는다 — 복사만.</li>
+    </ul>
+  </div>
+
+  <h2 style="margin-top:36px">아직 안 정한 것</h2>
+  <div class="why" style="margin-top:6px">
+    <ul>
+      <li><b><code>공유 폴더</code>라는 이름.</b> tablign엔 이미 공유(공유 코드·공유 스페이스·조직)가 있어서
+        "이 컬렉션은 공유된 것"으로 읽힐 수 있다. 후보: <code>모아둔 링크</code>, <code>기타</code>,
+        <code>폴더이름</code> 그대로.</li>
+      <li><b>URL 정규화 수준.</b> <code>?utm_source=</code>·끝의 <code>/</code>·<code>http↔https</code>까지 같게 볼지.
+        세게 하면 의도적으로 다르게 저장한 링크까지 합쳐진다.</li>
+      <li><b>4단 이상</b> 폴더. <code>부모/자식</code>만 붙이면 서로 다른 경로의 <code>A/B</code>가 충돌할 수 있다
+        (경로 전체를 쓸지, 번호를 붙일지).</li>
+      <li><b>가져오기 후 되돌리기.</b> 스페이스 5개가 한 번에 생기는데, 마음에 안 들면 하나씩 지워야 한다 —
+        "이번 가져오기 취소" 같은 되돌리기를 줄지.</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+// ── B안: 체크박스 → 오른쪽 미리보기 실시간 반영 ──
+(function () {
+  const stage = document.getElementById('b');
+  const tree = stage.querySelector('#b-tree');
+
+  // 폴더 id → { raw: 북마크 수, dupe: 다른 폴더에 이미 있어서 빠지는 수 }
+  const DATA = {
+    dev:{raw:3,dupe:0},   react:{raw:8,dupe:0},  hooks:{raw:5,dupe:0}, node:{raw:6,dupe:1},
+    design:{raw:0,dupe:0}, ref:{raw:24,dupe:0},  font:{raw:7,dupe:0},
+    corp:{raw:0,dupe:0},  docs:{raw:12,dupe:0},  dash:{raw:4,dupe:0},
+    news:{raw:12,dupe:2}, later:{raw:156,dupe:0}, loose:{raw:5,dupe:1},
+    old:{raw:340,dupe:0}, tmp:{raw:2,dupe:0},
+  };
+  // 스페이스 폴더 → 그 안 컬렉션 폴더 (스페이스를 끄면 함께 꺼진다)
+  const CHILDREN = { dev:['react','hooks','node'], design:['ref','font'], corp:['docs','dash'] };
+
+  // 트리에 행이 없는 id는 암시적 스페이스(북마크바) — 항상 켜진 것으로 본다.
+  function isOn(id) {
+    const row = tree.querySelector(`.tr[data-id="${id}"]`);
+    return !row || !row.classList.contains('off');
+  }
+
+  function render() {
+    let spaces = 0, cols = 0, links = 0, dupes = 0;
+
+    stage.querySelectorAll('.psp').forEach((card) => {
+      const spId = card.dataset.sp;
+      if (!isOn(spId)) { card.classList.add('hid'); return; }
+
+      let n = 0, sub = 0, dup = 0;
+      card.querySelectorAll('.pco').forEach((chip) => {
+        const src = chip.dataset.src;
+        // 스페이스 자신의 '공유 폴더' 칩은 직속 링크가 있을 때만 뜬다
+        const on = src === spId ? DATA[spId].raw > 0 : isOn(src);
+        chip.classList.toggle('hid', !on);
+        if (!on) return;
+        n++;
+        sub += DATA[src].raw - DATA[src].dupe;
+        dup += DATA[src].dupe;
+      });
+
+      // 컬렉션이 하나도 없는 스페이스는 만들지 않는다
+      card.classList.toggle('hid', n === 0);
+      if (n === 0) return;
+      card.querySelector('.sm').textContent = `컬렉션 ${n}`;
+      spaces++; cols += n; links += sub; dupes += dup;
+    });
+
+    stage.querySelector('#b-empty').classList.toggle('hid', spaces > 0);
+    stage.querySelector('#b-cnt').textContent = `스페이스 ${spaces} · 컬렉션 ${cols}`;
+    stage.querySelector('#b-picked').textContent =
+      `폴더 ${tree.querySelectorAll('.tr:not(.off)').length}개 켜짐`;
+    stage.querySelector('#b-sum').innerHTML = spaces
+      ? `링크 <b>${links}</b>개를 스페이스 <b>${spaces}</b>개로 가져와요`
+        + (dupes ? `<br><span style="font-size:11px">중복 URL ${dupes}개는 한 번만 담아요</span>` : '')
+      : `가져올 폴더가 없어요`;
+  }
+
+  // 중복으로 빠지는 개수를 컬렉션 칩에 −n 배지로 붙인다(정적 1회).
+  function markDupes() {
+    stage.querySelectorAll('.pco').forEach((chip) => {
+      const d = DATA[chip.dataset.src].dupe;
+      if (!d) return;
+      const badge = document.createElement('span');
+      badge.className = 'dup';
+      badge.textContent = `−${d}`;
+      badge.title = `다른 폴더에 같은 URL이 있어 ${d}개를 뺐어요`;
+      chip.insertBefore(badge, chip.querySelector('.cc'));
+    });
+  }
+
+  function setRow(row, on) {
+    row.classList.toggle('off', !on);
+    row.querySelector('.cb').classList.toggle('on', on);
+  }
+
+  tree.addEventListener('click', (e) => {
+    const row = e.target.closest('.tr');
+    if (!row) return;
+    const on = row.classList.contains('off'); // 토글 후 상태
+    setRow(row, on);
+    (CHILDREN[row.dataset.space] || []).forEach((kid) => {
+      setRow(tree.querySelector(`.tr[data-id="${kid}"]`), on);
+    });
+    render();
+  });
+
+  markDupes();
+  render();
+})();
+</script>
+</body>
+</html>
