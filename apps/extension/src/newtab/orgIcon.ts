@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 export const ICON_REF_BOX = 100;
 /** 박스 크기 대비 이모지 기준 글자 크기 비율(100%일 때). 모든 렌더 지점(레일·헤더·다이얼로그)이
  *  같은 비율을 써야 "설정한 크기"가 동일하게 보인다. 기본 이모지가 박스를 넉넉히 채우도록 잡음. */
-const ICON_EMOJI_RATIO = 0.68;
+const ICON_EMOJI_RATIO = 0.58;
 /** 이모지 렌더 폰트 스택 — 토스페이스 1순위, 없으면 시스템 컬러 이모지로 fallback. 모든 렌더 지점 공통. */
 export const ORG_ICON_FONT =
   '"Tossface", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';

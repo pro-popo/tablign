@@ -18,7 +18,8 @@ export interface OrgFormDialogProps {
 
 // 대표 색: 살짝 파스텔 톤 8색. 웜→쿨 순서(핑크·오렌지·옐로우 → 그린·틸·시안·블루·바이올렛).
 const SWATCHES = ["#F783AC", "#FFA94D", "#FFD43B", "#69DB7C", "#38D9A9", "#66D9E8", "#748FFC", "#9775FA"];
-const DEFAULT_COLOR = "#748FFC";
+// 조직 생성 기본 색 — 단색 스와치 첫 번째.
+const DEFAULT_COLOR = SWATCHES[0];
 // 그라데이션 프리셋 — 8색 휠의 인접 대표색을 이어붙인 135° 8종(웜→쿨 순환 완성). 문자열 포맷은 buildColorValue와 동일(라운드트립 시 링 유지).
 const GRADIENT_PRESETS = [
   "linear-gradient(135deg, #F783AC, #FFA94D)",
@@ -34,7 +35,7 @@ const isSolid = (c: string) => c.startsWith("#");
 
 // 아이콘 조정: 오프셋 한계(±, @100px 기준), 스케일(%) 범위.
 const ICON_OFFSET_MAX = 25;
-const ICON_SCALE_MIN = 60;
+const ICON_SCALE_MIN = 0;
 const ICON_SCALE_MAX = 200;
 // 이모지 빠른 선택 대표 칩(색상 프리셋과 대응). 그 외는 ＋(토스 피커)에서 고른다.
 const PRESET_EMOJIS = ["🚀", "💡", "🎯", "🏢", "🌱", "🎨"];
