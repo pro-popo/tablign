@@ -75,6 +75,26 @@ describe("fromTobyExport", () => {
     expect(fromTobyExport({ groups: [{ name: "A", lists: [] }] })).toEqual([]);
   });
 
+  it("그룹 이름의 Toby 접두어 'Import - '를 뗀다", () => {
+    const card = { url: "https://a.com/1", title: "A" };
+    const roots = fromTobyExport({ groups: [
+      { name: "Import - KB 검진대행 운영 솔루션", lists: [{ title: "L", cards: [card] }] },
+      { name: "Import-공백없음", lists: [{ title: "L", cards: [card] }] },
+      { name: "접두어 없음", lists: [{ title: "L", cards: [card] }] },
+      // 접두어를 떼면 빈 이름 → 원래 이름 유지
+      { name: "Import - ", lists: [{ title: "L", cards: [card] }] },
+      // 중간에 나오는 것은 건드리지 않는다
+      { name: "데이터 Import - 가이드", lists: [{ title: "L", cards: [card] }] },
+    ]});
+    expect(roots[0].children!.map((g) => g.title)).toEqual([
+      "KB 검진대행 운영 솔루션",
+      "공백없음",
+      "접두어 없음",
+      "Import - ",
+      "데이터 Import - 가이드",
+    ]);
+  });
+
   it("원소가 null이거나 배열이 아니어도 던지지 않고 살릴 수 있는 것만 살린다", () => {
     const roots = fromTobyExport({ groups: [
       null,

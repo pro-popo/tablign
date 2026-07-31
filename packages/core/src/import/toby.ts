@@ -14,6 +14,17 @@ interface TobyList { title?: string; cards?: TobyCard[] }
 interface TobyGroup { name?: string; lists?: TobyList[] }
 
 /**
+ * Toby가 다른 도구에서 가져올 때 그룹 이름 앞에 붙이는 접두어("Import - ")를 뗀다.
+ * 사용자가 지은 이름이 아니라 Toby의 흔적이므로 스페이스 이름에 남기지 않는다.
+ * 떼고 나면 빈 이름이 되는 경우엔 원래 이름을 그대로 둔다.
+ */
+function cleanGroupName(name: string | undefined): string {
+  const raw = name ?? "";
+  const cleaned = raw.replace(/^Import\s*-\s*/, "").trim();
+  return cleaned || raw;
+}
+
+/**
  * Toby 내보내기 JSON(파싱된 객체) → 정규화된 소스 트리.
  * 루트 하나("Toby", primary)를 만들어 group들이 1단 폴더(=스페이스 후보)가 되게 한다.
  * Chrome 쪽 fromChromeTree와 같은 정리 규칙: http/https가 아닌 카드와 빈 목록·빈 그룹은 버린다.
@@ -45,7 +56,7 @@ export function fromTobyExport(data: unknown): SourceNode[] {
       });
       if (cards.length) lists.push({ id: `toby:${gi}:${li}`, title: l?.title ?? "", children: cards });
     });
-    if (lists.length) children.push({ id: `toby:${gi}`, title: g?.name ?? "", children: lists });
+    if (lists.length) children.push({ id: `toby:${gi}`, title: cleanGroupName(g?.name), children: lists });
   });
 
   return children.length ? [{ id: "toby", title: "Toby", primary: true, children }] : [];
