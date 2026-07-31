@@ -11,9 +11,11 @@ export interface OrgHeaderProps {
   onOpenMembers: () => void;
   onEditOrg?: () => void;
   onDeleteOrg?: () => void;
+  /** 주면 메뉴 첫 항목으로 '가져오기'를 노출한다 */
+  onImport?: () => void;
 }
 
-export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg }: OrgHeaderProps) {
+export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, onImport }: OrgHeaderProps) {
   const isPersonal = org.is_personal;
   // 멤버는 조직 관리 권한이 없어 메뉴를 열 수 없으므로 톱니바퀴를 숨긴다.
   // 개인 조직은 프로필 설정(onEditOrg)이 있으면 톱니를 노출한다(멤버 개념이 없어 myRole 판정은 무의미).
@@ -54,6 +56,12 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg }
               style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 60, minWidth: 148,
                 background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 4,
                 boxShadow: "0 12px 32px rgba(20,30,60,.18)", boxSizing: "border-box" }}>
+              {onImport && (
+                <button type="button" role="menuitem" style={menuItem}
+                  onClick={() => { setMenuOpen(false); onImport(); }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f3f5")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>가져오기</button>
+              )}
               {!isPersonal && (
                 <button type="button" role="menuitem" style={menuItem}
                   onClick={() => { setMenuOpen(false); onOpenMembers(); }}

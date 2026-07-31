@@ -53,6 +53,7 @@ const declineOrgInvitation = vi.fn();
 const cancelOrgInvitation = vi.fn();
 const removeOrgMember = vi.fn();
 const updateOrgMemberRole = vi.fn();
+const importBookmarks = vi.fn();
 vi.mock("@tablign/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tablign/core")>();
   return {
@@ -86,6 +87,7 @@ vi.mock("@tablign/core", async (importOriginal) => {
     cancelOrgInvitation: (...a: unknown[]) => cancelOrgInvitation(...a),
     removeOrgMember: (...a: unknown[]) => removeOrgMember(...a),
     updateOrgMemberRole: (...a: unknown[]) => updateOrgMemberRole(...a),
+    importBookmarks: (...a: unknown[]) => importBookmarks(...a),
   };
 });
 
@@ -159,6 +161,8 @@ beforeEach(() => {
   cancelOrgInvitation.mockReset();
   removeOrgMember.mockReset();
   updateOrgMemberRole.mockReset();
+  importBookmarks.mockReset();
+  importBookmarks.mockResolvedValue({ space_ids: ["space-new"], first_space_id: "space-new", links: 2 });
   // jsdom 전역 chrome 스텁(test-setup)에 tabs API를 보강하고,
   // activeSpace와 동일하게 activeOrg도 저장값 없이 {}를 돌려주게 해 컴포넌트의 개인 조직 폴백을 태운다.
   vi.stubGlobal("chrome", {
@@ -648,5 +652,100 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
         expect.objectContaining({ color: expect.stringMatching(/^linear-gradient\(135deg,/) }),
       ),
     );
+  });
+});
+
+describe("NewTab — 북마크 가져오기", () => {
+  /** beforeEach의 chrome 스텁(tabs·storage)을 유지하면서 bookmarks만 보강한다. */
+  function stubBookmarks(children: unknown[]) {
+    vi.stubGlobal("chrome", {
+      ...(globalThis as unknown as { chrome: object }).chrome,
+      bookmarks: {
+        getTree: () => Promise.resolve([{ id: "0", title: "", children }]),
+      },
+    });
+  }
+
+  const bar = [{
+    id: "1", title: "북마크바", children: [
+      { id: "dev", title: "개발", children: [
+        { id: "l1", title: "A", url: "https://a.com/1" },
+        { id: "l2", title: "B", url: "https://b.com/1" },
+      ]},
+    ],
+  }];
+
+  it("조직 메뉴에서 열면 내 북마크가 미리보기로 나온다", async () => {
+    stubBookmarks(bar);
+    listSpaces.mockResolvedValue([]);
+    renderNewTab();
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+
+    expect(await screen.findByTestId("preview-space-dev")).toBeInTheDocument();
+    // 링크 2개가 폴더 직속이므로 공유 폴더 컬렉션 하나가 된다
+    expect(screen.getByTestId("preview-col-dev")).toHaveTextContent("공유 폴더");
+  });
+
+  it("조직이 개인 하나뿐이면 목적지를 읽기 전용으로 보여준다", async () => {
+    stubBookmarks(bar);
+    listSpaces.mockResolvedValue([]);
+    renderNewTab();
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+
+    expect(await screen.findByTestId("import-org-fixed")).toHaveTextContent("개인");
+    expect(screen.queryByLabelText("가져올 조직")).not.toBeInTheDocument();
+  });
+
+  it("가져오기를 누르면 계획을 그대로 넘기고 토스트를 띄운다", async () => {
+    stubBookmarks(bar);
+    listSpaces.mockResolvedValue([]);
+    renderNewTab();
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    await screen.findByTestId("preview-space-dev");
+
+    fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
+
+    await waitFor(() => expect(importBookmarks).toHaveBeenCalledTimes(1));
+    const [, orgId, plan] = importBookmarks.mock.calls[0] as [unknown, string, {
+      spaces: { name: string; collections: { title: string; links: { url: string; favicon_url: string | null }[] }[] }[];
+    }];
+    expect(orgId).toBe("org-personal");
+    expect(plan.spaces).toHaveLength(1);
+    expect(plan.spaces[0].name).toBe("개발");
+    expect(plan.spaces[0].collections[0].title).toBe("공유 폴더");
+    expect(plan.spaces[0].collections[0].links.map((l) => l.url))
+      .toEqual(["https://a.com/1", "https://b.com/1"]);
+    expect(plan.spaces[0].collections[0].links[0].favicon_url).toBe("https://a.com/favicon.ico");
+
+    expect(await screen.findByText(/스페이스 1개를 만들었어요/)).toBeInTheDocument();
+  });
+
+  it("가져오기가 실패하면 다이얼로그를 닫지 않는다", async () => {
+    stubBookmarks(bar);
+    importBookmarks.mockRejectedValue(new Error("boom"));
+    listSpaces.mockResolvedValue([]);
+    renderNewTab();
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    await screen.findByTestId("preview-space-dev");
+
+    fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
+
+    expect(await screen.findByText(/가져오지 못했어요/)).toBeInTheDocument();
+    expect(screen.getByTestId("preview-space-dev")).toBeInTheDocument();
+  });
+
+  it("온보딩 화면에서도 가져오기로 들어갈 수 있다", async () => {
+    stubBookmarks(bar);
+    listSpaces.mockResolvedValue([]);
+    renderNewTab();
+    await screen.findByRole("button", { name: /첫 스페이스 만들기/ });
+
+    fireEvent.click(screen.getByRole("button", { name: /북마크 가져오기/ }));
+
+    expect(await screen.findByTestId("preview-space-dev")).toBeInTheDocument();
   });
 });

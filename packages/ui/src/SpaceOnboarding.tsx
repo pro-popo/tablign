@@ -10,6 +10,8 @@ const GREEN = "#7bc47f";
 export interface SpaceOnboardingProps {
   /** CTA(첫 스페이스 만들기) 클릭 시 호출 */
   onCreate: () => void;
+  /** 주면 CTA 아래에 보조 행동으로 '북마크 가져오기'를 노출한다 */
+  onImport?: () => void;
 }
 
 /**
@@ -18,7 +20,7 @@ export interface SpaceOnboardingProps {
  * 2막: 흩어진 탭 3장(좌2·우1)을 가운데 슬롯에 연달아 정리하고 👍.
  * 커서는 무대 레벨 단일 요소라 장면이 전환돼도 끊기지 않고 이어서 움직인다.
  */
-export function SpaceOnboarding({ onCreate }: SpaceOnboardingProps) {
+export function SpaceOnboarding({ onCreate, onImport }: SpaceOnboardingProps) {
   return (
     // 보드 영역(height 100%) 안에서 수직·수평 가운데 정렬. marginBottom은 광학 보정(정중앙은 살짝 낮아 보임).
     // boxSizing: 앱에 전역 border-box 리셋이 없어, 명시하지 않으면 padding(16)만큼 100%를 넘겨 스크롤이 생긴다.
@@ -48,6 +50,22 @@ export function SpaceOnboarding({ onCreate }: SpaceOnboardingProps) {
         >
           <Plus size={15} /> 첫 스페이스 만들기
         </Button>
+        {onImport && (
+          // 보조 행동: 주 CTA와 경쟁하지 않도록 테두리 없는 링크 형태로 둔다
+          <div>
+            <button
+              type="button"
+              onClick={onImport}
+              style={{
+                marginTop: 10, border: "none", background: "none", cursor: "pointer",
+                fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: theme.textMuted,
+                padding: "4px 6px", borderRadius: 7,
+              }}
+            >
+              이미 쓰던 북마크 가져오기
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

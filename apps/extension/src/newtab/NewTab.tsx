@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   DndContext, DragOverlay, PointerSensor, pointerWithin, MeasuringStrategy, useSensor, useSensors,
@@ -30,7 +30,7 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, ShareCodeDialog, ImportCodeDialog, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, ShareCodeDialog, ImportCodeDialog, ImportBookmarksDialog, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users } from "@tablign/ui";
 import {
   listSpaces, listMyMemberships, leaveSpace, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions,
@@ -39,6 +39,7 @@ import {
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
   listOrganizations, createOrganization, updateOrganization, deleteOrganization, listMyOrgMemberships, listOrgMembers, removeOrgMember, updateOrgMemberRole,
   inviteToOrg, listOrgInvitations, cancelOrgInvitation, listMyOrgInvitations, acceptOrgInvitation, declineOrgInvitation,
+  fromChromeTree, importBookmarks, type SourceNode, type ImportPlan,
   type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
   type Organization, type OrganizationMember, type OrgMemberWithProfile, type OrganizationInvitation, type OrgInvitationWithOrg,
 } from "@tablign/core";
@@ -54,7 +55,11 @@ import { ExtSearchBar } from "./ExtSearchBar";
 import { DndLinkList } from "./DndLinkList";
 import { AuthScreen } from "./AuthScreen";
 import { OrgHeader, type OrgRole } from "./OrgHeader";
-import { OrgFormDialog, type OrgFormValue } from "./OrgFormDialog";
+import type { OrgFormValue } from "./OrgFormDialog";
+
+// 조직 생성/수정 다이얼로그는 토스 이모지 데이터(@emoji-mart/data, ~423KB)를 끌고 오므로
+// 초기 번들에서 떼어내 다이얼로그를 처음 열 때만 로드한다.
+const OrgFormDialog = lazy(() => import("./OrgFormDialog").then((m) => ({ default: m.OrgFormDialog })));
 
 interface DragPreview { label: string; faviconUrl: string | null; domain: string }
 
@@ -413,6 +418,9 @@ export function NewTab() {
   const [shareTarget, setShareTarget] = useState<Collection | null>(null);
   const [issuedCode, setIssuedCode] = useState<ShareCode | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  // 북마크 가져오기 (공유 코드 가져오기 importOpen과 별개)
+  const [bookmarkImportOpen, setBookmarkImportOpen] = useState(false);
+  const [bookmarkRoots, setBookmarkRoots] = useState<SourceNode[]>([]);
   // 컬렉션 삭제 확인 다이얼로그 대상 (스페이스 삭제와 동일한 2단계 확인)
   const [deleteColTarget, setDeleteColTarget] = useState<Collection | null>(null);
 
@@ -872,6 +880,30 @@ export function NewTab() {
   const ownedSpaces = orgSpaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
   const sharedSpaces = orgSpaces.filter((s) => memberships.some((m) => m.space_id === s.id));
 
+  // ── 북마크 가져오기 ──
+  // 스페이스를 만들 수 있는 조직만 목적지가 된다(RLS의 can_edit_org와 같은 기준: 오너이거나 admin).
+  const importableOrgs = organizations
+    .filter((o) => o.owner_id === userId
+      || orgMemberships.find((m) => m.org_id === o.id)?.role === "admin")
+    .map((o) => ({ id: o.id, name: o.name }));
+
+  async function openBookmarkImport() {
+    const tree = await chrome.bookmarks.getTree();
+    setBookmarkRoots(fromChromeTree(tree[0]?.children ?? []));
+    setBookmarkImportOpen(true);
+  }
+
+  async function runBookmarkImport(orgId: string, plan: ImportPlan) {
+    const result = await importBookmarks(supabase, orgId, plan);
+    setBookmarkImportOpen(false);
+    // 재조회를 먼저 해 새 스페이스가 목록에 있는 상태에서 활성 전환한다.
+    const sp = await listSpaces(supabase);
+    setSpaces(sp);
+    setActiveOrgId(orgId);
+    setActiveSpaceId(result.first_space_id);
+    toast.show(`스페이스 ${result.space_ids.length}개를 만들었어요`);
+  }
+
   // 담을 수 있는 탭만 센다. group.tabs.length로 세면 tablign 새 탭 자신과 chrome:// 페이지까지
   // 세어 "보이는 개수 ≠ 담기는 개수"가 된다. groups가 갱신되면 이 값도 따라 바뀐다.
   const saveablePerWindow = groups.map((g) => saveableTabs(g.tabs).length);
@@ -940,6 +972,7 @@ export function NewTab() {
                     onOpenMembers={openOrgMemberDialog}
                     onEditOrg={(myOrgRole === "owner" || myOrgRole === "admin") ? openEditOrg : undefined}
                     onDeleteOrg={(!activeOrg?.is_personal && myOrgRole === "owner") ? () => setOrgDeleteOpen(true) : undefined}
+                    onImport={openBookmarkImport}
                   />
                 ) : null}
               />
@@ -951,7 +984,7 @@ export function NewTab() {
             <Board>
               {spacesLoaded && orgSpaces.length === 0 ? (
                 // 활성 조직에 스페이스가 0개(신규 가입 직후, 전부 삭제, 또는 방금 만든 빈 조직): 온보딩 빈 상태.
-                <SpaceOnboarding onCreate={() => addSpace("개인")} />
+                <SpaceOnboarding onCreate={() => addSpace("개인")} onImport={openBookmarkImport} />
               ) : (
                 // 헤더 + 본문을 flex 컬럼으로 묶어, 빈 상태가 헤더 아래 '남은 공간'을 정확히 채우게 한다.
                 // (헤더 높이를 상수로 빼서 계산하면 헤더가 바뀔 때 어긋난다)
@@ -1140,6 +1173,15 @@ export function NewTab() {
         onImport={importByCode}
         onClose={() => setImportOpen(false)}
       />
+      <ImportBookmarksDialog
+        open={bookmarkImportOpen}
+        roots={bookmarkRoots}
+        orgs={importableOrgs}
+        // 활성 조직이 편집 불가(일반 멤버)면 목록에 없으므로 첫 편집 가능 조직으로 폴백
+        defaultOrgId={importableOrgs.some((o) => o.id === activeOrgId) ? activeOrgId! : (importableOrgs[0]?.id ?? "")}
+        onImport={runBookmarkImport}
+        onClose={() => setBookmarkImportOpen(false)}
+      />
       <ConfirmDialog
         open={deleteColTarget !== null}
         danger
@@ -1166,14 +1208,18 @@ export function NewTab() {
         onCancelInvite={async (id) => { try { await cancelInvitation(supabase, id); reloadMembers(); } catch (e) { console.error(e); toast.show("초대를 취소하지 못했어요."); } }}
         onClose={() => setMemberDialogOpen(false)}
       />
-      <OrgFormDialog
-        open={orgFormOpen}
-        mode={orgFormMode}
-        initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color, icon_scale: activeOrg.icon_scale, icon_x: activeOrg.icon_x, icon_y: activeOrg.icon_y } : undefined}
-        personal={orgFormMode === "edit" && !!activeOrg?.is_personal}
-        onSubmit={submitOrgForm}
-        onClose={() => setOrgFormOpen(false)}
-      />
+      {orgFormOpen && (
+        <Suspense fallback={null}>
+          <OrgFormDialog
+            open={orgFormOpen}
+            mode={orgFormMode}
+            initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color, icon_scale: activeOrg.icon_scale, icon_x: activeOrg.icon_x, icon_y: activeOrg.icon_y } : undefined}
+            personal={orgFormMode === "edit" && !!activeOrg?.is_personal}
+            onSubmit={submitOrgForm}
+            onClose={() => setOrgFormOpen(false)}
+          />
+        </Suspense>
+      )}
       <ConfirmDialog
         open={orgDeleteOpen}
         danger
