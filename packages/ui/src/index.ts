@@ -17,6 +17,7 @@ export * from "./ConfirmDialog";
 export * from "./ShareCodeDialog";
 export * from "./ImportCodeDialog";
 export * from "./ImportBookmarksDialog";
+export * from "./ImportSourceDialog";
 export * from "./usePanelState";
 export * from "./CollectionMoreMenu";
 export * from "./AddCollectionButton";

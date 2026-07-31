@@ -4,6 +4,8 @@ export interface SourceNode {
   title: string;
   url?: string;
   children?: SourceNode[];
+  /** 소스가 이미 알고 있는 파비콘(Toby의 favIconUrl 등). 없으면 origin/favicon.ico로 유추한다. */
+  favicon?: string;
   /** 루트 노드에만 씀. 사용자가 매일 보는 루트(Chrome의 북마크바)인지. 기본 선택값 계산에 쓴다. */
   primary?: boolean;
 }

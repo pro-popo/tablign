@@ -12,7 +12,9 @@ export interface ImportOrgOption { id: string; name: string }
 
 export interface ImportBookmarksDialogProps {
   open: boolean;
-  /** 정규화된 소스 트리(fromChromeTree 결과) */
+  /** 다이얼로그 제목 — 소스에 따라 바뀐다(기본 "북마크 가져오기", Toby면 "Toby 가져오기") */
+  title?: string;
+  /** 정규화된 소스 트리(fromChromeTree·fromTobyExport 결과) */
   roots: SourceNode[];
   /** 가져올 수 있는 조직만 */
   orgs: ImportOrgOption[];
@@ -90,7 +92,7 @@ function buildRows(roots: SourceNode[]): { name: string; rows: Row[] }[] {
 
 /** 북마크 가져오기 다이얼로그. 왼쪽에서 고르면 오른쪽에 만들어질 결과가 즉시 바뀐다. */
 export function ImportBookmarksDialog({
-  open, roots, orgs, defaultOrgId, onImport, onClose,
+  open, title = "북마크 가져오기", roots, orgs, defaultOrgId, onImport, onClose,
 }: ImportBookmarksDialogProps) {
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
   const [orgId, setOrgId] = useState(defaultOrgId);
@@ -154,12 +156,12 @@ export function ImportBookmarksDialog({
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn,
         display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
       <style>{overlayAnimationCss}</style>
-      <div role="dialog" aria-modal="true" aria-label="북마크 가져오기" onClick={(e) => e.stopPropagation()}
+      <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
         style={{ boxSizing: "border-box", width: 730, maxWidth: "calc(100vw - 32px)", animation: panelIn,
           background: theme.surface, borderRadius: 14, boxShadow: "0 18px 50px rgba(0,0,0,.26)", overflow: "hidden" }}>
 
         <div style={{ padding: "17px 18px 0" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>북마크 가져오기</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>{title}</div>
           <div style={{ marginTop: 4, fontSize: 12.5, color: theme.textMuted }}>
             왼쪽에서 고르면 오른쪽에 만들어질 결과가 보여요.
           </div>
@@ -185,8 +187,9 @@ export function ImportBookmarksDialog({
         <div style={{ display: "flex", borderTop: `1px solid ${theme.border}`, marginTop: 14 }}>
           {/* 왼쪽 — 내 북마크 */}
           <div style={{ width: 336, flex: "none", borderRight: `1px solid ${theme.border}` }}>
+            {/* 소스 중립 라벨 — 북마크·Toby 어느 쪽 트리든 담긴다 */}
             <div style={{ padding: "9px 13px 7px", fontSize: 10.5, fontWeight: 800,
-              letterSpacing: ".07em", color: theme.textFaint }}>내 북마크</div>
+              letterSpacing: ".07em", color: theme.textFaint }}>가져올 목록</div>
             <div style={{ height: 344, overflowY: "auto", padding: "2px 8px 10px", boxSizing: "border-box" }}>
               {groups.map((g) => (
                 <div key={g.name}>

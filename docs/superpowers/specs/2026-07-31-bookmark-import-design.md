@@ -12,7 +12,7 @@
 ### 범위
 
 - **이번 작업: Chrome 북마크.** `chrome.bookmarks` 트리를 읽어 스페이스·컬렉션·링크로 옮긴다.
-- **후속 작업: Toby.** Toby가 내보낸 JSON 파일을 같은 UI·같은 RPC로 처리한다. 스키마 가정을 검증할 실제 export 파일이 없어 이번 범위에서 뺀다(§7).
+- **이번 작업(추가): Toby.** Toby가 내보낸 JSON 파일(version 4, 실제 export로 스키마 검증 완료)을 같은 미리보기·같은 RPC로 처리한다. `group → 스페이스, list → 컬렉션, card → 링크`로 계층이 정확히 떨어지고, `favIconUrl`이 있어 파비콘 유추가 필요 없다(소스 파비콘이 유추보다 우선). `customTitle`이 비어 있지 않으면 제목으로 쓴다.
 
 ### 설계의 중심 문제
 
@@ -152,7 +152,7 @@ export function defaultEnabled(roots: SourceNode[]): Record<string, boolean>;
 
 두 곳 모두 **북마크·Toby를 하나의 "가져오기"로 묶는다.** 메뉴에 항목을 둘로 늘리지 않는다.
 
-**단, 이번 작업에서는 소스가 북마크 하나뿐이므로 소스 선택 화면을 만들지 않는다.** `가져오기`를 누르면 바로 위 트리 화면이 열린다. Toby가 붙는 후속 PR에서 앞에 소스 선택 화면 한 장을 끼운다 — 그때 이 다이얼로그는 손대지 않고 감싸는 형태가 된다.
+`가져오기`를 누르면 **소스 선택 화면**(`ImportSourceDialog`)이 먼저 열린다 — Chrome 북마크 / Toby(JSON 파일 선택). 어느 쪽을 고르든 같은 미리보기 다이얼로그로 이어지며, 제목만 소스에 따라 바뀐다("북마크 가져오기" / "Toby 가져오기"). 미리보기 다이얼로그는 소스를 모른다 — `SourceNode[]`만 받는다.
 
 1. **조직 헤더 더보기 메뉴** (`OrgHeader`) — 상시 진입점. 항목 하나: `가져오기`.
 2. **온보딩 빈 상태** (`SpaceOnboarding`) — 스페이스가 하나도 없을 때, `첫 스페이스 만들기` 버튼 **아래**에 보조 행동으로 노출. 전환이 가장 필요한 순간이다.
@@ -234,7 +234,7 @@ grant execute on function public.import_bookmarks(uuid, jsonb) to authenticated;
 3. **다이얼로그** — `ImportBookmarksDialog`. `ImportPlan`을 props로 받으므로 고정 픽스처로 렌더 테스트가 된다.
 4. **배선** — manifest에 `bookmarks` 추가, Chrome 트리 읽기, 조직 선택, RPC 호출, 토스트·이동.
 5. **진입점** — `OrgHeader` 더보기 메뉴, `SpaceOnboarding` 보조 행동.
-6. **(후속 PR) Toby** — 파일 드롭 → `SourceNode[]` 정규화. 실제 export 파일로 스키마를 확인한 뒤 착수한다. Toby를 "새 조직으로 통째로" 가져오는 요구가 그때 다시 올라오면 거기서 결정한다 — 지금 그 경로를 미리 만들어두지 않는다.
+6. **Toby** — 실제 export 파일(version 4)로 스키마 확인 후 같은 PR에 포함. `fromTobyExport` 파서(`packages/core/src/import/toby.ts`) + `ImportSourceDialog`(소스 선택) + 배선. "새 조직으로 통째로" 경로는 만들지 않았다 — 조직 선택으로 충분하다.
 
 1~3은 UI·DB가 서로를 안 기다리므로 병렬로 갈 수 있다.
 
@@ -258,7 +258,7 @@ grant execute on function public.import_bookmarks(uuid, jsonb) to authenticated;
 
 ## 9. 이번에 제외한 것
 
-- **Toby** — 후속 PR(§7). 실제 export 파일로 스키마 확인이 선행 조건.
+- ~~Toby~~ — 실제 export 파일 확보로 같은 PR에 포함됨(§7).
 - **북마크 HTML 파일 임포트** (Safari·Firefox·Edge·Raindrop). 같은 `SourceNode[]`로 정규화되므로 나중에 파서만 추가하면 된다.
 - **되돌리기.** 스페이스 5개가 한 번에 생기는데 마음에 안 들면 하나씩 지워야 한다. "이번 가져오기 취소"는 삽입한 id를 어딘가 기억해야 해서 범위를 넘는다.
 - **기존 링크와의 중복 비교.** 이번 계획 안에서만 중복을 제거한다. 가져오기를 두 번 하면 링크가 짝으로 늘어난다 — 의도된 선택이다.

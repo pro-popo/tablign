@@ -681,6 +681,7 @@ describe("NewTab — 북마크 가져오기", () => {
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
 
     expect(await screen.findByTestId("preview-space-dev")).toBeInTheDocument();
     // 링크 2개가 폴더 직속이므로 공유 폴더 컬렉션 하나가 된다
@@ -693,6 +694,7 @@ describe("NewTab — 북마크 가져오기", () => {
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
 
     expect(await screen.findByTestId("import-org-fixed")).toHaveTextContent("개인");
     expect(screen.queryByLabelText("가져올 조직")).not.toBeInTheDocument();
@@ -704,6 +706,7 @@ describe("NewTab — 북마크 가져오기", () => {
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
     await screen.findByTestId("preview-space-dev");
 
     fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
@@ -730,6 +733,7 @@ describe("NewTab — 북마크 가져오기", () => {
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
     await screen.findByTestId("preview-space-dev");
 
     fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
@@ -744,8 +748,59 @@ describe("NewTab — 북마크 가져오기", () => {
     renderNewTab();
     await screen.findByRole("button", { name: /첫 스페이스 만들기/ });
 
-    fireEvent.click(screen.getByRole("button", { name: /북마크 가져오기/ }));
+    fireEvent.click(screen.getByRole("button", { name: /북마크·Toby 가져오기/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
 
     expect(await screen.findByTestId("preview-space-dev")).toBeInTheDocument();
+  });
+
+  it("Toby 파일을 고르면 group→스페이스, list→컬렉션으로 미리보기가 나온다", async () => {
+    listSpaces.mockResolvedValue([]);
+    renderNewTab();
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+
+    const toby = JSON.stringify({
+      version: 4,
+      groups: [{
+        name: "KB 검진대행", type: "public", lists: [{
+          title: "Client", labelIds: [], cards: [
+            { title: "assist-frontend", url: "https://github.com/huray/assist",
+              favIconUrl: "https://github.githubassets.com/favicon.svg", customTitle: "" },
+          ],
+        }],
+      }],
+      labels: {},
+    });
+    const file = new File([toby], "Huray-export.json", { type: "application/json" });
+    fireEvent.change(await screen.findByTestId("toby-file-input"), { target: { files: [file] } });
+
+    // group이 스페이스, list가 컬렉션
+    expect(await screen.findByTestId("preview-space-toby:0")).toBeInTheDocument();
+    expect(screen.getByTestId("preview-col-toby:0:0")).toHaveTextContent("Client");
+    expect(screen.getByRole("dialog", { name: "Toby 가져오기" })).toBeInTheDocument();
+
+    // 가져오기 실행 — Toby가 준 파비콘이 그대로 페이로드에 실린다
+    fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
+    await waitFor(() => expect(importBookmarks).toHaveBeenCalledTimes(1));
+    const [, , plan] = importBookmarks.mock.calls[0] as [unknown, string, {
+      spaces: { name: string; collections: { title: string; links: { favicon_url: string | null }[] }[] }[];
+    }];
+    expect(plan.spaces[0].name).toBe("KB 검진대행");
+    expect(plan.spaces[0].collections[0].links[0].favicon_url)
+      .toBe("https://github.githubassets.com/favicon.svg");
+  });
+
+  it("Toby 파일이 아니면 토스트를 띄우고 미리보기를 열지 않는다", async () => {
+    listSpaces.mockResolvedValue([]);
+    renderNewTab();
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+
+    const file = new File(["{\"foo\":1}"], "wrong.json", { type: "application/json" });
+    fireEvent.change(await screen.findByTestId("toby-file-input"), { target: { files: [file] } });
+
+    expect(await screen.findByText(/Toby 내보내기 파일이 아니에요/)).toBeInTheDocument();
+    expect(screen.queryByTestId("import-summary")).not.toBeInTheDocument();
   });
 });

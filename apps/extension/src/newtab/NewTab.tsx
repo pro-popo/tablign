@@ -30,7 +30,7 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, ShareCodeDialog, ImportCodeDialog, ImportBookmarksDialog, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, ShareCodeDialog, ImportCodeDialog, ImportBookmarksDialog, ImportSourceDialog, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users } from "@tablign/ui";
 import {
   listSpaces, listMyMemberships, leaveSpace, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions,
@@ -39,7 +39,7 @@ import {
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
   listOrganizations, createOrganization, updateOrganization, deleteOrganization, listMyOrgMemberships, listOrgMembers, removeOrgMember, updateOrgMemberRole,
   inviteToOrg, listOrgInvitations, cancelOrgInvitation, listMyOrgInvitations, acceptOrgInvitation, declineOrgInvitation,
-  fromChromeTree, importBookmarks, type SourceNode, type ImportPlan,
+  fromChromeTree, fromTobyExport, importBookmarks, type SourceNode, type ImportPlan,
   type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
   type Organization, type OrganizationMember, type OrgMemberWithProfile, type OrganizationInvitation, type OrgInvitationWithOrg,
 } from "@tablign/core";
@@ -418,9 +418,11 @@ export function NewTab() {
   const [shareTarget, setShareTarget] = useState<Collection | null>(null);
   const [issuedCode, setIssuedCode] = useState<ShareCode | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-  // 북마크 가져오기 (공유 코드 가져오기 importOpen과 별개)
+  // 북마크·Toby 가져오기 (공유 코드 가져오기 importOpen과 별개)
+  const [importSourceOpen, setImportSourceOpen] = useState(false);
   const [bookmarkImportOpen, setBookmarkImportOpen] = useState(false);
   const [bookmarkRoots, setBookmarkRoots] = useState<SourceNode[]>([]);
+  const [importTitle, setImportTitle] = useState("북마크 가져오기");
   // 컬렉션 삭제 확인 다이얼로그 대상 (스페이스 삭제와 동일한 2단계 확인)
   const [deleteColTarget, setDeleteColTarget] = useState<Collection | null>(null);
 
@@ -887,9 +889,14 @@ export function NewTab() {
       || orgMemberships.find((m) => m.org_id === o.id)?.role === "admin")
     .map((o) => ({ id: o.id, name: o.name }));
 
-  async function openBookmarkImport() {
+  /** 진입점(조직 메뉴·온보딩) 공통 — 소스 선택부터 시작한다 */
+  function openImport() {
     // 조직 목록 로드 전 진입 방어 — 목적지 없이 다이얼로그를 열지 않는다
     if (!importableOrgs.length) { toast.show("잠시 후 다시 시도해 주세요"); return; }
+    setImportSourceOpen(true);
+  }
+
+  async function pickBookmarkSource() {
     try {
       // Chrome 북마크는 여기서 읽기만 한다 — 생성·수정·삭제 코드는 앱 어디에도 없다(manifest의
       // bookmarks 권한이 "읽기 및 변경"으로 표시되는 것은 Chrome에 읽기 전용 권한이 없어서다).
@@ -900,6 +907,24 @@ export function NewTab() {
       toast.show("북마크를 읽지 못했어요");
       return;
     }
+    setImportTitle("북마크 가져오기");
+    setImportSourceOpen(false);
+    setBookmarkImportOpen(true);
+  }
+
+  function pickTobySource(text: string) {
+    let roots: SourceNode[];
+    try {
+      roots = fromTobyExport(JSON.parse(text));
+    } catch (e) {
+      console.error(e);
+      toast.show("Toby 내보내기 파일이 아니에요");
+      return;
+    }
+    if (!roots.length) { toast.show("가져올 링크가 없어요"); return; }
+    setBookmarkRoots(roots);
+    setImportTitle("Toby 가져오기");
+    setImportSourceOpen(false);
     setBookmarkImportOpen(true);
   }
 
@@ -986,7 +1011,7 @@ export function NewTab() {
                     onOpenMembers={openOrgMemberDialog}
                     onEditOrg={(myOrgRole === "owner" || myOrgRole === "admin") ? openEditOrg : undefined}
                     onDeleteOrg={(!activeOrg?.is_personal && myOrgRole === "owner") ? () => setOrgDeleteOpen(true) : undefined}
-                    onImport={openBookmarkImport}
+                    onImport={openImport}
                   />
                 ) : null}
               />
@@ -998,7 +1023,7 @@ export function NewTab() {
             <Board>
               {spacesLoaded && orgSpaces.length === 0 ? (
                 // 활성 조직에 스페이스가 0개(신규 가입 직후, 전부 삭제, 또는 방금 만든 빈 조직): 온보딩 빈 상태.
-                <SpaceOnboarding onCreate={() => addSpace("개인")} onImport={openBookmarkImport} />
+                <SpaceOnboarding onCreate={() => addSpace("개인")} onImport={openImport} />
               ) : (
                 // 헤더 + 본문을 flex 컬럼으로 묶어, 빈 상태가 헤더 아래 '남은 공간'을 정확히 채우게 한다.
                 // (헤더 높이를 상수로 빼서 계산하면 헤더가 바뀔 때 어긋난다)
@@ -1187,8 +1212,15 @@ export function NewTab() {
         onImport={importByCode}
         onClose={() => setImportOpen(false)}
       />
+      <ImportSourceDialog
+        open={importSourceOpen}
+        onBookmarks={pickBookmarkSource}
+        onTobyFile={pickTobySource}
+        onClose={() => setImportSourceOpen(false)}
+      />
       <ImportBookmarksDialog
         open={bookmarkImportOpen}
+        title={importTitle}
         roots={bookmarkRoots}
         orgs={importableOrgs}
         // 활성 조직이 편집 불가(일반 멤버)면 목록에 없으므로 첫 편집 가능 조직으로 폴백

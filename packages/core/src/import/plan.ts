@@ -39,7 +39,12 @@ function consumeLink(node: SourceNode, bucket: PlannedCollection | null, seen: S
   const key = normalizeUrl(node.url!);
   if (seen.has(key)) { bucket.duplicatesDropped += 1; return; }
   seen.add(key);
-  bucket.links.push({ url: node.url!, title: node.title || null, favicon_url: faviconFor(node.url!) });
+  bucket.links.push({
+    url: node.url!,
+    title: node.title || null,
+    // 소스가 파비콘을 알고 있으면(Toby favIconUrl) 유추보다 그것을 신뢰한다
+    favicon_url: node.favicon ?? faviconFor(node.url!),
+  });
 }
 
 /**

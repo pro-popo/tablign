@@ -62,7 +62,7 @@ export function SpaceOnboarding({ onCreate, onImport }: SpaceOnboardingProps) {
                 padding: "4px 6px", borderRadius: 7,
               }}
             >
-              이미 쓰던 북마크 가져오기
+              이미 쓰던 북마크·Toby 가져오기
             </button>
           </div>
         )}
