@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { Space } from "@tablign/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Hash, Plus, Pencil, Trash2, PanelLeftClose, LogOut, InlineInput, ConfirmDialog, theme, Download } from "@tablign/ui";
+import { Hash, Plus, Pencil, Trash2, PanelLeftClose, LogOut, InlineInput, ConfirmDialog, theme } from "@tablign/ui";
 
 export interface ExtSidebarProps {
   spaces: Space[];
@@ -14,7 +14,6 @@ export interface ExtSidebarProps {
   onDeleteSpace: (id: string) => void;
   onLeaveSpace: (id: string) => void;
   onCollapse: () => void;
-  onImportCode: () => void;
   searchSlot: ReactNode;
   orgHeaderSlot?: ReactNode;
 }
@@ -64,7 +63,7 @@ function SortableSpace({ space, active, onSelect, onStartEdit, onDelete }: {
   );
 }
 
-export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace, onAddSpace, onRenameSpace, onDeleteSpace, onLeaveSpace, onCollapse, onImportCode, searchSlot, orgHeaderSlot }: ExtSidebarProps) {
+export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace, onAddSpace, onRenameSpace, onDeleteSpace, onLeaveSpace, onCollapse, searchSlot, orgHeaderSlot }: ExtSidebarProps) {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Space | null>(null);
@@ -79,7 +78,8 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace,
 
       <div style={{ padding: "11px 12px" }}>{searchSlot}</div>
 
-      <div style={{ padding: "4px 14px", fontSize: 10, letterSpacing: 1, color: theme.textFaint }}>SPACES</div>
+      {/* 한글은 자간을 벌리면 읽기 나빠진다 — 영문 대문자용 letterSpacing 1을 0으로 */}
+      <div style={{ padding: "4px 14px", fontSize: 10, fontWeight: 700, color: theme.textFaint }}>스페이스</div>
       <div style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
         <SortableContext items={spaces.map((s) => `space:${s.id}`)} strategy={verticalListSortingStrategy}>
           {spaces.map((s) =>
@@ -119,7 +119,7 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace,
 
       {sharedSpaces.length > 0 && (
         <>
-          <div style={{ padding: "8px 14px 4px", fontSize: 10, letterSpacing: 1, color: theme.textFaint }}>공유됨</div>
+          <div style={{ padding: "8px 14px 4px", fontSize: 10, fontWeight: 700, color: theme.textFaint }}>공유 스페이스</div>
           {/* 정렬 미구현: 공유됨 섹션은 position 순 표시. DnD는 후속 태스크에서 추가 예정. */}
           <div style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
             {sharedSpaces.map((s) => (
@@ -138,22 +138,6 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace,
           </div>
         </>
       )}
-
-      <div style={{ padding: "0 8px", marginTop: "auto" }}>
-        <button
-          type="button"
-          title="코드로 가져오기"
-          aria-label="코드로 가져오기"
-          onClick={onImportCode}
-          style={{
-            display: "flex", alignItems: "center", gap: 7, width: "100%",
-            border: "none", background: "none", cursor: "pointer",
-            padding: "7px 9px", borderRadius: 8, fontSize: 12.5, color: theme.textMuted,
-          }}
-        >
-          <Download size={14} /> 코드로 가져오기
-        </button>
-      </div>
 
       <ConfirmDialog
         open={pendingDelete !== null}

@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — R2 빈 상태 실측 1:1</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accent-weak:#edf0fe; --ink:#1f2430; --muted:#868e96;
+    --faint:#adb5bd; --border:#eaecef; --border-card:#e9ebee; --bg:#fcfcfd;
+    --surface:#fff; --surface2:#f1f3f5; --danger:#e03131;
+    --lav:#c9d4ff; --amber:#f4c66a; --green:#7bc47f;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:#e7eaef; color:var(--ink); padding:26px 20px 80px;
+  }
+  h1{font-size:16px; font-weight:740; letter-spacing:-.02em; margin-bottom:5px}
+  h2{font-size:13.5px; font-weight:740; margin:36px 0 5px}
+  h3{font-size:12px; font-weight:740; color:var(--muted); margin:0 0 8px}
+  .note{font-size:12.5px; color:var(--muted); line-height:1.7; margin-bottom:14px; max-width:900px}
+  .note b{color:var(--ink)} .note .bad{color:var(--danger)} .note .ok{color:var(--accent)}
+  .note ol{margin:8px 0 0 18px} .note li{margin-bottom:6px}
+  .meta{font-size:11px; color:var(--faint); font-weight:600; margin-bottom:9px;
+    font-variant-numeric:tabular-nums}
+  .meta b{color:var(--accent)}
+
+  /* 실측 프레임: 1:1 픽셀. 화면이 좁으면 프레임 안에서만 가로 스크롤 */
+  .scroll{overflow-x:auto; padding-bottom:8px; margin-bottom:4px}
+  .app{
+    height:900px; display:flex; background:var(--bg); border:1px solid #d8dde4;
+    border-radius:10px; overflow:hidden; box-shadow:0 12px 34px rgba(20,30,60,.13); flex:none;
+  }
+  .app.w1440{width:1440px}
+  .app.w1152{width:1152px}
+  /* 보드만 잘라 보는 크롭 프레임 — 폭·글자 크기 모두 실측 그대로 */
+  .crop{height:300px; overflow:hidden; background:var(--bg); border:1px solid #d8dde4;
+    border-radius:10px; box-shadow:0 8px 22px rgba(20,30,60,.1); flex:none}
+
+  /* ══ 조직 레일 54 ══ */
+  .rail{width:54px; flex:none; background:var(--surface); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; padding:10px 0 12px; gap:8px}
+  .rail .logo{width:28px; height:28px; border-radius:8px; background:var(--accent); flex:none}
+  .rail .oa{width:34px; height:34px; border-radius:11px; background:var(--surface2);
+    border:1px solid var(--border); font-size:13px; font-weight:800; color:var(--muted);
+    display:flex; align-items:center; justify-content:center; flex:none}
+  .rail .oa.on{background:var(--accent-weak); border-color:var(--lav); color:var(--accent)}
+  .rail .oa.gh{border-style:dashed; color:var(--faint); background:transparent}
+  .rail .acct{margin-top:auto; width:30px; height:30px; border-radius:50%; background:#dde2ea; flex:none}
+
+  /* ══ 좌 패널 212 ══ */
+  .side{width:212px; flex:none; background:var(--surface); border-right:1px solid var(--border);
+    display:flex; flex-direction:column}
+  .side .hd{padding:13px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:2px}
+  .side .hd .oi{width:20px; height:20px; border-radius:6px; background:var(--accent-weak); flex:none; margin-right:7px}
+  .side .hd .nm{font-size:13.5px; font-weight:700; flex:1; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+  .side .srch{margin:11px 12px; height:32px; border:1px solid var(--border); border-radius:8px;
+    background:var(--bg); display:flex; align-items:center; gap:7px; padding:0 9px;
+    font-size:12.5px; color:var(--faint)}
+  .lbl{padding:4px 14px; font-size:10px; color:var(--faint); font-weight:700}
+  .rows{padding:0 8px; display:flex; flex-direction:column; gap:2px}
+  .row{display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:8px;
+    font-size:14px; color:#495057}
+  .row.on{background:var(--accent-weak); color:var(--accent); font-weight:600}
+  .row.add{color:var(--faint)}
+  .side .foot{margin-top:auto; padding:0 8px 8px}
+
+  /* ══ 우 패널 272 ══ */
+  .rp{width:272px; flex:none; background:var(--surface); border-left:1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden}
+  .rp .rh{padding:13px 14px; border-bottom:1px solid var(--border); display:flex;
+    align-items:center; justify-content:space-between}
+  .rp .rh span{font-size:13.5px; font-weight:700}
+  .rp .wg{padding:11px 12px 6px; display:flex; align-items:center; justify-content:space-between}
+  .rp .wg .wn{font-size:13px; font-weight:600; color:#495057; display:flex; align-items:center; gap:6px}
+  .rp .wg .wn.act{color:var(--accent)}
+  .rp .wg .ax{display:flex; gap:2px; color:var(--faint)}
+  .rp .tabs{padding:0 12px; display:flex; flex-direction:column; gap:6px}
+  .rp .tb{display:flex; gap:8px; align-items:center; border:1px solid var(--border); border-radius:9px;
+    padding:8px 9px; background:#fff; font-size:13px}
+  .rp .tb.hl{border-color:var(--lav); background:var(--accent-weak)}
+  .rp .tb .tt{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#3d444c}
+
+  /* 파비콘(실제 16px) */
+  .fv{width:16px; height:16px; border-radius:4px; flex:none; display:flex; align-items:center;
+    justify-content:center; font-size:9px; font-weight:800; color:#fff; letter-spacing:-.03em}
+
+  /* ══ 보드 ══ */
+  .board{flex:1; min-width:0; padding:16px 18px; display:flex; flex-direction:column; overflow:hidden}
+  .bhd{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:8px}
+  .bhd .l{display:flex; align-items:center; gap:8px; min-width:0}
+  .bhd .ttl{font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .bhd .cnt{font-size:14px; color:var(--faint); white-space:nowrap}
+  .bhd .r{display:flex; align-items:center; gap:8px; flex:none}
+  .avs{display:flex} .avs i{width:24px; height:24px; border-radius:50%; background:#dde2ea;
+    border:2px solid #fff; margin-left:-7px}
+  .avs i:first-child{margin-left:0}
+  .btn{display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border-radius:7px;
+    font-size:13px; font-weight:600; white-space:nowrap; border:1px solid transparent; cursor:pointer}
+  .btn.pri{background:var(--accent); color:#fff}
+  .btn.out{background:#fff; color:#5c636b; border-color:var(--border)}
+  .split{display:inline-flex; align-items:stretch; border-radius:7px; overflow:hidden;
+    background:var(--accent); color:#fff; cursor:pointer; font-weight:600}
+  .split .main{display:inline-flex; align-items:center; gap:6px; padding:6px 11px; font-size:13px}
+  .split .div{width:1px; background:rgba(255,255,255,.32)}
+  .split .caret{display:inline-flex; align-items:center; padding:0 7px}
+
+  /* ══ R2 빈 상태 (실측) ══ */
+  .es{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding-bottom:40px}
+  .eh{font-size:17px; font-weight:740; letter-spacing:-.02em; text-align:center}
+  .esub{font-size:13px; color:var(--muted); margin-top:6px; text-align:center}
+  .stack{width:400px; margin-top:20px; display:flex; flex-direction:column; gap:10px}
+  .stack.wide{width:440px}
+
+  .bigc{border:1px solid var(--lav); border-radius:13px; background:#fff; padding:14px;
+    cursor:pointer; box-shadow:0 3px 14px rgba(59,91,219,.11); transition:.15s}
+  .bigc:hover{box-shadow:0 8px 24px rgba(59,91,219,.2); transform:translateY(-1px)}
+  .bh{display:flex; align-items:center; gap:11px}
+  .bi{width:34px; height:34px; border-radius:10px; flex:none; background:var(--accent); color:#fff;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 4px 11px rgba(59,91,219,.32)}
+  .bt{font-size:14px; font-weight:700; letter-spacing:-.01em; flex:1}
+  .chev{color:var(--faint); display:flex; flex:none}
+  .pm{font-size:11.5px; color:var(--faint); margin-top:10px; text-align:center}
+
+  /* 미리보기 A: 가로 칩 */
+  .pvA{display:flex; gap:6px; margin-top:12px}
+  .pvA .pc{flex:1; min-width:0; height:46px; border-radius:8px; border:1px solid var(--border-card);
+    background:var(--bg); display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:5px; padding:0 4px}
+  .pvA .pc s{width:76%; height:5px; border-radius:3px; background:var(--surface2); text-decoration:none}
+  .pvA .pc.more{color:var(--faint); font-size:11px; font-weight:700; gap:0}
+
+  /* 미리보기 B: 실제 탭 행 */
+  .pvB{margin-top:12px; border:1px solid var(--border-card); border-radius:9px;
+    background:var(--bg); overflow:hidden}
+  .pvB .pr{display:flex; align-items:center; gap:8px; padding:7px 10px; font-size:12.5px;
+    color:#495057; border-bottom:1px solid var(--border)}
+  .pvB .pr:last-child{border-bottom:none}
+  .pvB .pr .pt{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .pvB .pr.more{color:var(--faint); font-size:11.5px; font-weight:600; justify-content:center}
+
+  .thin{display:flex; align-items:center; gap:11px; padding:12px 14px; border-radius:13px;
+    border:1px solid var(--border); background:#fff; cursor:pointer; transition:.15s}
+  .thin:hover{border-color:var(--lav); box-shadow:0 5px 16px rgba(59,91,219,.13)}
+  .ti{width:34px; height:34px; border-radius:10px; flex:none; background:var(--surface2);
+    color:var(--muted); display:flex; align-items:center; justify-content:center}
+  .tt2{font-size:14px; font-weight:700; letter-spacing:-.01em; flex:1}
+  .qlink{margin-top:14px; font-size:13px; color:var(--muted); font-weight:600;
+    display:inline-flex; align-items:center; gap:7px; cursor:pointer; align-self:center}
+  .qlink:hover{color:var(--accent)}
+
+  .fnd{background:#fff; border:1px solid var(--border); border-radius:12px; padding:15px 17px;
+    max-width:900px; box-shadow:0 6px 18px rgba(20,30,60,.07); font-size:12.5px; line-height:1.7;
+    color:var(--muted)}
+  .fnd b{color:var(--ink)} .fnd .bad{color:var(--danger)} .fnd .ok{color:var(--accent)}
+  .fnd ol{margin:6px 0 0 18px} .fnd li{margin-bottom:9px}
+  .cmp{display:flex; gap:18px; flex-wrap:wrap; margin-top:6px}
+  code{background:var(--surface2); border-radius:4px; padding:1px 5px; font-size:11.5px}
+</style>
+</head>
+<body>
+  <h1>R2 빈 상태 — 실측 1:1</h1>
+  <p class="note">
+    실제 치수로 다시 그렸습니다: 조직 레일 <b>54</b> + 좌 패널 <b>212</b> + 우 패널 <b>272</b> = 538px,
+    보드 padding <code>16px 18px</code>. 1440 화면에서 <b>보드 내부가 866px</b>입니다
+    (<code>usePanelState.ts:13</code>, <code>Board.tsx:8</code>).<br/>
+    앞선 시안의 보드는 324px이었으니 <b class="bad">2.7배 차이</b>입니다 — 카드 크기 판단이 완전히 달라집니다.
+    글자 크기도 모두 실측값(보드 제목 15px, 스페이스 행 14px, 탭 행 13px)으로 맞췄습니다.
+  </p>
+
+  <h2>1. 1440 × 900 · 앞선 시안의 카드 폭(300px)을 그대로 확대</h2>
+  <p class="meta">보드 내부 <b>866px</b> · 카드 300px → 좌우 여백 각 283px</p>
+  <div class="scroll"><div class="app w1440" id="a1"></div></div>
+  <p class="note">
+    <span class="bad">이게 문제입니다.</span> 866px 보드 한가운데 300px 카드가 놓이면 좌우 여백이 카드보다 넓어서
+    화면이 <b>미완성처럼</b> 보입니다. 작은 시안에서는 카드가 보드를 꽉 채웠기 때문에 보이지 않던 결함이에요.
+  </p>
+
+  <h2>2. 같은 화면 · 카드 폭 400px + 미리보기를 실제 탭 행으로</h2>
+  <p class="meta">보드 내부 <b>866px</b> · 카드 400px · 미리보기 = 탭 3행 + “＋2개 더”</p>
+  <div class="scroll"><div class="app w1440" id="a2"></div></div>
+  <p class="note">
+    400px에서는 파비콘 옆에 <b>실제 탭 제목</b>이 들어갑니다. 가로 칩 5개는 각 칸이 69px여서 제목을 못 넣고
+    회색 바로 남았는데, 세로 3행은 <b class="ok">“무엇이 담기는지”를 글자로</b> 보여줍니다 — R2를 고른 이유가 여기서 제대로 살아납니다.
+    오른쪽 패널의 하이라이트된 탭 목록과 카드 안 목록이 <b>같은 것</b>이라는 게 한눈에 읽혀요.
+  </p>
+
+  <h2>3. 엣지 케이스 — 보드 영역만 실측 크롭</h2>
+  <p class="note">폭·글자 크기는 위와 동일한 실측값입니다. 세로만 300px로 잘랐습니다.</p>
+
+  <h3>3-1. 탭이 1개뿐일 때</h3>
+  <div class="scroll"><div class="crop" id="c1" style="width:902px"></div></div>
+  <p class="note">가로 칩 방식이면 칸 4개가 비어 <b class="bad">깨진 그리드</b>가 됩니다. 세로 행 방식은 1행이면 1행이라 자연스럽습니다.
+    문구도 <b>“지금 창의 탭 1개 담기”</b>로 수가 그대로 흘러갑니다.</p>
+
+  <h3>3-2. 탭이 24개일 때</h3>
+  <div class="scroll"><div class="crop" id="c2" style="width:902px"></div></div>
+  <p class="note">3행 + <b>“＋21개 더”</b>로 고정. 카드 높이가 탭 수에 따라 변하지 않는 게 중요합니다.</p>
+
+  <h3>3-3. 우측 패널을 접었을 때 (보드 1138px)</h3>
+  <div class="scroll"><div class="crop" id="c3" style="width:1174px"></div></div>
+  <p class="note">보드가 1138px로 더 넓어지지만 카드는 400px 고정 + 중앙 정렬이라 <b>레이아웃이 안 무너집니다</b>.
+    다만 미리보기의 근거인 “열린 탭 패널”이 화면에서 사라진 상태라, 카드 안 목록이 유일한 단서가 됩니다 — 세로 행 방식이 여기서 더 유리합니다.</p>
+
+  <h3>3-4. 1152 좁은 창 + 멤버·초대 버튼까지 있는 헤더</h3>
+  <div class="scroll"><div class="app w1152" id="a3" style="height:560px"></div></div>
+  <p class="note">보드 내부 578px. 카드 400px이 여전히 편안하고, 헤더 버튼이 늘어도 <code>＋ 컬렉션</code> split이 밀리지 않습니다.
+    좌·우 패널을 최대(400)까지 늘린 최악 조건에서도 보드는 1152−54−800−36 = <b>262px</b>이므로,
+    카드에 <code>max-width:400px; width:100%</code>를 주면 그때만 줄어듭니다.</p>
+
+  <h2>4. 실측에서 나온 조정 사항</h2>
+  <div class="fnd">
+    <ol>
+      <li><b>카드 폭 300 → 400px.</b> 866px 보드에서 300px은 너무 작습니다. <code>width:100%; max-width:400px</code>로 두면
+        패널을 최대로 넓힌 최악 조건(보드 262px)에서도 안전합니다.</li>
+      <li><b>미리보기: 가로 칩 → 세로 탭 행 3개 + “＋N개 더”.</b> 가로 칩은 칸이 69px로 좁아 제목이 안 들어가고,
+        탭이 1~2개면 <span class="bad">빈 칸</span>이 남습니다. 세로 행은 두 문제가 동시에 사라지고 정보량이 늘어납니다.</li>
+      <li><b>헤드라인 17px / 서브 13px.</b> 작은 시안의 13.5px을 그대로 쓰면 15px인 보드 제목보다 작아져
+        <span class="bad">위계가 뒤집힙니다</span>. <code>SpaceOnboarding</code>의 19px보다는 한 단 낮춰 온보딩이 두 번 나오는 느낌을 피했습니다.</li>
+      <li><b>아이콘 박스 28 → 34px.</b> 14px 제목 옆에서 28px은 눌려 보입니다.</li>
+      <li><b>“＋N개 더” 문구는 카드 안에 두기.</b> 카드 밖 캡션(“창 1의 탭이 이대로 담겨요”)은 실측에서
+        <span class="bad">군더더기</span>로 읽혀 지웠습니다 — 카드 제목이 이미 “지금 창의 탭 5개 담기”라고 말합니다.</li>
+    </ol>
+  </div>
+
+<script>
+const I = {
+  hash:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>',
+  plus:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>',
+  plusL:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>',
+  caret:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M6 9l6 6 6-6"/></svg>',
+  chev:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>',
+  chevD:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>',
+  tk:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="7" width="18" height="10" rx="2.5"/><path d="M8 7v10M13 12h4"/></svg>',
+  us:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16.5 5.4a3.2 3.2 0 010 5.2M18 20c0-2.3-.8-3.9-2-5"/></svg>',
+  sr:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>',
+  pnl:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16M16.5 9.5L14 12l2.5 2.5"/></svg>',
+  pnr:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M15 4v16M7.5 9.5L10 12l-2.5 2.5"/></svg>',
+  win:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/></svg>',
+  dl:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>',
+  x:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+};
+
+/* 실제 탭 데이터 — 파비콘은 문자 마크로 근사 */
+const TABS = [
+  { m:'G', c:'#1a73e8', t:'Google Meet — 주간 스탠드업' },
+  { m:'N', c:'#191919', t:'Notion — 스프린트 26 보드' },
+  { m:'F', c:'#a259ff', t:'Figma — 디자인 시스템 v3' },
+  { m:'S', c:'#4a154b', t:'Slack — #product-design' },
+  { m:'L', c:'#0052cc', t:'Linear — TAB-412 공유 코드' },
+];
+const fv = t => `<span class="fv" style="background:${t.c}">${t.m}</span>`;
+
+const RAIL = `<div class="rail"><div class="logo"></div>
+  <div class="oa on">업</div><div class="oa">P</div><div class="oa gh">＋</div>
+  <div class="acct"></div></div>`;
+
+const SIDE = `<div class="side">
+  <div class="hd"><span class="oi"></span><span class="nm">업무 조직</span>
+    <span style="color:var(--faint);display:flex">${I.pnl}</span></div>
+  <div class="srch">${I.sr}<span>검색</span></div>
+  <div class="lbl">스페이스</div>
+  <div class="rows">
+    <div class="row on">${I.hash} 업무</div>
+    <div class="row">${I.hash} 리서치</div>
+    <div class="row">${I.hash} 나중에 읽기</div>
+    <div class="row add">${I.plus} 스페이스 추가</div>
+  </div>
+  <div class="lbl" style="padding-top:8px">공유 스페이스</div>
+  <div class="rows"><div class="row">${I.hash} 팀 온보딩</div></div>
+  <div class="foot"></div></div>`;
+
+/* 우 패널: n = 창 1의 탭 수(하이라이트 대상) */
+function RP(n){
+  const rows = Array.from({length: Math.min(n, 7)}, (_, i) => {
+    const t = TABS[i % TABS.length];
+    return `<div class="tb hl">${fv(t)}<span class="tt">${t.t}</span></div>`;
+  }).join('');
+  return `<div class="rp">
+    <div class="rh"><span>열린 탭</span><span style="color:var(--faint);display:flex">${I.pnr}</span></div>
+    <div class="wg"><span class="wn act">${I.chevD} 창 1</span>
+      <span class="ax">${I.dl}${I.x}</span></div>
+    <div class="tabs">${rows}${n > 7 ? `<div style="font-size:12px;color:var(--faint);padding:3px 2px">…그 외 ${n-7}개</div>` : ''}</div>
+    <div class="wg"><span class="wn">${I.chevD} 창 2</span><span class="ax">${I.dl}${I.x}</span></div>
+    <div class="tabs">
+      <div class="tb">${fv(TABS[2])}<span class="tt">Figma — 아이콘 정리</span></div>
+      <div class="tb">${fv(TABS[0])}<span class="tt">Gmail — 받은 편지함</span></div>
+    </div>
+  </div>`;
+}
+
+const SPLIT = `<span class="split"><span class="main">${I.plus} 컬렉션</span>
+  <span class="div"></span><span class="caret">${I.caret}</span></span>`;
+
+function bhd(extra){
+  return `<div class="bhd">
+    <div class="l"><span class="ttl">업무</span><span class="cnt">· 0 컬렉션</span>
+      ${extra ? '<span class="btn out">초대</span>' : ''}</div>
+    <div class="r">${extra ? '<div class="avs"><i></i><i></i><i></i></div><span class="btn out">'+I.us+' 멤버</span>' : ''}
+      ${SPLIT}</div></div>`;
+}
+
+/* 미리보기 A: 가로 칩 (앞선 시안 방식) */
+function pvA(n){
+  const cells = Array.from({length: Math.min(n, 5)}, () => `<span class="pc"><span class="fv" style="background:var(--lav)"></span><s></s></span>`).join('');
+  const pad = Array.from({length: Math.max(0, 5-n)}, () => `<span class="pc"></span>`).join('');
+  return `<div class="pvA">${cells}${pad}</div><div class="pm">창 1의 탭이 이대로 담겨요</div>`;
+}
+
+/* 미리보기 B: 세로 탭 행 3개 + ＋N개 더 */
+function pvB(n){
+  const rows = TABS.slice(0, Math.min(n, 3)).map(t =>
+    `<div class="pr">${fv(t)}<span class="pt">${t.t}</span></div>`).join('');
+  const more = n > 3 ? `<div class="pr more">＋${n-3}개 더</div>` : '';
+  return `<div class="pvB">${rows}${more}</div>`;
+}
+
+/* 빈 상태 본체. mode: 'A' | 'B', width: 카드 폭 */
+function es(n, mode, width){
+  const pv = mode === 'A' ? pvA(n) : pvB(n);
+  return `<div class="es">
+    <div class="eh">탭을 담을 첫 칸을 만들어요</div>
+    <div class="esub">컬렉션은 탭을 모아두는 칸이에요</div>
+    <div class="stack" style="width:${width}px">
+      <div class="bigc">
+        <div class="bh"><span class="bi">${I.win}</span>
+          <span class="bt">지금 창의 탭 ${n}개 담기</span>
+          <span class="chev">${I.chev}</span></div>
+        ${pv}
+      </div>
+      <div class="thin"><span class="ti">${I.plusL}</span>
+        <span class="tt2">빈 컬렉션 만들기</span><span class="chev">${I.chev}</span></div>
+      <span class="qlink">${I.tk} 공유 코드로 추가</span>
+    </div>
+  </div>`;
+}
+
+const $ = id => document.getElementById(id);
+
+/* 1. 300px + 가로 칩 */
+$('a1').innerHTML = `${RAIL}${SIDE}<div class="board">${bhd(false)}${es(5,'A',300)}</div>${RP(5)}`;
+
+/* 2. 400px + 세로 행 */
+$('a2').innerHTML = `${RAIL}${SIDE}<div class="board">${bhd(false)}${es(5,'B',400)}</div>${RP(5)}`;
+
+/* 3-1. 탭 1개 — 두 방식 비교 */
+$('c1').innerHTML = `<div class="board" style="height:100%">
+  <div style="display:flex; gap:24px; justify-content:center; align-items:flex-start; padding-top:14px">
+    <div style="text-align:center">
+      <div style="font-size:11px;font-weight:800;color:var(--danger);margin-bottom:9px">가로 칩 — 빈 칸 4개</div>
+      <div class="stack" style="width:400px;margin:0">
+        <div class="bigc"><div class="bh"><span class="bi">${I.win}</span>
+          <span class="bt">지금 창의 탭 1개 담기</span><span class="chev">${I.chev}</span></div>
+          ${pvA(1)}</div></div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:9px">세로 행 — 1행이면 1행</div>
+      <div class="stack" style="width:400px;margin:0">
+        <div class="bigc"><div class="bh"><span class="bi">${I.win}</span>
+          <span class="bt">지금 창의 탭 1개 담기</span><span class="chev">${I.chev}</span></div>
+          ${pvB(1)}</div></div>
+    </div>
+  </div></div>`;
+
+/* 3-2. 탭 24개 */
+$('c2').innerHTML = `<div class="board" style="height:100%">${bhd(false)}
+  <div style="display:flex; justify-content:center">
+    <div class="stack" style="width:400px;margin:0">
+      <div class="bigc"><div class="bh"><span class="bi">${I.win}</span>
+        <span class="bt">지금 창의 탭 24개 담기</span><span class="chev">${I.chev}</span></div>
+        ${pvB(24)}</div>
+      <div class="thin"><span class="ti">${I.plusL}</span>
+        <span class="tt2">빈 컬렉션 만들기</span><span class="chev">${I.chev}</span></div>
+    </div></div></div>`;
+
+/* 3-3. 우 패널 접힘 (보드 1138) */
+$('c3').innerHTML = `${RAIL}${SIDE}<div class="board" style="height:100%">${bhd(false)}
+  <div style="display:flex; justify-content:center">
+    <div class="stack" style="width:400px;margin:0">
+      <div class="bigc"><div class="bh"><span class="bi">${I.win}</span>
+        <span class="bt">지금 창의 탭 5개 담기</span><span class="chev">${I.chev}</span></div>
+        ${pvB(5)}</div>
+      <div class="thin"><span class="ti">${I.plusL}</span>
+        <span class="tt2">빈 컬렉션 만들기</span><span class="chev">${I.chev}</span></div>
+    </div></div></div>
+  <div style="width:44px;flex:none;background:var(--surface);border-left:1px solid var(--border);
+    display:flex;justify-content:center;padding-top:10px;color:var(--faint)">${I.pnl}</div>`;
+
+/* 3-4. 1152 + 멤버·초대 헤더 */
+$('a3').innerHTML = `${RAIL}${SIDE}<div class="board">${bhd(true)}${es(5,'B',400)}</div>${RP(5)}`;
+</script>
+</body>
+</html>

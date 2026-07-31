@@ -9,23 +9,30 @@ export interface ImportCodeInfo { title: string; icon: string | null; link_count
 export interface ImportCodeDialogProps {
   open: boolean;
   spaces: SpaceOption[];
+  /** 기본 선택할 스페이스. 헤더에서 들어오면 목적지가 자명하므로 현재 스페이스를 넘긴다. */
+  defaultSpaceId?: string | null;
   onLookup: (code: string) => Promise<ImportCodeInfo>;
   onImport: (code: string, spaceId: string) => Promise<void>;
   onClose: () => void;
 }
 
 /** 공유 코드 입력 → 미리보기 → 대상 스페이스 선택 → 가져오기 다이얼로그. */
-export function ImportCodeDialog({ open, spaces, onLookup, onImport, onClose }: ImportCodeDialogProps) {
+export function ImportCodeDialog({ open, spaces, defaultSpaceId = null, onLookup, onImport, onClose }: ImportCodeDialogProps) {
   const [code, setCode] = useState("");
   const [info, setInfo] = useState<ImportCodeInfo | null>(null);
   const [spaceId, setSpaceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // 닫힐 때 상태 초기화
+  // 열릴 때 목적지를 미리 골라 두고, 닫힐 때 상태 초기화.
+  // 기본 선택이 없으면 조회 후 스페이스를 한 번 더 클릭해야 '추가'가 활성된다.
   useEffect(() => {
-    if (!open) { setCode(""); setInfo(null); setSpaceId(null); setError(null); setBusy(false); }
-  }, [open]);
+    if (open) {
+      setSpaceId(defaultSpaceId && spaces.some((s) => s.id === defaultSpaceId) ? defaultSpaceId : null);
+    } else {
+      setCode(""); setInfo(null); setSpaceId(null); setError(null); setBusy(false);
+    }
+  }, [open, defaultSpaceId, spaces]);
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
@@ -65,9 +72,9 @@ export function ImportCodeDialog({ open, spaces, onLookup, onImport, onClose }: 
     <div role="presentation" onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
       <style>{overlayAnimationCss}</style>
-      <div role="dialog" aria-modal="true" aria-label="코드로 가져오기" onClick={(e) => e.stopPropagation()}
+      <div role="dialog" aria-modal="true" aria-label="공유 코드로 추가" onClick={(e) => e.stopPropagation()}
         style={{ width: 340, maxWidth: "calc(100vw - 32px)", animation: panelIn, background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>코드로 가져오기</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>공유 코드로 추가</div>
         <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
           <input
             value={code}
@@ -89,7 +96,7 @@ export function ImportCodeDialog({ open, spaces, onLookup, onImport, onClose }: 
                 링크 {info.link_count}개{info.shared_by ? ` · ${info.shared_by}님이 공유` : ""}
               </div>
             </div>
-            <div style={{ marginTop: 10, fontSize: 12, color: theme.textFaint }}>가져올 스페이스</div>
+            <div style={{ marginTop: 10, fontSize: 12, color: theme.textFaint }}>어디에 추가할까요</div>
             <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6 }}>
               {spaces.map((s) => (
                 <button key={s.id} type="button" onClick={() => setSpaceId(s.id)}
@@ -103,9 +110,13 @@ export function ImportCodeDialog({ open, spaces, onLookup, onImport, onClose }: 
                 </button>
               ))}
             </div>
-            <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            {/* 스냅샷임을 미리 알린다 — 초대(실시간 협업)와 헷갈리면 안 된다 */}
+            <p style={{ marginTop: 11, fontSize: 11.5, color: theme.textFaint, lineHeight: 1.5 }}>
+              복사본으로 추가돼요. 원본이 바뀌어도 반영되지 않습니다.
+            </p>
+            <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <Button variant="outline" onClick={onClose}>취소</Button>
-              <Button onClick={doImport} disabled={busy || !spaceId}>가져오기</Button>
+              <Button onClick={doImport} disabled={busy || !spaceId}>추가</Button>
             </div>
           </>
         )}

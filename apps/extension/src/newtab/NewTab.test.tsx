@@ -27,6 +27,7 @@ vi.mock("./TossEmojiPicker", () => ({
 const listSpaces = vi.fn();
 const createSpace = vi.fn();
 const createCollection = vi.fn();
+const createLink = vi.fn();
 const listCollections = vi.fn();
 const listMyMemberships = vi.fn();
 const listLinks = vi.fn();
@@ -59,6 +60,7 @@ vi.mock("@tablign/core", async (importOriginal) => {
     listSpaces: (...a: unknown[]) => listSpaces(...a),
     createSpace: (...a: unknown[]) => createSpace(...a),
     createCollection: (...a: unknown[]) => createCollection(...a),
+    createLink: (...a: unknown[]) => createLink(...a),
     listCollections: (...a: unknown[]) => listCollections(...a),
     listMyMemberships: (...a: unknown[]) => listMyMemberships(...a),
     listLinks: (...a: unknown[]) => listLinks(...a),
@@ -91,6 +93,9 @@ beforeEach(() => {
   listSpaces.mockReset();
   createSpace.mockReset();
   createCollection.mockReset();
+  createCollection.mockImplementation(async (_s: unknown, input: { title: string }) => ({ id: `col-${input.title}`, title: input.title }));
+  createLink.mockReset();
+  createLink.mockResolvedValue({ id: "link-1" });
   listCollections.mockReset();
   listCollections.mockResolvedValue([]);
   listMyMemberships.mockReset();
@@ -207,8 +212,74 @@ describe("NewTab — 스페이스가 없을 때", () => {
   });
 });
 
-describe("NewTab — 코드로 가져오기", () => {
-  it("현재 활성 스페이스로 가져오면 보드를 즉시 재조회한다", async () => {
+describe("NewTab — 컬렉션이 0개일 때", () => {
+  const onlySpace = [
+    { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+  ];
+  /** 창 10 = http 2개 + tablign 새 탭, 창 20 = chrome:// 만(담을 게 없음) */
+  function stubTabs(tabs: unknown[]) {
+    vi.stubGlobal("chrome", {
+      ...(globalThis as unknown as { chrome: object }).chrome,
+      tabs: {
+        query: vi.fn().mockResolvedValue(tabs),
+        getCurrent: vi.fn().mockResolvedValue({ id: 3 }),
+      },
+    });
+  }
+  const MIXED = [
+    { id: 1, windowId: 10, url: "https://a.com", title: "탭 A" },
+    { id: 2, windowId: 10, url: "https://b.com", title: "탭 B" },
+    { id: 3, windowId: 10, url: "chrome-extension://xyz/newtab.html", title: "tablign — 새 탭" },
+    { id: 4, windowId: 20, url: "chrome://settings", title: "설정" },
+  ];
+
+  it("담을 수 있는 탭만 세어 안내한다 — 새 탭 자신과 chrome:// 는 제외", async () => {
+    listSpaces.mockResolvedValue(onlySpace);
+    stubTabs(MIXED);
+    renderNewTab();
+
+    // 첫 마운트는 스페이스→컬렉션→멤버십→조직을 순차로 기다린다.
+    // findBy*가 돌려준 노드는 직후 리렌더(groups 도착)로 분리될 수 있으므로
+    // 존재 확인은 재조회(getByText)로 한다.
+    await screen.findByText("탭을 담을 첫 컬렉션을 만들어요", {}, { timeout: 4000 });
+    // 담을 수 있는 탭은 https 2개, 그것이 있는 창은 1개뿐이므로 단일 창 문구로 갈린다
+    await screen.findByText("지금 창의 탭 2개 담기", {}, { timeout: 4000 });
+    expect(screen.getByText("탭을 담을 첫 컬렉션을 만들어요")).toBeInTheDocument();
+    expect(screen.getByText("컬렉션은 탭을 모아두는 서랍이에요")).toBeInTheDocument();
+  });
+
+  it("'담기'는 담을 탭이 있는 창만 컬렉션으로 만든다 — 빈 창은 건너뛴다", async () => {
+    listSpaces.mockResolvedValue(onlySpace);
+    stubTabs(MIXED);
+    renderNewTab();
+
+    // groups 도착으로 리렌더되므로, 라벨이 확정된 뒤 클릭 시점에 버튼을 새로 조회한다.
+    // 미리 캡처한 노드를 누르면 분리된 노드를 클릭해 아무 일도 일어나지 않는다.
+    await screen.findByText("지금 창의 탭 2개 담기", {}, { timeout: 4000 });
+    fireEvent.click(screen.getByRole("button", { name: /지금 창의 탭 2개 담기/ }));
+
+    // 창 20(chrome:// 뿐)은 건너뛰므로 컬렉션은 1개만 생겨야 한다
+    await waitFor(() => expect(createCollection).toHaveBeenCalledTimes(1));
+    expect(createCollection.mock.calls[0][1]).toMatchObject({ space_id: "s1", title: "창 1" });
+    // 링크는 http 2개만 — 새 탭 자신은 저장되지 않는다
+    await waitFor(() => expect(createLink).toHaveBeenCalledTimes(2));
+    expect(createLink.mock.calls.map((c) => (c[1] as { url: string }).url)).toEqual(["https://a.com", "https://b.com"]);
+  });
+
+  it("담을 수 있는 탭이 없으면 첫 카드를 비활성하고 아무것도 만들지 않는다", async () => {
+    listSpaces.mockResolvedValue(onlySpace);
+    stubTabs([{ id: 3, windowId: 10, url: "chrome-extension://xyz/newtab.html", title: "tablign — 새 탭" }]);
+    renderNewTab();
+
+    const dead = await screen.findByRole("button", { name: /열린 창 담기/ }, { timeout: 4000 });
+    expect(dead).toBeDisabled();
+    fireEvent.click(dead);
+    expect(createCollection).not.toHaveBeenCalled();
+  });
+});
+
+describe("NewTab — 공유 코드로 추가", () => {
+  it("현재 활성 스페이스로 추가하면 보드를 즉시 재조회한다", async () => {
     listSpaces.mockResolvedValue([
       { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
     ]);
@@ -219,13 +290,14 @@ describe("NewTab — 코드로 가져오기", () => {
 
     const callsBefore = listCollections.mock.calls.length;
 
-    // 사이드바 진입점 → 코드 입력 → 조회 → (현재와 같은) 스페이스 선택 → 가져오기
-    fireEvent.click(screen.getByRole("button", { name: "코드로 가져오기" }));
-    const dialog = screen.getByRole("dialog", { name: "코드로 가져오기" });
+    // 진입점: 보드 헤더의 '＋ 컬렉션' split 버튼 ▾ → 메뉴 → 코드 입력 → 조회 → 추가.
+    // 현재 스페이스가 기본 선택이라 스페이스 칩을 다시 누르지 않는다.
+    fireEvent.click(screen.getByRole("button", { name: "컬렉션 추가 방법" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "공유 코드로 추가" }));
+    const dialog = screen.getByRole("dialog", { name: "공유 코드로 추가" });
     fireEvent.change(within(dialog).getByPlaceholderText(/공유 코드/), { target: { value: "ABCD2345" } });
     fireEvent.click(within(dialog).getByRole("button", { name: /조회/ }));
-    fireEvent.click(await within(dialog).findByRole("button", { name: /개인/ }));
-    fireEvent.click(within(dialog).getByRole("button", { name: /가져오기/ }));
+    fireEvent.click(await within(dialog).findByRole("button", { name: "추가" }));
 
     await waitFor(() => expect(importCollectionByCode).toHaveBeenCalledTimes(1));
     // 같은 스페이스라 activeSpaceId가 안 바뀌어도 보드가 다시 조회되어야 한다
@@ -234,12 +306,18 @@ describe("NewTab — 코드로 가져오기", () => {
 });
 
 describe("NewTab — 컬렉션 삭제", () => {
-  it("삭제 버튼은 확인 다이얼로그를 거쳐야 실제 삭제한다", async () => {
-    listSpaces.mockResolvedValue([
-      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
-    ]);
-    listCollections.mockResolvedValue([
-      { id: "c1", space_id: "s1", user_id: "u1", title: "읽을거리", icon: null, note: null, position: 1000, created_at: "x" },
+  const space = [
+    { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+  ];
+  const oneCollection = [
+    { id: "c1", space_id: "s1", user_id: "u1", title: "읽을거리", icon: null, note: null, position: 1000, created_at: "x" },
+  ];
+
+  it("링크가 있으면 확인 다이얼로그를 거쳐야 실제 삭제한다", async () => {
+    listSpaces.mockResolvedValue(space);
+    listCollections.mockResolvedValue(oneCollection);
+    listLinks.mockResolvedValue([
+      { id: "l1", collection_id: "c1", user_id: "u1", url: "https://a.com", title: "A", favicon_url: null, thumbnail_url: null, custom_title: null, note: null, position: 1000, created_at: "x" },
     ]);
     renderNewTab();
     await screen.findByText("읽을거리");
@@ -253,6 +331,21 @@ describe("NewTab — 컬렉션 삭제", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "삭제" }));
     await waitFor(() => expect(deleteCollection).toHaveBeenCalledTimes(1));
     expect(deleteCollection.mock.calls[0][1]).toBe("c1");
+  });
+
+  it("링크가 하나도 없으면 확인 없이 바로 삭제한다", async () => {
+    listSpaces.mockResolvedValue(space);
+    listCollections.mockResolvedValue(oneCollection);
+    listLinks.mockResolvedValue([]); // 빈 컬렉션
+    renderNewTab();
+    await screen.findByText("읽을거리");
+
+    fireEvent.click(screen.getByRole("button", { name: "컬렉션 삭제" }));
+    await waitFor(() => expect(deleteCollection).toHaveBeenCalledTimes(1));
+    expect(deleteCollection.mock.calls[0][1]).toBe("c1");
+    // 다이얼로그는 뜨지 않고, 대신 토스트로 알린다
+    expect(screen.queryByRole("alertdialog", { name: "컬렉션 삭제" })).not.toBeInTheDocument();
+    expect(await screen.findByText(/'읽을거리' 컬렉션을 삭제했어요/)).toBeInTheDocument();
   });
 });
 

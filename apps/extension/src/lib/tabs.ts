@@ -10,6 +10,28 @@ function isHttp(url: string | undefined): url is string {
   return !!url && (url.startsWith("http://") || url.startsWith("https://"));
 }
 
+/**
+ * 컬렉션에 담을 수 있는 탭인지. http(s)만 저장하므로 tablign 새 탭 자신(chrome-extension://),
+ * chrome:// 내부 페이지, file://, about:blank 등은 모두 제외된다.
+ * 저장 경로(드래그 드롭·창 전체 저장)와 화면 표시(개수·자물쇠)가 같은 기준을 써야
+ * "보이는 개수 ≠ 담기는 개수"가 생기지 않으므로 tabsToLinkInputs와 이 함수를 함께 쓴다.
+ */
+export function isSaveableTab(tab: TabLike): boolean {
+  return isHttp(tab.url);
+}
+
+/** 담을 수 있는 탭만 남긴다. */
+export function saveableTabs<T extends TabLike>(tabs: T[]): T[] {
+  return tabs.filter(isSaveableTab);
+}
+
+/** 담을 수 없는 이유 — 자물쇠 tooltip 문구. 담을 수 있는 탭이면 null. */
+export function unsaveableReason(tab: TabLike): string | null {
+  if (isSaveableTab(tab)) return null;
+  if (tab.url?.startsWith("file://")) return "내 컴퓨터의 파일은 담을 수 없어요";
+  return "브라우저 내부 페이지는 담을 수 없어요";
+}
+
 export function tabsToLinkInputs(
   tabs: TabLike[],
   userId: string,

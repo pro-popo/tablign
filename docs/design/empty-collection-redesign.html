@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 컬렉션 0개 빈 상태 · 재디자인</title>
+<style>
+  /* ── 문서 껍데기: 조용하게. 주인공은 프레임 ── */
+  :root{ --pg:#eef0f4; --pg-ink:#1f2430; --pg-dim:#7c8695; --pg-rule:#dfe3ea; --pg-mark:#3b5bdb; }
+  *{box-sizing:border-box; margin:0}
+  body{background:var(--pg); color:var(--pg-ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    padding:30px 22px 90px}
+  .wrap{max-width:1180px}
+  h1{font-size:17px; font-weight:750; letter-spacing:-.025em}
+  .sub{font-size:13px; color:var(--pg-dim); line-height:1.75; margin-top:9px; max-width:800px}
+  .sub b{color:var(--pg-ink); font-weight:650} .sub s{color:#98a1af}
+  h2{font-size:14px; font-weight:750; letter-spacing:-.02em; margin:44px 0 3px}
+  h2 .no{color:var(--pg-mark); font-variant-numeric:tabular-nums; margin-right:8px}
+  .tag{display:inline-block; font-size:10.5px; font-weight:750; border-radius:5px;
+    padding:2px 7px; margin-left:8px; vertical-align:2px}
+  .tag.a{background:#3b5bdb; color:#fff}
+  .tag.b{background:#fff; color:#5c636b; border:1px solid var(--pg-rule)}
+  .lede{font-size:12.5px; color:var(--pg-dim); line-height:1.75; margin:8px 0 15px; max-width:820px}
+  .lede b{color:var(--pg-ink); font-weight:650} .lede s{color:#98a1af}
+  .cap{font-size:10.5px; font-weight:750; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--pg-dim); margin:0 0 9px}
+  .scroll{overflow-x:auto; padding-bottom:10px}
+  .side-by{display:flex; gap:20px; overflow-x:auto; padding-bottom:10px}
+  .why{background:#fff; border:1px solid var(--pg-rule); border-radius:11px; padding:15px 17px;
+    font-size:12.5px; line-height:1.75; color:var(--pg-dim); max-width:820px; margin-top:14px}
+  .why b{color:var(--pg-ink); font-weight:650} .why s{color:#98a1af}
+  .why ul{margin:8px 0 0 17px} .why li{margin-bottom:7px}
+  .risk{border-left:2px solid var(--pg-mark); padding-left:13px; margin-top:12px}
+  code{background:#e4e8ef; border-radius:4px; padding:1px 5px; font-size:11.5px;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace}
+
+  /* ══════════════════════════════════════════════
+     제품 UI — tablign 실측. 문서 토큰 차단
+     ══════════════════════════════════════════════ */
+  .tl{--accent:#3b5bdb; --accent-weak:#edf0fe; --t:#1f2430; --muted:#868e96; --faint:#adb5bd;
+    --border:#eaecef; --border-card:#e9ebee; --bg:#fcfcfd; --surface:#fff; --surface2:#f1f3f5;
+    --lav:#c9d4ff; --amber:#f4c66a; --green:#7bc47f;
+    /* ▼ 제안하는 새 토큰 — 서랍 안쪽. 앱 전체는 차가운 청회색, 슬롯 내부만 따뜻하게 */
+    --drawer:#faf8f4; --drawer-edge:#e6e2da;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    color:var(--t); font-size:14px; line-height:normal; letter-spacing:0; background:var(--bg);
+    border-radius:9px; overflow:hidden; display:flex; flex:none;
+    border:1px solid #d5dae2; box-shadow:0 14px 40px rgba(20,30,60,.14)}
+  .tl.app{width:1440px; height:900px}
+  .tl.narrow{width:1152px; height:760px}
+
+  .tl .rail{width:54px; flex:none; background:var(--surface); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; padding:10px 0 12px; gap:8px}
+  .tl .rail .logo{width:28px; height:28px; border-radius:8px; background:var(--accent); flex:none}
+  .tl .rail .oa{width:34px; height:34px; border-radius:11px; background:var(--surface2);
+    border:1px solid var(--border); font-size:13px; font-weight:800; color:var(--muted);
+    display:flex; align-items:center; justify-content:center; flex:none}
+  .tl .rail .oa.on{background:var(--accent-weak); border-color:var(--lav); color:var(--accent)}
+  .tl .rail .oa.gh{border-style:dashed; color:var(--faint); background:transparent}
+  .tl .rail .acct{margin-top:auto; width:30px; height:30px; border-radius:50%; background:#dde2ea; flex:none}
+
+  .tl .side{flex:none; background:var(--surface); border-right:1px solid var(--border);
+    display:flex; flex-direction:column}
+  .tl .side .hd{padding:13px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center}
+  .tl .side .hd .oi{width:20px; height:20px; border-radius:6px; background:var(--accent-weak);
+    flex:none; margin-right:7px}
+  .tl .side .hd .nm{font-size:13.5px; font-weight:700; flex:1; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+  .tl .side .srch{margin:11px 12px; height:32px; border:1px solid var(--border); border-radius:8px;
+    background:var(--bg); display:flex; align-items:center; gap:7px; padding:0 9px;
+    font-size:12.5px; color:var(--faint)}
+  .tl .lbl{padding:4px 14px; font-size:10px; color:var(--faint); font-weight:700}
+  .tl .rows{padding:0 8px; display:flex; flex-direction:column; gap:2px}
+  .tl .row{display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:8px;
+    font-size:14px; color:#495057}
+  .tl .row.on{background:var(--accent-weak); color:var(--accent); font-weight:600}
+  .tl .row.add{color:var(--faint)}
+
+  .tl .rp{flex:none; background:var(--surface); border-left:1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden}
+  .tl .rp .rh{padding:13px 14px; border-bottom:1px solid var(--border); display:flex;
+    align-items:center; justify-content:space-between}
+  .tl .rp .rh .t{font-size:13.5px; font-weight:700}
+  .tl .rp .rh .c{font-size:11.5px; color:var(--faint); font-weight:600}
+  .tl .rp .wg{padding:11px 12px 6px; display:flex; align-items:center; justify-content:space-between}
+  .tl .rp .wg .wn{font-size:13px; font-weight:600; color:#495057; display:flex; align-items:center; gap:6px}
+  .tl .rp .wg .wn.act{color:var(--accent)}
+  .tl .rp .wg .ax{display:flex; gap:2px; color:var(--faint)}
+  .tl .rp .tabs{padding:0 12px; display:flex; flex-direction:column; gap:6px}
+  .tl .tb{display:flex; gap:8px; align-items:center; border:1px solid var(--border); border-radius:9px;
+    padding:8px 9px; background:#fff; font-size:13px; cursor:grab}
+  .tl .tb.hl{border-color:var(--lav); background:var(--accent-weak)}
+  .tl .tb.nosave{background:var(--surface2); border-style:dashed; cursor:pointer}
+  .tl .tb .tt{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#3d444c}
+  .tl .tb .lock{display:flex; flex:none; color:var(--faint)}
+  .tl .chip2{font-size:10px; font-weight:700; color:var(--muted); background:#fff;
+    border:1px solid var(--border); border-radius:5px; padding:1px 5px; flex:none; white-space:nowrap}
+  .tl .fv{border-radius:4px; flex:none; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:800; letter-spacing:-.03em; width:16px; height:16px; font-size:9px}
+  .tl .fv.gh{background:var(--surface2); color:var(--faint); border:1px solid var(--border); font-size:8px}
+
+  .tl .board{flex:1; min-width:0; padding:16px 18px; display:flex; flex-direction:column;
+    overflow:hidden; position:relative}
+  .tl .bhd{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:8px}
+  .tl .bhd .l{display:flex; align-items:center; gap:8px; min-width:0}
+  .tl .bhd .ttl{font-size:15px; font-weight:700; white-space:nowrap}
+  .tl .bhd .cnt{font-size:14px; color:var(--faint); white-space:nowrap}
+  .tl .split{display:inline-flex; align-items:stretch; border-radius:7px; overflow:hidden;
+    background:var(--accent); color:#fff; cursor:pointer; font-weight:600; flex:none}
+  .tl .split .main{display:inline-flex; align-items:center; gap:6px; padding:6px 11px; font-size:13px}
+  .tl .split .dv{width:1px; background:rgba(255,255,255,.32)}
+  .tl .split .caret{display:inline-flex; align-items:center; padding:0 7px}
+
+  /* ══ A안: 탭 스트립 헤로 + 3열 동등 슬롯 ══ */
+  .tl .stageA{flex:1; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; padding-bottom:30px}
+  .tl .hold{width:100%; max-width:780px}
+
+  /* 탭 스트립 — 주제 세계에서 가장 특징적인 형태. 실제 열린 탭이 들어간다 */
+  .tl .striph{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:9px}
+  .tl .striph .k{font-size:10.5px; font-weight:750; letter-spacing:.1em; color:var(--faint)}
+  .tl .striph .v{font-size:11.5px; color:var(--faint)}
+  .tl .strip{display:flex; align-items:flex-end; border-bottom:1.5px solid var(--lav);
+    padding-left:2px; min-height:34px}
+  .tl .btab{height:32px; width:106px; flex:none; margin-right:-10px;
+    border:1px solid var(--border); border-bottom:none; border-radius:9px 9px 0 0;
+    background:var(--surface); display:flex; align-items:center; gap:6px; padding:0 9px;
+    box-shadow:0 -1px 3px rgba(20,30,60,.04); transition:transform .28s cubic-bezier(.2,.85,.3,1)}
+  .tl .btab .bt{font-size:11px; color:#5c636b; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+  .tl .btab:nth-child(odd){background:#fdfdfe}
+  .tl .more{font-size:11px; color:var(--faint); font-weight:700; margin-left:20px; padding-bottom:7px}
+  .tl .strip.empty{border-bottom-color:var(--border); align-items:center; padding-bottom:8px}
+  .tl .strip.empty .msg{font-size:11.5px; color:var(--faint)}
+  /* 슬롯1 hover 시 탭이 그쪽으로 기운다 */
+  .tl .lean .btab{transform:translateY(4px)}
+  .tl .lean .btab:nth-child(1){transform:translateY(7px) rotate(-1.2deg)}
+  .tl .lean .btab:nth-child(5){transform:translateY(7px) rotate(1.2deg)}
+
+  .tl .copy{text-align:center; margin:26px 0 20px}
+  .tl .eh{font-size:18px; font-weight:750; letter-spacing:-.028em}
+  .tl .esub{font-size:13px; color:var(--muted); margin-top:7px}
+
+  /* 서랍 슬롯 — 카드가 아니라 '넣는 곳'. 다른 재질 + 눌린 그림자 */
+  .tl .slots{display:grid; grid-template-columns:repeat(auto-fit, minmax(228px,1fr)); gap:14px}
+  .tl .slot{height:132px; border:1px solid var(--drawer-edge); border-radius:14px;
+    background:var(--drawer); padding:15px 16px; display:flex; flex-direction:column;
+    justify-content:space-between; cursor:pointer;
+    box-shadow:inset 0 2px 7px rgba(31,36,48,.055); transition:.16s}
+  .tl .slot:hover{background:#fff; border-color:var(--lav);
+    box-shadow:0 6px 18px rgba(59,91,219,.13)}
+  .tl .slot .si{width:30px; height:30px; border-radius:9px; background:#fff;
+    border:1px solid var(--drawer-edge); color:#5c636b;
+    display:flex; align-items:center; justify-content:center}
+  .tl .slot .st{font-size:13.5px; font-weight:700; letter-spacing:-.012em; line-height:1.35}
+  .tl .slot .ss{font-size:11.5px; color:var(--muted); margin-top:4px}
+  .tl .slot.inert{cursor:not-allowed; opacity:.5; box-shadow:inset 0 2px 7px rgba(31,36,48,.04)}
+  .tl .slot.inert:hover{background:var(--drawer); border-color:var(--drawer-edge); box-shadow:inset 0 2px 7px rgba(31,36,48,.04)}
+  .tl .badge{display:inline-block; font-size:10.5px; font-weight:700; border-radius:5px;
+    padding:1px 6px; margin-left:6px; color:var(--muted); background:#eeebe4}
+
+  /* ══ B안: 유령 컬렉션 미리보기 ══ */
+  .tl .stageB{flex:1; display:flex; flex-direction:column; overflow:hidden}
+  .tl .bcopy{text-align:center; margin:6px 0 18px}
+  .tl .ghost{border:1.5px dashed var(--drawer-edge); border-radius:9px; background:var(--drawer);
+    padding:8px; margin-bottom:10px}
+  .tl .ghost:hover{border-color:var(--accent); background:#fff}
+  .tl .gh-hd{display:flex; align-items:center; gap:7px; margin-bottom:10px; padding:0 2px}
+  .tl .gh-hd .gn{font-size:13.5px; font-weight:700}
+  .tl .gh-hd .gc{font-size:12px; color:var(--faint)}
+  .tl .gh-hd .go{margin-left:auto; font-size:12.5px; font-weight:700; color:var(--accent);
+    display:inline-flex; align-items:center; gap:4px}
+  .tl .gg{display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:9px}
+  .tl .gc2{border:1px dashed #dcd8cf; border-radius:9px; padding:10px 11px; background:#fff}
+  .tl .gc2 .r1{display:flex; gap:8px; align-items:center}
+  .tl .gc2 .n{font-size:13px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; color:#3d444c}
+  .tl .gc2 .d{color:var(--faint); font-size:11; margin-top:5px; height:14; line-height:14px;
+    font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .tl .quiet{display:flex; align-items:center; justify-content:center; gap:18px; margin-top:6px}
+  .tl .quiet .q{font-size:12.5px; color:var(--muted); font-weight:600;
+    display:inline-flex; align-items:center; gap:6px; cursor:pointer}
+  .tl .quiet .dot{width:3px; height:3px; border-radius:50%; background:var(--faint)}
+
+  @media (prefers-reduced-motion:no-preference){
+    .tl .btab{animation:drop .5s cubic-bezier(.2,.9,.3,1) both}
+    .tl .btab:nth-child(1){animation-delay:.04s} .tl .btab:nth-child(2){animation-delay:.09s}
+    .tl .btab:nth-child(3){animation-delay:.14s} .tl .btab:nth-child(4){animation-delay:.19s}
+    .tl .btab:nth-child(5){animation-delay:.24s}
+    @keyframes drop{from{opacity:0; transform:translateY(-16px)} to{opacity:1; transform:none}}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>컬렉션 0개 빈 상태 — 재디자인</h1>
+  <p class="sub">
+    확정된 문구·결정은 그대로 두고 <b>형태만 다시</b> 잡았습니다.
+    직전 안(<s>가운데 헤드라인 + 아이콘 왼쪽·화살표 오른쪽 카드 3장 세로 스택</s>)은
+    어느 앱에나 붙는 기본형이었고, 무엇보다 <b>tablign이 시각적 보드인데 설정 메뉴처럼 생겼습니다.</b><br/>
+    두 방향을 만들었습니다. <b>A는 확정 사항을 전부 지키고</b>, <b>B는 그중 하나(세 경로 동등)에 이의를 제기</b>합니다.
+  </p>
+
+  <h2><span class="no">A</span>탭 스트립을 머리에, 서랍 슬롯 셋을 아래에<span class="tag a">확정 사항 전부 준수</span></h2>
+  <p class="lede">
+    헤로가 문장이 아니라 <b>사용자의 실제 열린 탭</b>입니다. 브라우저 탭 스트립 형태로 그려서, 바로 위 실제 탭바와 이어지게 했습니다 —
+    화면 로드 때 탭이 위에서 떨어져 내려옵니다. 색은 전부 <b>사용자 자신의 파비콘</b>에서 나오므로
+    모든 사용자의 빈 상태가 조금씩 다르고, 이건 템플릿화가 불가능합니다.<br/>
+    세 경로는 <b>같은 크기·같은 행</b>에 놓았습니다. 세로 스택은 순서만으로도 서열을 만들지만, 3열은 동등함을 부인할 수 없게 만듭니다.
+    첫 슬롯에 마우스를 올리면 위의 탭들이 <b>그쪽으로 기울어</b> 무엇이 어디로 들어가는지 말합니다.
+  </p>
+  <div class="scroll"><div class="tl app" id="a1"></div></div>
+
+  <div class="why">
+    <b>이전 안에서 무엇을 버렸고 왜인지</b>
+    <ul>
+      <li><s>세로 카드 3장</s> → <b>3열 슬롯.</b> 세로 스택은 “위에 있는 게 먼저”라는 서열을 자동으로 만듭니다.
+        확정 사항이 <b>동등</b>이었으니 형태가 그걸 배반하고 있었습니다. 3열은 크기·위치가 같아 서열이 생길 자리가 없습니다.</li>
+      <li><s>2열 타일 안(R3)을 “보드가 좁아지면 깨진다”며 버린 판단</s> → <b>철회합니다.</b>
+        그 판단은 보드를 324px로 잘못 그린 시안에서 내려졌습니다. 실제 866px에서는 3열이 편안합니다.</li>
+      <li><s>카드 = 클릭 대상</s> → <b>슬롯 = 넣는 곳.</b> 재질을 바꾸고 안쪽으로 눌린 그림자를 넣어,
+        누르는 버튼이 아니라 <b>담기는 자리</b>로 읽히게 했습니다. 확정한 ‘서랍’ 은유가 형태에 들어온 지점입니다.</li>
+      <li><s>화살표(›)</s> → <b>제거.</b> 슬롯은 “안으로 들어간다”는 방향을 이미 재질로 말합니다.
+        오른쪽 화살표는 “다음 화면으로 넘어간다”는 다른 방향을 가리켜 상충했습니다.</li>
+    </ul>
+    <div class="risk">
+      <b>감수한 위험 — 새 토큰 하나.</b> <code>--drawer:#faf8f4</code> / <code>--drawer-edge:#e6e2da</code>.
+      tablign은 전부 차가운 청회색인데 여기에 따뜻한 색을 넣습니다. 근거는 방금 확정한 <b>서랍</b>입니다 —
+      서랍 안쪽이 앱 껍데기와 같은 재질이면 “넣는 곳”이 되지 못합니다.
+      쓰이는 곳은 <b>슬롯 내부와 유령 카드뿐</b>이라 번져 나갈 여지는 없습니다.
+      이 한 가지가 이 화면의 유일한 대담함이고, 나머지(타입·간격·아이콘)는 기존 시스템 그대로 조용히 뒀습니다.
+    </div>
+  </div>
+
+  <h2><span class="no">A′</span>같은 화면의 두 조건</h2>
+  <p class="lede">담을 수 있는 탭이 0개일 때, 그리고 양쪽 패널을 최대(400)로 늘려 보드가 262px이 된 최악 조건.</p>
+  <div class="side-by">
+    <div><p class="cap">담을 탭 0개 — 스트립도 슬롯도 함께 비활성</p>
+      <div class="tl app" id="a2" style="width:1000px; height:560px"></div></div>
+    <div><p class="cap">보드 262px — 3열이 1열로</p>
+      <div class="tl" id="a3" style="width:380px; height:560px"></div></div>
+  </div>
+
+  <h2><span class="no">B</span>빈 보드가 채워진 보드를 미리 보여준다<span class="tag b">확정 사항 1건에 이의</span></h2>
+  <p class="lede">
+    선택지를 <b>설명하지 않고 결과를 그립니다.</b> 열린 창 하나하나를 <b>그 창이 될 컬렉션</b>으로,
+    실제 컬렉션 레이아웃(<code>minmax(220px,1fr)</code> 3열, gap 9)에 실제 탭 제목까지 넣어 유령으로 렌더합니다.
+    누르면 그 자리에서 그대로 실체가 됩니다 — <b>빈 상태가 채워진 상태의 미리보기</b>입니다.
+    “어느 창?”이라는 질문도 사라집니다. 창마다 제안이 하나씩 있으니까요.
+  </p>
+  <div class="scroll"><div class="tl app" id="b1"></div></div>
+  <div class="why">
+    <b>이 안이 어기는 것</b> — 세 경로가 동등해지지 않습니다.
+    「열린 창 담기」가 화면의 90%를 차지하고, 「빈 컬렉션」·「공유 코드」는 아래 조용한 한 줄로 내려갑니다.<br/>
+    <b>그래도 제안하는 이유</b>는 이 화면의 임무가 “선택지를 공평하게 나열하기”가 아니라
+    <b>첫 컬렉션을 만들게 하기</b>이고, 세 경로의 가치가 실제로 동등하지 않기 때문입니다.
+    「열린 창 담기」는 한 번 클릭에 <b>탭이 채워진 보드</b>를 만들고, 나머지 둘은 다시 빈 화면이나 다이얼로그로 갑니다.
+    형태가 그 차이를 숨기면 사용자는 가장 좋은 길을 놓칩니다.<br/>
+    <b>판단은 두 갈래입니다.</b> 동등이 “세 기능을 모두 알리겠다”는 뜻이었다면 A가 맞습니다.
+    “첫 화면에서 무엇이든 하나 하게 만들겠다”였다면 B가 맞습니다.
+  </div>
+</div>
+
+<script>
+const I = {
+  hash:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>',
+  plus:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>',
+  plusL:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>',
+  caret:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M6 9l6 6 6-6"/></svg>',
+  chevD:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>',
+  chevS:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>',
+  tk:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="7" width="18" height="10" rx="2.5"/><path d="M8 7v10M13 12h4"/></svg>',
+  tkS:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="7" width="18" height="10" rx="2.5"/><path d="M8 7v10M13 12h4"/></svg>',
+  sr:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>',
+  pnl:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16M16.5 9.5L14 12l2.5 2.5"/></svg>',
+  pnr:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M15 4v16M7.5 9.5L10 12l-2.5 2.5"/></svg>',
+  wins:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="6.5" width="13" height="11" rx="2"/><path d="M2.5 10h13"/><path d="M8.5 6.5V5a1.5 1.5 0 011.5-1.5h9A1.5 1.5 0 0120.5 5v9a1.5 1.5 0 01-1.5 1.5h-1.5"/></svg>',
+  dl:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>',
+  x:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  lock:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>',
+};
+
+/* 실제 탭 — 파비콘은 문자 마크로 근사 */
+const W1 = [
+  { m:'G', c:'#1a73e8', t:'주간 스탠드업',        full:'Google Meet — 주간 스탠드업',  d:'meet.google.com' },
+  { m:'N', c:'#191919', t:'스프린트 26 보드',      full:'Notion — 스프린트 26 보드',    d:'notion.so' },
+  { m:'F', c:'#a259ff', t:'디자인 시스템 v3',      full:'Figma — 디자인 시스템 v3',     d:'figma.com' },
+  { m:'S', c:'#4a154b', t:'#product-design',      full:'Slack — #product-design',      d:'app.slack.com' },
+  { m:'L', c:'#0052cc', t:'TAB-412 공유 코드',     full:'Linear — TAB-412 공유 코드',   d:'linear.app' },
+];
+const W2 = [
+  { m:'M', c:'#d93025', t:'받은 편지함',           full:'Gmail — 받은 편지함',          d:'mail.google.com' },
+  { m:'A', c:'#ff9900', t:'배포 로그',             full:'AWS 콘솔 — 배포 로그',         d:'console.aws.amazon.com' },
+];
+const fv = (t, sz) => `<span class="fv" style="background:${t.c}${sz ? `;width:${sz}px;height:${sz}px;font-size:${sz<15?8:9}px` : ''}">${t.m}</span>`;
+const GH = `<span class="fv gh">▦</span>`;
+
+const RAIL = `<div class="rail"><div class="logo"></div>
+  <div class="oa on">업</div><div class="oa">P</div><div class="oa gh">＋</div>
+  <div class="acct"></div></div>`;
+
+const side = (w=212) => `<div class="side" style="width:${w}px">
+  <div class="hd"><span class="oi"></span><span class="nm">업무 조직</span>
+    <span style="color:var(--faint);display:flex">${I.pnl}</span></div>
+  <div class="srch">${I.sr}<span>검색</span></div>
+  <div class="lbl">스페이스</div>
+  <div class="rows">
+    <div class="row on">${I.hash} 업무</div>
+    <div class="row">${I.hash} 리서치</div>
+    <div class="row">${I.hash} 나중에 읽기</div>
+    <div class="row add">${I.plus} 스페이스 추가</div>
+  </div>
+  <div class="lbl" style="padding-top:8px">공유 스페이스</div>
+  <div class="rows"><div class="row">${I.hash} 팀 온보딩</div></div></div>`;
+
+const rp = (w=272) => `<div class="rp" style="width:${w}px">
+  <div class="rh"><span class="t">열린 탭</span><span class="c">담을 수 있는 탭 7개</span></div>
+  <div class="wg"><span class="wn act">${I.chevD} 창 1</span><span class="ax">${I.dl}${I.x}</span></div>
+  <div class="tabs">${W1.map(t => `<div class="tb hl">${fv(t)}<span class="tt">${t.full}</span></div>`).join('')}
+    <div class="tb nosave">${GH}<span class="tt">tablign — 새 탭</span><span class="chip2">현재 탭</span></div></div>
+  <div class="wg"><span class="wn act">${I.chevD} 창 2</span><span class="ax">${I.dl}${I.x}</span></div>
+  <div class="tabs">${W2.map(t => `<div class="tb hl">${fv(t)}<span class="tt">${t.full}</span></div>`).join('')}
+    <div class="tb nosave">${GH}<span class="tt">chrome://settings</span><span class="lock">${I.lock}</span></div></div>
+</div>`;
+
+const bhd = `<div class="bhd">
+  <div class="l"><span class="ttl">업무</span><span class="cnt">· 0 컬렉션</span></div>
+  <span class="split"><span class="main">${I.plus} 컬렉션</span>
+    <span class="dv"></span><span class="caret">${I.caret}</span></span></div>`;
+
+const COPY = `<div class="copy">
+  <div class="eh">탭을 담을 첫 컬렉션을 만들어요</div>
+  <div class="esub">컬렉션은 탭을 모아두는 서랍이에요</div></div>`;
+
+/* ── A안 ── */
+function stripHero(tabs, wins, count){
+  if (!tabs.length) return `<div class="striph"><span class="k">지금 열려 있는 탭</span>
+      <span class="v">담을 수 있는 탭 0개</span></div>
+    <div class="strip empty"><span class="msg">브라우저 내부 페이지만 열려 있어요</span></div>`;
+  return `<div class="striph"><span class="k">지금 열려 있는 탭</span>
+      <span class="v">창 ${wins}개 · 담을 수 있는 탭 ${count}개</span></div>
+    <div class="strip" data-strip>
+      ${tabs.map(t => `<div class="btab">${fv(t, 14)}<span class="bt">${t.t}</span></div>`).join('')}
+      ${count > tabs.length ? `<span class="more">＋${count - tabs.length}</span>` : ''}
+    </div>`;
+}
+function slot(o){
+  return `<div class="slot${o.inert ? ' inert' : ''}"${o.first ? ' data-slot1' : ''}>
+    <span class="si">${o.icon}</span>
+    <span><span class="st">${o.title}${o.badge || ''}</span><span class="ss">${o.sub}</span></span></div>`;
+}
+function stageA(opt){
+  const live = !opt.dead;
+  return `<div class="stageA"><div class="hold">
+    ${stripHero(live ? W1 : [], 2, live ? 7 : 0)}
+    ${COPY}
+    <div class="slots">
+      ${slot(live
+        ? { icon:I.wins, first:true, title:'열린 창 그대로 담기', sub:'창 2개 · 창별로 컬렉션 1개씩' }
+        : { icon:I.wins, inert:true, title:'열린 창 담기', sub:'브라우저 내부 페이지만 열려 있어요',
+            badge:'<span class="badge">0개</span>' })}
+      ${slot({ icon:I.plusL, title:'빈 컬렉션 만들기', sub:'이름부터 정하고 하나씩' })}
+      ${slot({ icon:I.tk, title:'공유 코드로 추가', sub:'코드 8자리로 컬렉션 복사' })}
+    </div></div></div>`;
+}
+
+document.getElementById('a1').innerHTML =
+  `${RAIL}${side()}<div class="board">${bhd}${stageA({})}</div>${rp()}`;
+document.getElementById('a2').innerHTML =
+  `<div class="board" style="width:100%">${bhd}${stageA({ dead:true })}</div>`;
+document.getElementById('a3').innerHTML =
+  `<div class="board" style="width:100%">${bhd}${stageA({})}</div>`;
+
+/* ── B안: 유령 컬렉션 ── */
+function ghost(name, tabs){
+  return `<div class="ghost">
+    <div class="gh-hd"><span class="gn">${name}</span>
+      <span class="gc">탭 ${tabs.length}개</span>
+      <span class="go">이 창 담기 ${I.chevS}</span></div>
+    <div class="gg">${tabs.map(t => `<div class="gc2">
+      <div class="r1">${fv(t)}<span class="n">${t.full}</span></div>
+      <div class="d">${t.d}</div></div>`).join('')}</div></div>`;
+}
+document.getElementById('b1').innerHTML =
+  `${RAIL}${side()}<div class="board">${bhd}
+    <div class="stageB">
+      <div class="bcopy">
+        <div class="eh">탭을 담을 첫 컬렉션을 만들어요</div>
+        <div class="esub">컬렉션은 탭을 모아두는 서랍이에요</div></div>
+      ${ghost('창 1', W1)}
+      ${ghost('창 2', W2)}
+      <div class="quiet">
+        <span class="q">${I.plusL} 빈 컬렉션 만들기</span>
+        <span class="dot"></span>
+        <span class="q">${I.tkS} 공유 코드로 추가</span></div>
+    </div></div>${rp()}`;
+
+/* 시그니처: 첫 슬롯 hover → 탭이 그쪽으로 기운다 */
+(function(){
+  const q = s => Array.prototype.slice.call(document.querySelectorAll(s));
+  q('.stageA').forEach(st => {
+    const s1 = st.querySelector('[data-slot1]');
+    const strip = st.querySelector('[data-strip]');
+    if (!s1 || !strip) return;
+    s1.addEventListener('mouseenter', () => strip.classList.add('lean'));
+    s1.addEventListener('mouseleave', () => strip.classList.remove('lean'));
+  });
+})();
+</script>
+</body>
+</html>

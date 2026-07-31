@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { tabsToLinkInputs, tabDropToLinkInput, moveTab, parseTabDragId, resolveTabDropTarget } from "./tabs";
+import { isSaveableTab, saveableTabs, unsaveableReason } from "./tabs";
 import { groupTabsByWindow, type WindowTab, type WindowGroup } from "./tabs";
 
 const tabs = [
@@ -160,5 +161,51 @@ describe("resolveTabDropTarget", () => {
   it("존재하지 않는 창/탭이면 null", () => {
     expect(resolveTabDropTarget(groups, "window:999")).toBeNull();
     expect(resolveTabDropTarget(groups, "tab-999")).toBeNull();
+  });
+});
+
+describe("담을 수 있는 탭 판정", () => {
+  it("http(s)만 담을 수 있다", () => {
+    expect(isSaveableTab({ url: "https://a.com" })).toBe(true);
+    expect(isSaveableTab({ url: "http://localhost:3000" })).toBe(true);
+  });
+
+  it("브라우저 내부 페이지·로컬 파일·url 없음은 담을 수 없다", () => {
+    // tablign 새 탭 자신(chrome_url_overrides.newtab)
+    expect(isSaveableTab({ url: "chrome-extension://abc/newtab.html" })).toBe(false);
+    expect(isSaveableTab({ url: "chrome://settings" })).toBe(false);
+    expect(isSaveableTab({ url: "file:///Users/me/doc.pdf" })).toBe(false);
+    expect(isSaveableTab({ url: "about:blank" })).toBe(false);
+    expect(isSaveableTab({ url: "data:text/html,x" })).toBe(false);
+    expect(isSaveableTab({ url: "devtools://devtools/x.html" })).toBe(false);
+    expect(isSaveableTab({ url: "" })).toBe(false);
+    expect(isSaveableTab({})).toBe(false);
+  });
+
+  it("saveableTabs는 담을 수 있는 탭만 남기고 순서를 지킨다", () => {
+    const list = [
+      { url: "https://a.com" },
+      { url: "chrome://settings" },
+      { url: "https://b.com" },
+      { url: "chrome-extension://abc/newtab.html" },
+    ];
+    expect(saveableTabs(list)).toEqual([{ url: "https://a.com" }, { url: "https://b.com" }]);
+  });
+
+  it("saveableTabs와 tabsToLinkInputs가 같은 기준을 쓴다 — 보이는 개수 ≠ 담기는 개수를 막는다", () => {
+    const list = [
+      { url: "https://a.com" },
+      { url: "chrome://settings" },
+      { url: "https://b.com" },
+      { url: "file:///x.pdf" },
+    ];
+    expect(saveableTabs(list).length).toBe(tabsToLinkInputs(list, "u1", "c1").length);
+  });
+
+  it("담을 수 없는 이유는 스킴별로 갈린다", () => {
+    expect(unsaveableReason({ url: "https://a.com" })).toBeNull();
+    expect(unsaveableReason({ url: "file:///x.pdf" })).toBe("내 컴퓨터의 파일은 담을 수 없어요");
+    expect(unsaveableReason({ url: "chrome://settings" })).toBe("브라우저 내부 페이지는 담을 수 없어요");
+    expect(unsaveableReason({ url: "chrome-extension://abc/newtab.html" })).toBe("브라우저 내부 페이지는 담을 수 없어요");
   });
 });
