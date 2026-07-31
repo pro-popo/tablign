@@ -1,6 +1,10 @@
 import { isImportableUrl } from "./url";
 import type { SourceNode } from "./types";
 
+// 가져오기는 Chrome 북마크를 **읽기만** 한다. 생성·수정·삭제 코드는 이 저장소 어디에도 없다.
+// manifest의 bookmarks 권한이 설치 화면에 "읽기 및 변경"으로 표시되는 것은
+// Chrome에 읽기 전용 북마크 권한이 존재하지 않기 때문이다.
+
 /** Chrome 북마크바의 고정 id. */
 export const CHROME_BOOKMARKS_BAR_ID = "1";
 

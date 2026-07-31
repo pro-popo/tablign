@@ -130,6 +130,19 @@ describe("import_bookmarks RPC", () => {
     await expect(importBookmarks(alice.client, aliceOrg, plan([]))).rejects.toThrow();
   }, 60000);
 
+  it("중간에 실패하면 전부 롤백된다(반쪽짜리 보드가 남지 않는다)", async () => {
+    // 두 번째 스페이스의 name이 null → not null 위반으로 트랜잭션 전체가 실패해야 한다
+    const bad = plan([
+      { sourceId: "ok", name: "롤백확인", collections: [col("C", ["https://rb.com/1"])] },
+      { sourceId: "bad", name: null as unknown as string, collections: [] },
+    ]);
+    await expect(importBookmarks(alice.client, aliceOrg, bad)).rejects.toThrow();
+
+    const { data } = await alice.client
+      .from("spaces").select("id").eq("org_id", aliceOrg).eq("name", "롤백확인");
+    expect(data).toHaveLength(0);
+  }, 60000);
+
   it("컬렉션이 여러 개면 position이 순서대로 부여된다", async () => {
     const result = await importBookmarks(alice.client, aliceOrg, plan([
       { sourceId: "s", name: "순서확인", collections: [

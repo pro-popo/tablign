@@ -161,6 +161,47 @@ describe("planImport", () => {
     expect(plan.spaces[0].collections[0].links[0].title).toBeNull();
   });
 
+  it("링크가 전부 중복인 컬렉션은 빠지지만 버린 개수는 totals에 남는다", () => {
+    const roots: SourceNode[] = [{ id: "1", title: "북마크바", primary: true, children: [
+      { id: "a", title: "A", children: [link("l1", "https://same.com/x")] },
+      { id: "b", title: "B", children: [link("l2", "https://same.com/x")] },
+    ]}];
+    const plan = planImport(roots, allOn(roots));
+    // B는 컬렉션도 스페이스도 만들어지지 않는다(링크 0개)
+    expect(plan.spaces.map((s) => s.sourceId)).toEqual(["a"]);
+    // 하지만 버려진 1개는 합계에서 사라지지 않는다
+    expect(plan.totals.duplicates).toBe(1);
+  });
+
+  it("중복 선점은 문서 순서를 따른다 — 직속 링크가 하위 폴더보다 앞이면 직속이 이긴다", () => {
+    const roots: SourceNode[] = [{ id: "1", title: "북마크바", primary: true, children: [
+      { id: "sp", title: "폴더", children: [
+        link("direct", "https://same.com/x"),               // 문서상 먼저
+        { id: "sub", title: "하위", children: [link("subl", "https://same.com/x")] },
+      ]},
+    ]}];
+    const plan = planImport(roots, allOn(roots));
+    const cols = plan.spaces[0].collections;
+    // 하위 폴더는 전부 중복이라 빠지고, 공유 폴더가 링크를 가진다
+    expect(cols.map((c) => c.title)).toEqual([SHARED_COLLECTION_TITLE]);
+    expect(cols[0].links).toHaveLength(1);
+    expect(plan.totals.duplicates).toBe(1);
+  });
+
+  it("중복 선점은 문서 순서를 따른다 — 하위 폴더가 직속 링크보다 앞이면 하위가 이긴다", () => {
+    const roots: SourceNode[] = [{ id: "1", title: "북마크바", primary: true, children: [
+      { id: "sp", title: "폴더", children: [
+        { id: "sub", title: "하위", children: [link("subl", "https://same.com/x")] },
+        link("direct", "https://same.com/x"),               // 문서상 나중
+      ]},
+    ]}];
+    const plan = planImport(roots, allOn(roots));
+    const cols = plan.spaces[0].collections;
+    // 공유 폴더는 전부 중복이라 만들어지지 않는다
+    expect(cols.map((c) => c.title)).toEqual(["하위"]);
+    expect(plan.totals.duplicates).toBe(1);
+  });
+
   it("totals가 실제 계획과 일치한다", () => {
     const roots = tree();
     const plan = planImport(roots, allOn(roots));

@@ -34,6 +34,8 @@ interface Row {
   joined?: string;
   /** 스페이스 행이면 함께 끌 자손 폴더 id들 */
   descendants: string[];
+  /** 자손 행이면 소속 스페이스(1단 폴더) id — 스페이스가 꺼져 있으면 이 행도 잠긴다 */
+  spaceId?: string;
   /** 루트 이름(직속 링크 묶음 행에만) */
   rootName?: string;
 }
@@ -66,7 +68,7 @@ function buildRows(roots: SourceNode[]): { name: string; rows: Row[] }[] {
           const joined = prefix ? `${prefix}/${g.title}` : g.title;
           rows.push({
             id: g.id, label: g.title, depth, isSpace: false,
-            count: directLinkCount(g), descendants: [],
+            count: directLinkCount(g), descendants: [], spaceId: child.id,
             joined: depth >= 3 ? joined : undefined,
           });
           walk(g, depth + 1, joined);
@@ -191,13 +193,18 @@ export function ImportBookmarksDialog({
                   <div style={{ padding: "9px 9px 4px", fontSize: 10.5, fontWeight: 800,
                     letterSpacing: ".07em", color: theme.textFaint }}>{g.name}</div>
                   {g.rows.map((row) => {
-                    const on = !!enabled[row.id];
+                    // 스페이스가 꺼져 있으면 자손 행은 잠긴다 — 체크만 켜지고 계획엔 안 들어가는 거짓 신호를 막는다
+                    const spaceOn = row.spaceId ? !!enabled[row.spaceId] : true;
+                    const on = spaceOn && !!enabled[row.id];
+                    const fire = () => { if (spaceOn) toggle(row); };
                     return (
                       <div key={row.id} data-testid={`tree-row-${row.id}`} role="button" tabIndex={0}
-                        onClick={() => toggle(row)}
-                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(row); } }}
+                        aria-disabled={!spaceOn}
+                        onClick={fire}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fire(); } }}
                         style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 31,
-                          padding: "5px 8px", borderRadius: 8, cursor: "pointer", fontSize: 13,
+                          padding: "5px 8px", borderRadius: 8, fontSize: 13,
+                          cursor: spaceOn ? "pointer" : "default", opacity: spaceOn ? 1 : 0.55,
                           boxSizing: "border-box", marginLeft: (row.depth - 1) * 19 }}>
                         <span aria-hidden style={{ width: 15, height: 15, flex: "none", borderRadius: 4.5,
                           boxSizing: "border-box",

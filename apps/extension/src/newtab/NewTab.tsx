@@ -888,17 +888,31 @@ export function NewTab() {
     .map((o) => ({ id: o.id, name: o.name }));
 
   async function openBookmarkImport() {
-    const tree = await chrome.bookmarks.getTree();
-    setBookmarkRoots(fromChromeTree(tree[0]?.children ?? []));
+    // 조직 목록 로드 전 진입 방어 — 목적지 없이 다이얼로그를 열지 않는다
+    if (!importableOrgs.length) { toast.show("잠시 후 다시 시도해 주세요"); return; }
+    try {
+      // Chrome 북마크는 여기서 읽기만 한다 — 생성·수정·삭제 코드는 앱 어디에도 없다(manifest의
+      // bookmarks 권한이 "읽기 및 변경"으로 표시되는 것은 Chrome에 읽기 전용 권한이 없어서다).
+      const tree = await chrome.bookmarks.getTree();
+      setBookmarkRoots(fromChromeTree(tree[0]?.children ?? []));
+    } catch (e) {
+      console.error(e);
+      toast.show("북마크를 읽지 못했어요");
+      return;
+    }
     setBookmarkImportOpen(true);
   }
 
   async function runBookmarkImport(orgId: string, plan: ImportPlan) {
-    const result = await importBookmarks(supabase, orgId, plan);
+    const result = await importBookmarks(supabase, orgId, plan); // 실패는 다이얼로그가 표시한다
+    // RPC는 이미 성공 — 이후 재조회가 실패해도 닫기·전환·토스트는 진행한다.
+    // 여기서 던지면 다이얼로그가 실패로 오해해 재시도를 유도하고, 링크가 짝으로 늘어난다.
+    try {
+      setSpaces(await listSpaces(supabase));
+    } catch (e) {
+      console.error(e);
+    }
     setBookmarkImportOpen(false);
-    // 재조회를 먼저 해 새 스페이스가 목록에 있는 상태에서 활성 전환한다.
-    const sp = await listSpaces(supabase);
-    setSpaces(sp);
     setActiveOrgId(orgId);
     setActiveSpaceId(result.first_space_id);
     toast.show(`스페이스 ${result.space_ids.length}개를 만들었어요`);

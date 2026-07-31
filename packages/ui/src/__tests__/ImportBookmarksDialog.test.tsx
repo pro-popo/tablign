@@ -64,6 +64,32 @@ describe("ImportBookmarksDialog", () => {
     expect(screen.getByTestId("preview-col-react")).toBeInTheDocument();
   });
 
+  it("스페이스가 꺼진 동안 자손 행은 다시 켤 수 없다(체크와 계획이 어긋나지 않는다)", () => {
+    open();
+    fireEvent.click(screen.getByTestId("tree-row-dev"));
+    const before = screen.getByTestId("import-summary").textContent;
+    // 잠긴 자손을 눌러도 아무 일도 일어나지 않는다
+    fireEvent.click(screen.getByTestId("tree-row-react"));
+    expect(screen.getByTestId("tree-row-react")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByTestId("preview-space-dev")).not.toBeInTheDocument();
+    expect(screen.getByTestId("import-summary").textContent).toBe(before);
+  });
+
+  it("링크가 전부 중복인 컬렉션이 빠져도 중복 합계는 푸터에 남는다", () => {
+    const dupRoots: SourceNode[] = [
+      { id: "1", title: "북마크바", primary: true, children: [
+        { id: "a", title: "A", children: [link("l1", "https://same.com/x")] },
+        { id: "b", title: "B", children: [link("l2", "https://same.com/x")] },
+      ]},
+    ];
+    render(
+      <ImportBookmarksDialog open roots={dupRoots} orgs={orgs} defaultOrgId="o1"
+        onImport={vi.fn()} onClose={noop} />,
+    );
+    expect(screen.queryByTestId("preview-space-b")).not.toBeInTheDocument();
+    expect(screen.getByTestId("import-summary")).toHaveTextContent("중복 URL 1개");
+  });
+
   it("중복으로 빠진 개수를 컬렉션에 표시한다", () => {
     const dupRoots: SourceNode[] = [
       { id: "1", title: "북마크바", primary: true, children: [
