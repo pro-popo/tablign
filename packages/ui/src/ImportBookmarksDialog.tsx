@@ -283,14 +283,7 @@ export function ImportBookmarksDialog({
                         <span style={{ fontSize: 11.5, fontWeight: 600, color: theme.text,
                           minWidth: 0, overflow: "hidden", textOverflow: "ellipsis",
                           whiteSpace: "nowrap" }}>{c.title}</span>
-                        {c.duplicatesDropped > 0 && (
-                          <span style={{ ...mono, marginLeft: "auto", flex: "none", fontSize: 10,
-                            fontWeight: 700, color: "#a13030", background: "#fdeeee",
-                            border: "1px solid #f5d0d0", borderRadius: 5, padding: "1px 5px" }}>
-                            −{c.duplicatesDropped}
-                          </span>
-                        )}
-                        <span style={{ ...mono, marginLeft: c.duplicatesDropped ? 6 : "auto",
+                        <span style={{ ...mono, marginLeft: "auto",
                           flex: "none", fontSize: 11, color: theme.textFaint }}>{c.links.length}</span>
                       </div>
                     ))}
@@ -309,11 +302,6 @@ export function ImportBookmarksDialog({
               <>
                 링크 <strong style={{ ...mono, color: theme.text }}>{plan.totals.links}</strong>개를
                 {" "}스페이스 <strong style={{ ...mono, color: theme.text }}>{plan.totals.spaces}</strong>개로 가져와요
-                {plan.totals.duplicates > 0 && (
-                  <span style={{ display: "block", fontSize: 11, color: theme.textFaint, marginTop: 1 }}>
-                    중복 URL {plan.totals.duplicates}개는 한 번만 담아요
-                  </span>
-                )}
               </>
             )}
             {overLimit && (

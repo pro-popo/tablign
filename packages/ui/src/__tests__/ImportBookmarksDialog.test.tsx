@@ -75,36 +75,6 @@ describe("ImportBookmarksDialog", () => {
     expect(screen.getByTestId("import-summary").textContent).toBe(before);
   });
 
-  it("링크가 전부 중복인 컬렉션이 빠져도 중복 합계는 푸터에 남는다", () => {
-    const dupRoots: SourceNode[] = [
-      { id: "1", title: "북마크바", primary: true, children: [
-        { id: "a", title: "A", children: [link("l1", "https://same.com/x")] },
-        { id: "b", title: "B", children: [link("l2", "https://same.com/x")] },
-      ]},
-    ];
-    render(
-      <ImportBookmarksDialog open roots={dupRoots} orgs={orgs} defaultOrgId="o1"
-        onImport={vi.fn()} onClose={noop} />,
-    );
-    expect(screen.queryByTestId("preview-space-b")).not.toBeInTheDocument();
-    expect(screen.getByTestId("import-summary")).toHaveTextContent("중복 URL 1개");
-  });
-
-  it("중복으로 빠진 개수를 컬렉션에 표시한다", () => {
-    const dupRoots: SourceNode[] = [
-      { id: "1", title: "북마크바", primary: true, children: [
-        { id: "a", title: "A", children: [link("l1", "https://same.com/x")] },
-        { id: "b", title: "B", children: [link("l2", "https://same.com/x"), link("l3", "https://b.com/1")] },
-      ]},
-    ];
-    render(
-      <ImportBookmarksDialog open roots={dupRoots} orgs={orgs} defaultOrgId="o1"
-        onImport={vi.fn()} onClose={noop} />,
-    );
-    expect(screen.getByTestId("preview-col-b")).toHaveTextContent("−1");
-    expect(screen.getByTestId("import-summary")).toHaveTextContent("중복 URL 1개");
-  });
-
   it("모든 폴더를 끄면 가져오기가 막힌다", () => {
     open();
     fireEvent.click(screen.getByTestId("tree-row-dev"));
@@ -131,7 +101,7 @@ describe("ImportBookmarksDialog", () => {
     await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
     const [orgId, plan] = onImport.mock.calls[0];
     expect(orgId).toBe("o2");
-    expect(plan.totals).toEqual({ spaces: 2, collections: 3, links: 3, duplicates: 0 });
+    expect(plan.totals).toEqual({ spaces: 2, collections: 3, links: 3 });
   });
 
   it("가져오는 중에는 버튼이 비활성이고 문구가 바뀐다", async () => {

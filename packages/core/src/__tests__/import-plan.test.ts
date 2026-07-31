@@ -112,30 +112,26 @@ describe("planImport", () => {
     expect(plan.spaces.map((s) => s.sourceId)).not.toContain("empty");
   });
 
-  it("꺼진 폴더는 계획에서 빠지고 그 링크는 다른 폴더의 중복 판정에도 쓰이지 않는다", () => {
+  it("꺼진 폴더는 계획에서 빠진다", () => {
     const roots: SourceNode[] = [{ id: "1", title: "북마크바", primary: true, children: [
-      { id: "a", title: "A", children: [link("l1", "https://same.com/x")] },
-      { id: "b", title: "B", children: [link("l2", "https://same.com/x")] },
+      { id: "a", title: "A", children: [link("l1", "https://a.com/1")] },
+      { id: "b", title: "B", children: [link("l2", "https://b.com/1")] },
     ]}];
     const plan = planImport(roots, allOn(roots, { a: false }));
-    const b = plan.spaces.find((s) => s.sourceId === "b")!;
-    // A가 꺼졌으니 URL을 선점하지 않는다 — B가 온전히 가져간다
-    expect(b.collections[0].links).toHaveLength(1);
-    expect(b.collections[0].duplicatesDropped).toBe(0);
+    expect(plan.spaces.map((s) => s.sourceId)).toEqual(["b"]);
   });
 
-  it("같은 URL은 순회 순서상 처음 만난 것만 남고 나머지는 duplicatesDropped로 센다", () => {
+  it("같은 URL이 여러 폴더에 있어도 각각 그대로 담긴다(중복 제거 없음)", () => {
     const roots: SourceNode[] = [{ id: "1", title: "북마크바", primary: true, children: [
-      { id: "a", title: "A", children: [link("l1", "https://same.com/x"), link("l2", "https://a.com/1")] },
-      { id: "b", title: "B", children: [link("l3", "https://same.com/x#frag"), link("l4", "https://b.com/1")] },
+      { id: "a", title: "A", children: [link("l1", "https://same.com/x")] },
+      { id: "b", title: "B", children: [link("l2", "https://same.com/x"), link("l3", "https://b.com/1")] },
     ]}];
     const plan = planImport(roots, allOn(roots));
     const a = plan.spaces.find((s) => s.sourceId === "a")!.collections[0];
     const b = plan.spaces.find((s) => s.sourceId === "b")!.collections[0];
-    expect(a.links).toHaveLength(2);
-    expect(a.duplicatesDropped).toBe(0);
-    expect(b.links.map((l) => l.url)).toEqual(["https://b.com/1"]);
-    expect(b.duplicatesDropped).toBe(1);
+    expect(a.links.map((l) => l.url)).toEqual(["https://same.com/x"]);
+    expect(b.links.map((l) => l.url)).toEqual(["https://same.com/x", "https://b.com/1"]);
+    expect(plan.totals.links).toBe(3);
   });
 
   it("저장하는 url은 원본이고 정규화 결과가 아니다", () => {
@@ -161,47 +157,6 @@ describe("planImport", () => {
     expect(plan.spaces[0].collections[0].links[0].title).toBeNull();
   });
 
-  it("링크가 전부 중복인 컬렉션은 빠지지만 버린 개수는 totals에 남는다", () => {
-    const roots: SourceNode[] = [{ id: "1", title: "북마크바", primary: true, children: [
-      { id: "a", title: "A", children: [link("l1", "https://same.com/x")] },
-      { id: "b", title: "B", children: [link("l2", "https://same.com/x")] },
-    ]}];
-    const plan = planImport(roots, allOn(roots));
-    // B는 컬렉션도 스페이스도 만들어지지 않는다(링크 0개)
-    expect(plan.spaces.map((s) => s.sourceId)).toEqual(["a"]);
-    // 하지만 버려진 1개는 합계에서 사라지지 않는다
-    expect(plan.totals.duplicates).toBe(1);
-  });
-
-  it("중복 선점은 문서 순서를 따른다 — 직속 링크가 하위 폴더보다 앞이면 직속이 이긴다", () => {
-    const roots: SourceNode[] = [{ id: "1", title: "북마크바", primary: true, children: [
-      { id: "sp", title: "폴더", children: [
-        link("direct", "https://same.com/x"),               // 문서상 먼저
-        { id: "sub", title: "하위", children: [link("subl", "https://same.com/x")] },
-      ]},
-    ]}];
-    const plan = planImport(roots, allOn(roots));
-    const cols = plan.spaces[0].collections;
-    // 하위 폴더는 전부 중복이라 빠지고, 공유 폴더가 링크를 가진다
-    expect(cols.map((c) => c.title)).toEqual([SHARED_COLLECTION_TITLE]);
-    expect(cols[0].links).toHaveLength(1);
-    expect(plan.totals.duplicates).toBe(1);
-  });
-
-  it("중복 선점은 문서 순서를 따른다 — 하위 폴더가 직속 링크보다 앞이면 하위가 이긴다", () => {
-    const roots: SourceNode[] = [{ id: "1", title: "북마크바", primary: true, children: [
-      { id: "sp", title: "폴더", children: [
-        { id: "sub", title: "하위", children: [link("subl", "https://same.com/x")] },
-        link("direct", "https://same.com/x"),               // 문서상 나중
-      ]},
-    ]}];
-    const plan = planImport(roots, allOn(roots));
-    const cols = plan.spaces[0].collections;
-    // 공유 폴더는 전부 중복이라 만들어지지 않는다
-    expect(cols.map((c) => c.title)).toEqual(["하위"]);
-    expect(plan.totals.duplicates).toBe(1);
-  });
-
   it("totals가 실제 계획과 일치한다", () => {
     const roots = tree();
     const plan = planImport(roots, allOn(roots));
@@ -209,7 +164,6 @@ describe("planImport", () => {
     expect(plan.totals.spaces).toBe(plan.spaces.length);
     expect(plan.totals.collections).toBe(cols.length);
     expect(plan.totals.links).toBe(cols.reduce((n, c) => n + c.links.length, 0));
-    expect(plan.totals.duplicates).toBe(cols.reduce((n, c) => n + c.duplicatesDropped, 0));
   });
 });
 

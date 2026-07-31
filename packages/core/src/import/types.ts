@@ -28,8 +28,6 @@ export interface PlannedCollection {
   /** 원본에 없던, 가져오기가 만들어낸 컬렉션(공유 폴더 / 이름 합침) */
   synthetic: boolean;
   links: PlannedLink[];
-  /** 중복으로 버려진 개수. UI의 −n 배지. */
-  duplicatesDropped: number;
 }
 
 export interface PlannedSpace {
@@ -40,5 +38,5 @@ export interface PlannedSpace {
 
 export interface ImportPlan {
   spaces: PlannedSpace[];
-  totals: { spaces: number; collections: number; links: number; duplicates: number };
+  totals: { spaces: number; collections: number; links: number };
 }

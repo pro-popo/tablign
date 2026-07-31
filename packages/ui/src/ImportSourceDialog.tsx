@@ -4,8 +4,8 @@ import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
 
 export interface ImportSourceDialogProps {
   open: boolean;
-  /** Chrome 북마크를 골랐을 때 */
-  onBookmarks: () => void;
+  /** Chrome 북마크를 골랐을 때. 실패(토스트 후 return)해도 다시 시도할 수 있게 완료를 기다린다. */
+  onBookmarks: () => void | Promise<void>;
   /** Toby 내보내기 파일을 골랐을 때 — 파일의 텍스트를 넘긴다(파싱은 호출자 몫) */
   onTobyFile: (text: string) => void;
   onClose: () => void;
@@ -14,11 +14,19 @@ export interface ImportSourceDialogProps {
 /** 가져오기 소스 선택 — 미리보기 다이얼로그(ImportBookmarksDialog) 앞에 끼우는 한 장. */
 export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: ImportSourceDialogProps) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [reading, setReading] = useState(false);
+  // 소스 하나를 고르면 양쪽 버튼을 모두 잠근다 — 파일을 읽는 사이 다른 소스를
+  // 트리거하면 나중에 끝나는 쪽이 미리보기를 조용히 덮어쓴다.
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // 읽는 도중 다이얼로그가 닫히면(open=false) 늦게 도착한 결과를 버린다 —
+  // 취소한 줄 알았던 미리보기가 잠시 후 되살아나면 안 된다.
+  const openRef = useRef(open);
+  openRef.current = open;
 
   useEffect(() => {
     if (!open) return;
-    setReading(false);
+    setBusy(false);
+    setError(null);
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -26,9 +34,21 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
 
   if (!open) return null;
 
+  async function pickBookmarks() {
+    setBusy(true);
+    setError(null);
+    try {
+      await onBookmarks();
+    } finally {
+      // 성공이면 부모가 닫으므로(open=false) 무해하고, 실패면 다시 시도할 수 있어야 한다
+      setBusy(false);
+    }
+  }
+
   async function onFilePicked(file: File | undefined) {
     if (!file) return;
-    setReading(true);
+    setBusy(true);
+    setError(null);
     try {
       // File.text()는 jsdom에 없다 — FileReader는 브라우저·테스트 양쪽에서 동작한다
       const text = await new Promise<string>((resolve, reject) => {
@@ -37,9 +57,11 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
         r.onerror = () => reject(r.error);
         r.readAsText(file);
       });
-      onTobyFile(text);
+      if (openRef.current) onTobyFile(text);
+    } catch {
+      if (openRef.current) setError("파일을 읽지 못했어요. 다시 시도해 주세요.");
     } finally {
-      setReading(false);
+      setBusy(false);
       // 같은 파일을 다시 골라도 change가 뜨도록 초기화
       if (fileRef.current) fileRef.current.value = "";
     }
@@ -48,7 +70,8 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
   const option: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left",
     padding: "12px 13px", border: `1px solid ${theme.border}`, borderRadius: 11,
-    background: theme.surface, cursor: "pointer", fontFamily: "inherit", boxSizing: "border-box",
+    background: theme.surface, cursor: busy ? "default" : "pointer",
+    opacity: busy ? 0.6 : 1, fontFamily: "inherit", boxSizing: "border-box",
   };
   const iconBox: React.CSSProperties = {
     width: 34, height: 34, borderRadius: 9, flex: "none", display: "flex",
@@ -57,7 +80,7 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
   };
 
   return (
-    <div role="presentation" onClick={onClose}
+    <div role="presentation" onClick={() => !busy && onClose()}
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn,
         display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
       <style>{overlayAnimationCss}</style>
@@ -69,7 +92,7 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
         <div style={{ marginTop: 4, fontSize: 12.5, color: theme.textMuted }}>어디서 가져올까요?</div>
 
         <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-          <button type="button" style={option} onClick={onBookmarks}>
+          <button type="button" style={option} disabled={busy} onClick={pickBookmarks}>
             <span aria-hidden style={iconBox}>★</span>
             <span style={{ minWidth: 0 }}>
               <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: theme.text }}>Chrome 북마크</span>
@@ -79,7 +102,7 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
             </span>
           </button>
 
-          <button type="button" style={option} disabled={reading}
+          <button type="button" style={option} disabled={busy}
             onClick={() => fileRef.current?.click()}>
             <span aria-hidden style={iconBox}>⬒</span>
             <span style={{ minWidth: 0 }}>
@@ -92,6 +115,10 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
           <input ref={fileRef} type="file" accept="application/json,.json" data-testid="toby-file-input"
             style={{ display: "none" }} onChange={(e) => onFilePicked(e.target.files?.[0])} />
         </div>
+
+        {error && (
+          <p style={{ marginTop: 10, fontSize: 12, color: theme.danger }}>{error}</p>
+        )}
       </div>
     </div>
   );

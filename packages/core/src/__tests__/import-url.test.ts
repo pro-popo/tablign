@@ -1,29 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeUrl, faviconFor, isImportableUrl } from "../import/url";
-
-describe("normalizeUrl", () => {
-  it("프래그먼트를 제거한다", () => {
-    expect(normalizeUrl("https://react.dev/learn#state")).toBe("https://react.dev/learn");
-  });
-  it("경로 끝 슬래시를 제거한다", () => {
-    expect(normalizeUrl("https://react.dev/learn/")).toBe("https://react.dev/learn");
-  });
-  it("루트 경로의 슬래시는 남긴다", () => {
-    expect(normalizeUrl("https://react.dev/")).toBe("https://react.dev/");
-  });
-  it("쿼리스트링은 건드리지 않는다", () => {
-    expect(normalizeUrl("https://a.com/b?utm_source=x")).toBe("https://a.com/b?utm_source=x");
-  });
-  it("쿼리가 다르면 다른 키다", () => {
-    expect(normalizeUrl("https://a.com/b?x=1")).not.toBe(normalizeUrl("https://a.com/b?x=2"));
-  });
-  it("프래그먼트만 다른 두 주소는 같은 키가 된다", () => {
-    expect(normalizeUrl("https://a.com/b#one")).toBe(normalizeUrl("https://a.com/b#two"));
-  });
-  it("파싱할 수 없는 값은 원문을 그대로 키로 쓴다", () => {
-    expect(normalizeUrl("완전히 주소가 아님")).toBe("완전히 주소가 아님");
-  });
-});
+import { faviconFor, isImportableUrl } from "../import/url";
 
 describe("faviconFor", () => {
   it("origin 기준 favicon.ico를 만든다", () => {

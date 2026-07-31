@@ -20,7 +20,7 @@
 
 - 매핑 규칙은 **예측 가능**해야 한다(§2). 규칙이 상황에 따라 달라지면 결과를 상상할 수 없다.
 - UI는 **결과를 미리 보여줘야** 한다(§3). 설정값이 아니라 결과가 화면에 있어야 한다.
-- 버리는 것은 **숫자로 드러내야** 한다. 중복 제거가 조용히 일어나면 "덜 들어왔다"는 의심이 남는다.
+- 버리는 것은 http/https가 아닌 링크뿐이다(트리 개수에 애초에 세지 않는다). **중복 URL은 버리지 않는다** — 아래 규칙 6.
 - 원본은 **건드리지 않는다.** Chrome 북마크는 그대로 남는다. 복사만 한다.
 
 ### 제약
@@ -62,8 +62,6 @@ export interface PlannedCollection {
   /** 원본에 없던, 가져오기가 만들어낸 컬렉션(공유 폴더 / 이름 합침) */
   synthetic: boolean;
   links: PlannedLink[];
-  /** 중복으로 버려진 개수 (UI의 −n 배지) */
-  duplicatesDropped: number;
 }
 
 export interface PlannedSpace {
@@ -74,7 +72,7 @@ export interface PlannedSpace {
 
 export interface ImportPlan {
   spaces: PlannedSpace[];
-  totals: { spaces: number; collections: number; links: number; duplicates: number };
+  totals: { spaces: number; collections: number; links: number };
 }
 
 export function planImport(roots: SourceNode[], config: ImportConfig): ImportPlan;
@@ -88,11 +86,10 @@ export function defaultEnabled(roots: SourceNode[]): Record<string, boolean>;
 3. **자손 폴더 = 컬렉션.** 컬렉션 이름은 스페이스 폴더 기준 **상대 경로 전체를 `/`로 이은 것**이다. 깊이 2는 폴더 이름 그대로(`React`), 깊이 3은 `React/Hooks`, 깊이 4는 `React/Hooks/고급`. 폴더가 사라지지도, 컬렉션이 폭발하지도 않는다. 상대 경로 전체를 쓰기 때문에 한 스페이스 안에서 이름이 충돌할 수 없다 — 경로는 유일하다.
 4. **폴더 직속 링크 → `공유 폴더`.** 하위 폴더와 링크가 섞인 폴더에서, 폴더에 직접 들어있던 링크만 모아 `공유 폴더`라는 컬렉션으로 만든다. 스페이스 폴더 자신의 직속 링크도 같다. 직속 링크가 0개면 만들지 않는다.
 5. **빈 것은 만들지 않는다.** 링크 0개인 컬렉션, 컬렉션 0개인 스페이스는 계획에 넣지 않는다. 링크와 자손 폴더가 모두 0인 폴더는 UI 트리에도 보이지 않는다.
-6. **중복 URL 제거.** 정규화된 URL 기준으로, **깊이 우선 순회 순서상 처음 만난 것만** 남긴다. 버린 개수를 그 컬렉션의 `duplicatesDropped`에 기록한다. 비교 범위는 **이번 계획 안**이다 — tablign에 이미 저장된 링크와는 비교하지 않는다.
-7. **URL 정규화**는 `#프래그먼트` 제거와 경로 끝 슬래시 제거까지만 한다. `?utm_source=` 같은 쿼리는 건드리지 않는다. 세게 정규화하면 사용자가 의도적으로 다르게 저장한 링크까지 합쳐진다. 파싱에 실패한 URL은 원문을 그대로 키로 쓴다.
-8. **파비콘**은 `new URL(url).origin + '/favicon.ico'`로 만든다. Chrome 북마크 API는 아이콘을 주지 않는다. 대부분의 사이트가 이 자리에 아이콘을 두고, 없는 사이트는 `Favicon` 컴포넌트의 `onError`가 이미 지구본으로 떨어뜨린다. 제3자 서비스를 거치지 않고 다른 브라우저·웹에서도 그대로 동작한다. 파싱 실패 시 `null`.
-9. **제목**은 북마크 title을 쓰고, 빈 문자열이면 `null`(`LinkCard`가 도메인으로 대체한다).
-10. **position**은 계획 순서대로 `(i + 1) * GAP` — 기존 `sequentialPositions` 규칙.
+6. **중복 URL은 제거하지 않는다 — 소스에 있는 그대로 담는다.** 처음엔 가져오기 전체에서 URL당 하나만 남기는 규칙이었으나, 실제 Toby 데이터 검증에서 프로젝트 스페이스 7곳에 같은 모노레포 링크를 일부러 넣어둔 패턴이 확인돼 **의도적 중복을 지우는 부작용이 더 크다**고 판단, 제거를 삭제했다(2026-07-31 결정). URL 정규화도 중복 판정 전용이었으므로 함께 삭제.
+7. **파비콘**은 `new URL(url).origin + '/favicon.ico'`로 만든다. Chrome 북마크 API는 아이콘을 주지 않는다. 대부분의 사이트가 이 자리에 아이콘을 두고, 없는 사이트는 `Favicon` 컴포넌트의 `onError`가 이미 지구본으로 떨어뜨린다. 제3자 서비스를 거치지 않고 다른 브라우저·웹에서도 그대로 동작한다. 파싱 실패 시 `null`.
+8. **제목**은 북마크 title을 쓰고, 빈 문자열이면 `null`(`LinkCard`가 도메인으로 대체한다).
+9. **position**은 계획 순서대로 `(i + 1) * GAP` — 기존 `sequentialPositions` 규칙.
 
 ### 기본 선택값 `defaultEnabled`
 
@@ -120,14 +117,13 @@ export function defaultEnabled(roots: SourceNode[]): Record<string, boolean>;
 │ 북마크바             │ ┌ 개발            컬렉션 4 ┐         │
 │ ☑ 📁 개발  3 [스페이스]│ │ React                  8 │         │
 │   ☑ 📁 React      8  │ │ React/Hooks            5 │         │
-│     ☑ 📁 Hooks    5  │ │ Node          −1       5 │         │
+│     ☑ 📁 Hooks    5  │ │ Node                   6 │         │
 │   ☑ 📁 Node       6  │ │ 공유 폴더               3 │         │
 │ ☑ 📁 디자인 [스페이스] │ └──────────────────────────┘         │
 │   ☑ 📁 레퍼런스  24  │ ┌ 디자인          컬렉션 2 ┐         │
 │   …                  │ …                                   │
 ├──────────────────────┴─────────────────────────────────────┤
 │ 링크 82개를 스페이스 5개로 가져와요        [취소] [가져오기] │
-│ 중복 URL 4개는 한 번만 담아요                              │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -137,7 +133,6 @@ export function defaultEnabled(roots: SourceNode[]): Record<string, boolean>;
 - 깊이 3 이상 폴더 행에는 합쳐질 이름을 힌트로 오른쪽에 흐리게 적는다(`React/Hooks`).
 - 스페이스 행을 끄면 그 안 컬렉션도 함께 꺼진다.
 - 링크 100개 초과 폴더가 있으면 트리 아래에 왜 기본 해제했는지 한 줄로 설명한다.
-- 중복으로 빠진 개수는 해당 컬렉션에 `−n` 배지로 붙는다. 푸터에 총합을 다시 적는다.
 - 모든 개수는 고정폭 + `tabular-nums`로 열을 맞춘다.
 
 ### 조직 선택
@@ -219,7 +214,7 @@ grant execute on function public.import_bookmarks(uuid, jsonb) to authenticated;
 
 | 위치 | 책임 |
 |---|---|
-| `packages/core/src/import/plan.ts` | `planImport`·`defaultEnabled`·URL 정규화. 순수 함수, 브라우저 API 의존 없음 |
+| `packages/core/src/import/plan.ts` | `planImport`·`defaultEnabled`. 순수 함수, 브라우저 API 의존 없음 |
 | `packages/core/src/import/chrome.ts` | `chrome.bookmarks` 트리 → `SourceNode[]` 정규화 |
 | `packages/core/src/data/import.ts` | `import_bookmarks` RPC 호출 래퍼 |
 | `packages/ui/src/ImportBookmarksDialog.tsx` | 2단 미리보기 다이얼로그. `ImportPlan`을 받아 그리기만 한다 |
@@ -229,7 +224,7 @@ grant execute on function public.import_bookmarks(uuid, jsonb) to authenticated;
 
 ## 7. 구현 단계
 
-1. **계획 로직** — `planImport`·`defaultEnabled`·URL 정규화 + 단위 테스트. UI 없이 규칙을 먼저 못 박는다.
+1. **계획 로직** — `planImport`·`defaultEnabled` + 단위 테스트. UI 없이 규칙을 먼저 못 박는다.
 2. **RPC + 마이그레이션** — `import_bookmarks`, 권한 검증, RLS 테스트.
 3. **다이얼로그** — `ImportBookmarksDialog`. `ImportPlan`을 props로 받으므로 고정 픽스처로 렌더 테스트가 된다.
 4. **배선** — manifest에 `bookmarks` 추가, Chrome 트리 읽기, 조직 선택, RPC 호출, 토스트·이동.
@@ -247,10 +242,9 @@ grant execute on function public.import_bookmarks(uuid, jsonb) to authenticated;
 - 폴더 직속 링크가 `공유 폴더`로 빠지고, 직속 링크 0개면 만들어지지 않는다
 - 루트 직속 링크가 루트 이름의 스페이스로 들어간다
 - 링크 0개 컬렉션·컬렉션 0개 스페이스가 계획에서 빠진다
-- 중복 URL이 순회 순서상 처음 것만 남고 `duplicatesDropped`가 맞는다
-- 정규화가 프래그먼트·끝 슬래시만 접고 쿼리는 남긴다
+- 같은 URL이 여러 폴더에 있어도 각각 그대로 담긴다
 - `defaultEnabled`가 100개 초과 폴더와 `기타 북마크` 아래를 끈다
-- `totals`가 스페이스·컬렉션·링크·중복 모두 실제 계획과 일치한다 ← **미리보기가 거짓말하지 않는다는 보증**
+- `totals`가 스페이스·컬렉션·링크 모두 실제 계획과 일치한다 ← **미리보기가 거짓말하지 않는다는 보증**
 
 **RPC 테스트** — 남의 조직에 삽입 시도가 거부된다, 삽입 실패 시 전부 롤백된다, position이 기존 스페이스 뒤에 이어 붙는다.
 
@@ -261,7 +255,7 @@ grant execute on function public.import_bookmarks(uuid, jsonb) to authenticated;
 - ~~Toby~~ — 실제 export 파일 확보로 같은 PR에 포함됨(§7).
 - **북마크 HTML 파일 임포트** (Safari·Firefox·Edge·Raindrop). 같은 `SourceNode[]`로 정규화되므로 나중에 파서만 추가하면 된다.
 - **되돌리기.** 스페이스 5개가 한 번에 생기는데 마음에 안 들면 하나씩 지워야 한다. "이번 가져오기 취소"는 삽입한 id를 어딘가 기억해야 해서 범위를 넘는다.
-- **기존 링크와의 중복 비교.** 이번 계획 안에서만 중복을 제거한다. 가져오기를 두 번 하면 링크가 짝으로 늘어난다 — 의도된 선택이다.
+- **중복 정리 도구.** 중복 URL을 제거하지 않으므로(§2 규칙 6) 가져오기를 반복하면 같은 링크가 쌓일 수 있다 — 필요해지면 별도 정리 기능으로 다룬다.
 - **썸네일**(`thumbnail_url`). 링크 수백 개의 og:image를 긁는 것은 느리고 실패가 많다. 지금도 열린 탭 저장 경로에서 항상 `null`이다.
 - **양방향 동기화.** Chrome 북마크가 바뀌면 tablign도 바뀌는 것. 가져오기는 일회성 복사다.
 - **`공유 폴더` 이름 재검토.** tablign엔 이미 공유 코드·공유 스페이스·조직 공유가 있어 "공유된 컬렉션"으로 읽힐 소지가 있다(컬렉션에 `is_private`와 공유 메뉴가 붙는 자리라 더 그렇다). 사용자가 이 이름으로 결정했으므로 그대로 간다. 사용 후 혼동이 관측되면 `모아둔 링크`·`기타`가 후보다.

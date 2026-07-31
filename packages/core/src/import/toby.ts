@@ -26,12 +26,15 @@ export function fromTobyExport(data: unknown): SourceNode[] {
   }
 
   const children: SourceNode[] = [];
-  (groups as TobyGroup[]).forEach((g, gi) => {
+  // 원소가 null이거나 배열이 아닌 기형 입력도 던지지 않고 건너뛴다 — 파일 오류는
+  // 최상위(groups 부재)에서만 판정하고, 부분 손상은 살릴 수 있는 만큼 살린다.
+  const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  (groups as (TobyGroup | null)[]).forEach((g, gi) => {
     const lists: SourceNode[] = [];
-    (g.lists ?? []).forEach((l, li) => {
+    arr<TobyList | null>(g?.lists).forEach((l, li) => {
       const cards: SourceNode[] = [];
-      (l.cards ?? []).forEach((c, ci) => {
-        if (!c.url || !isImportableUrl(c.url)) return;
+      arr<TobyCard | null>(l?.cards).forEach((c, ci) => {
+        if (typeof c?.url !== "string" || !isImportableUrl(c.url)) return;
         cards.push({
           id: `toby:${gi}:${li}:${ci}`,
           // 사용자가 직접 고친 제목이 있으면 그것이 진짜 제목이다
@@ -40,9 +43,9 @@ export function fromTobyExport(data: unknown): SourceNode[] {
           favicon: c.favIconUrl || undefined,
         });
       });
-      if (cards.length) lists.push({ id: `toby:${gi}:${li}`, title: l.title ?? "", children: cards });
+      if (cards.length) lists.push({ id: `toby:${gi}:${li}`, title: l?.title ?? "", children: cards });
     });
-    if (lists.length) children.push({ id: `toby:${gi}`, title: g.name ?? "", children: lists });
+    if (lists.length) children.push({ id: `toby:${gi}`, title: g?.name ?? "", children: lists });
   });
 
   return children.length ? [{ id: "toby", title: "Toby", primary: true, children }] : [];

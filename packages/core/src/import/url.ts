@@ -1,22 +1,3 @@
-/**
- * 중복 판정에 쓰는 정규화 키.
- * 프래그먼트와 경로 끝 슬래시만 접는다 — 쿼리스트링까지 건드리면 사용자가
- * 의도적으로 다르게 저장한 링크가 합쳐진다.
- * DB에 저장하는 url은 항상 원본이고, 이 값은 키로만 쓴다.
- */
-export function normalizeUrl(raw: string): string {
-  try {
-    const u = new URL(raw);
-    u.hash = "";
-    if (u.pathname.length > 1 && u.pathname.endsWith("/")) {
-      u.pathname = u.pathname.slice(0, -1);
-    }
-    return u.toString();
-  } catch {
-    return raw;
-  }
-}
-
 /** 탭으로 열 수 있는 주소만 가져온다. 북마클릿(javascript:)·chrome:// 등은 제외. */
 export function isImportableUrl(raw: string): boolean {
   try {

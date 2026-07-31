@@ -75,6 +75,17 @@ describe("fromTobyExport", () => {
     expect(fromTobyExport({ groups: [{ name: "A", lists: [] }] })).toEqual([]);
   });
 
+  it("원소가 null이거나 배열이 아니어도 던지지 않고 살릴 수 있는 것만 살린다", () => {
+    const roots = fromTobyExport({ groups: [
+      null,
+      { name: "기형", lists: "문자열" },
+      { name: "부분손상", lists: [null, { title: "L", cards: [null, { url: "https://ok.com/1", title: "OK" }] }] },
+    ]});
+    expect(roots).toHaveLength(1);
+    expect(roots[0].children!.map((g) => g.title)).toEqual(["부분손상"]);
+    expect(roots[0].children![0].children![0].children![0].url).toBe("https://ok.com/1");
+  });
+
   it("planImport에 그대로 넣으면 group이 스페이스, list가 컬렉션이 된다", () => {
     const roots = fromTobyExport(fixture);
     const plan = planImport(roots, { enabled: defaultEnabled(roots) });

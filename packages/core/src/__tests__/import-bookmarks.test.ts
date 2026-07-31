@@ -46,11 +46,11 @@ async function personalOrgId(user: { client: SupabaseClient }): Promise<string> 
 function plan(spaces: ImportPlan["spaces"]): ImportPlan {
   let collections = 0, links = 0;
   for (const s of spaces) for (const c of s.collections) { collections++; links += c.links.length; }
-  return { spaces, totals: { spaces: spaces.length, collections, links, duplicates: 0 } };
+  return { spaces, totals: { spaces: spaces.length, collections, links } };
 }
 
 const col = (title: string, urls: string[]) => ({
-  sourceId: title, title, synthetic: false, duplicatesDropped: 0,
+  sourceId: title, title, synthetic: false,
   links: urls.map((u) => ({ url: u, title: u, favicon_url: `${new URL(u).origin}/favicon.ico` })),
 });
 

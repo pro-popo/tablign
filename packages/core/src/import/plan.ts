@@ -1,6 +1,6 @@
-import { faviconFor, normalizeUrl } from "./url";
+import { faviconFor } from "./url";
 import type {
-  ImportConfig, ImportPlan, PlannedCollection, PlannedLink, PlannedSpace, SourceNode,
+  ImportConfig, ImportPlan, PlannedCollection, PlannedSpace, SourceNode,
 } from "./types";
 
 // 타입은 ./types가 단일 출처다. 여기서 재수출하면 index.ts가 두 모듈을
@@ -31,14 +31,16 @@ export function countLinks(node: SourceNode): number {
 const isFolder = (n: SourceNode) => n.url === undefined;
 
 const emptyBucket = (sourceId: string, title: string, synthetic: boolean): PlannedCollection =>
-  ({ sourceId, title, synthetic, links: [], duplicatesDropped: 0 });
+  ({ sourceId, title, synthetic, links: [] });
 
-/** 링크 하나를 버킷에 담는다. 이미 본 URL이면 버리고 센다. bucket이 null이면(꺼진 폴더) 소비하지 않는다. */
-function consumeLink(node: SourceNode, bucket: PlannedCollection | null, seen: Set<string>): void {
+/**
+ * 링크 하나를 버킷에 담는다. bucket이 null이면(꺼진 폴더) 담지 않는다.
+ * 같은 URL이 여러 폴더에 있어도 각각 그대로 담는다 — 실사용 Toby 데이터에서
+ * 프로젝트 스페이스마다 같은 저장소 링크를 일부러 넣어둔 패턴이 확인돼,
+ * 중복 제거는 하지 않기로 결정했다(2026-07-31).
+ */
+function consumeLink(node: SourceNode, bucket: PlannedCollection | null): void {
   if (!bucket) return;
-  const key = normalizeUrl(node.url!);
-  if (seen.has(key)) { bucket.duplicatesDropped += 1; return; }
-  seen.add(key);
   bucket.links.push({
     url: node.url!,
     title: node.title || null,
@@ -49,48 +51,39 @@ function consumeLink(node: SourceNode, bucket: PlannedCollection | null, seen: S
 
 /**
  * 스페이스 폴더 하나가 갖게 될 컬렉션들.
- * 중복 선점은 **문서 순서(DFS)** 그대로다 — 사용자가 북마크에서 보는 순서상 먼저인 링크가 남는다.
- * 출력 순서는 자손 폴더들 → 공유 폴더(맨 뒤).
- * 링크가 전부 중복이라 만들어지지 않는 컬렉션의 버린 개수는 orphanedDrops로 돌려준다 —
- * 컬렉션이 빠져도 "중복 n개" 합계에서 조용히 사라지면 안 된다.
+ * 출력 순서는 자손 폴더들(문서 순서) → 공유 폴더(맨 뒤).
  */
 function collectCollections(
-  spaceFolder: SourceNode, seen: Set<string>, config: ImportConfig,
-): { collections: PlannedCollection[]; orphanedDrops: number } {
+  spaceFolder: SourceNode, config: ImportConfig,
+): PlannedCollection[] {
   const own = emptyBucket(spaceFolder.id, SHARED_COLLECTION_TITLE, true);
   const subs: PlannedCollection[] = [];
 
   const walk = (folder: SourceNode, bucket: PlannedCollection | null, prefix: string) => {
     for (const child of folder.children ?? []) {
-      if (!isFolder(child)) { consumeLink(child, bucket, seen); continue; }
+      if (!isFolder(child)) { consumeLink(child, bucket); continue; }
       // 스페이스 폴더 기준 상대 경로 전체 — 경로는 유일하므로 이름이 충돌하지 않는다
       const title = prefix ? `${prefix}/${child.title}` : child.title;
       const b = config.enabled[child.id] ? emptyBucket(child.id, title, prefix !== "") : null;
       if (b) subs.push(b);
-      // 꺼진 폴더의 직속 링크는 소비하지 않지만(중복 선점 금지), 자손은 독립적으로 켤 수 있다
+      // 꺼진 폴더의 직속 링크는 담지 않지만, 자손은 독립적으로 켤 수 있다
       walk(child, b, title);
     }
   };
   walk(spaceFolder, own, "");
 
-  const candidates = [...subs, own];
-  return {
-    collections: candidates.filter((c) => c.links.length > 0),
-    orphanedDrops: candidates.filter((c) => c.links.length === 0)
-      .reduce((n, c) => n + c.duplicatesDropped, 0),
-  };
+  return [...subs, own].filter((c) => c.links.length > 0);
 }
 
 function tally(spaces: PlannedSpace[]): ImportPlan["totals"] {
-  let collections = 0, links = 0, duplicates = 0;
+  let collections = 0, links = 0;
   for (const s of spaces) {
     for (const c of s.collections) {
       collections += 1;
       links += c.links.length;
-      duplicates += c.duplicatesDropped;
     }
   }
-  return { spaces: spaces.length, collections, links, duplicates };
+  return { spaces: spaces.length, collections, links };
 }
 
 /**
@@ -98,9 +91,7 @@ function tally(spaces: PlannedSpace[]): ImportPlan["totals"] {
  * 미리보기와 실제 삽입이 같은 결과를 쓰도록 부수효과를 두지 않는다.
  */
 export function planImport(roots: SourceNode[], config: ImportConfig): ImportPlan {
-  const seen = new Set<string>();
   const spaces: PlannedSpace[] = [];
-  let orphanedDrops = 0;
 
   for (const root of roots) {
     const looseId = looseSourceId(root.id);
@@ -108,28 +99,21 @@ export function planImport(roots: SourceNode[], config: ImportConfig): ImportPla
       ? emptyBucket(looseId, SHARED_COLLECTION_TITLE, true)
       : null;
 
-    // 루트 자식들을 문서 순서대로 — 루트 직속 링크와 1단 폴더가 섞여 있어도 선점 순서가 보이는 순서와 같다
     for (const child of root.children ?? []) {
-      if (!isFolder(child)) { consumeLink(child, loose, seen); continue; }
+      if (!isFolder(child)) { consumeLink(child, loose); continue; }
       if (!config.enabled[child.id]) continue; // 꺼진 스페이스는 자손까지 통째로 빠진다
-      const sub = collectCollections(child, seen, config);
-      orphanedDrops += sub.orphanedDrops;
-      if (sub.collections.length) {
-        spaces.push({ sourceId: child.id, name: child.title, collections: sub.collections });
+      const collections = collectCollections(child, config);
+      if (collections.length) {
+        spaces.push({ sourceId: child.id, name: child.title, collections });
       }
     }
     // 루트 직속 링크 → 루트 이름의 스페이스. 표시 순서상 폴더들 뒤에 붙는다.
     if (loose && loose.links.length) {
       spaces.push({ sourceId: looseId, name: root.title, collections: [loose] });
-    } else if (loose) {
-      orphanedDrops += loose.duplicatesDropped;
     }
   }
 
-  const totals = tally(spaces);
-  // 만들어지지 않은 컬렉션에서 버려진 중복까지 합계에 남긴다 — 조용히 사라지면 안 된다
-  totals.duplicates += orphanedDrops;
-  return { spaces, totals };
+  return { spaces, totals: tally(spaces) };
 }
 
 /**
