@@ -115,6 +115,7 @@ function Choice({
   sub: string;
   badge?: string;
   onClick?: () => void;
+  /** 눌러도 의미가 없는 상태(담을 탭 0개) — 아이콘까지 회색으로 내린다 */
   disabled?: boolean;
 }) {
   return (
@@ -138,11 +139,12 @@ function Choice({
           {sub}
         </span>
       </span>
-      {/* 비활성 카드에서는 지운다 — ›가 남으면 "왜 안 눌리지"가 된다 */}
+      {/* 못 누르는 카드에서는 지운다 — ›가 남으면 "왜 안 눌리지"가 된다 */}
       {!disabled && <ChevronRight size={17} color={theme.textFaint} />}
     </button>
   );
 }
+
 
 const styles = `
 .tablign-choice {

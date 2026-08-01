@@ -28,6 +28,7 @@ const listSpaces = vi.fn();
 const createSpace = vi.fn();
 const createCollection = vi.fn();
 const createLink = vi.fn();
+const createLinks = vi.fn();
 const listCollections = vi.fn();
 const listMyMemberships = vi.fn();
 const listLinks = vi.fn();
@@ -62,6 +63,7 @@ vi.mock("@tablign/core", async (importOriginal) => {
     createSpace: (...a: unknown[]) => createSpace(...a),
     createCollection: (...a: unknown[]) => createCollection(...a),
     createLink: (...a: unknown[]) => createLink(...a),
+    createLinks: (...a: unknown[]) => createLinks(...a),
     listCollections: (...a: unknown[]) => listCollections(...a),
     listMyMemberships: (...a: unknown[]) => listMyMemberships(...a),
     listLinks: (...a: unknown[]) => listLinks(...a),
@@ -98,6 +100,10 @@ beforeEach(() => {
   createCollection.mockImplementation(async (_s: unknown, input: { title: string }) => ({ id: `col-${input.title}`, title: input.title }));
   createLink.mockReset();
   createLink.mockResolvedValue({ id: "link-1" });
+  createLinks.mockReset();
+  // 넘긴 입력을 그대로 링크로 돌려준다 — 호출부가 개수·내용을 그대로 화면에 꽂는다
+  createLinks.mockImplementation(async (_s: unknown, inputs: { url: string }[]) =>
+    inputs.map((i, n) => ({ ...i, id: `link-${n}` })));
   listCollections.mockReset();
   listCollections.mockResolvedValue([]);
   listMyMemberships.mockReset();
@@ -194,15 +200,25 @@ describe("NewTab — 스페이스가 없을 때", () => {
     expect(screen.getByRole("button", { name: /첫 스페이스 만들기/ })).toBeInTheDocument();
   });
 
-  it("CTA 클릭 시 '개인' 스페이스와 기본 컬렉션을 생성한다", async () => {
+  it("CTA 클릭 시 '개인' 스페이스만 만들고 컬렉션은 비워 둔다", async () => {
     listSpaces.mockResolvedValue([]);
     createSpace.mockResolvedValue({ id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x" });
-    createCollection.mockResolvedValue({ id: "c1", space_id: "s1", user_id: "u1", title: "새 컬렉션", icon: null, note: null, position: 1000, created_at: "x" });
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: /첫 스페이스 만들기/ }));
     await waitFor(() => expect(createSpace).toHaveBeenCalledTimes(1));
     expect(createSpace.mock.calls[0][1]).toMatchObject({ name: "개인" });
-    await waitFor(() => expect(createCollection).toHaveBeenCalledTimes(1));
+    // 빈 껍데기 '새 컬렉션'을 미리 만들면 빈 상태 안내를 가로막는다
+    await new Promise((r) => setTimeout(r, 60));
+    expect(createCollection).not.toHaveBeenCalled();
+  });
+
+  it("스페이스를 추가하면 컬렉션 없이 빈 상태 안내가 보인다", async () => {
+    listSpaces.mockResolvedValue([]);
+    createSpace.mockResolvedValue({ id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" });
+    renderNewTab();
+    fireEvent.click(await screen.findByRole("button", { name: /첫 스페이스 만들기/ }));
+    await screen.findByText("탭을 담을 첫 컬렉션을 만들어요", {}, { timeout: 4000 });
+    expect(screen.getByText("컬렉션은 탭을 모아두는 서랍이에요")).toBeInTheDocument();
   });
 
   it("스페이스가 있으면 온보딩 대신 보드를 보여준다", async () => {
@@ -265,9 +281,61 @@ describe("NewTab — 컬렉션이 0개일 때", () => {
     // 창 20(chrome:// 뿐)은 건너뛰므로 컬렉션은 1개만 생겨야 한다
     await waitFor(() => expect(createCollection).toHaveBeenCalledTimes(1));
     expect(createCollection.mock.calls[0][1]).toMatchObject({ space_id: "s1", title: "창 1" });
-    // 링크는 http 2개만 — 새 탭 자신은 저장되지 않는다
-    await waitFor(() => expect(createLink).toHaveBeenCalledTimes(2));
-    expect(createLink.mock.calls.map((c) => (c[1] as { url: string }).url)).toEqual(["https://a.com", "https://b.com"]);
+    // 링크는 왕복 1회(벌크)로 저장되고, http 2개만 들어간다 — 새 탭 자신은 제외
+    await waitFor(() => expect(createLinks).toHaveBeenCalledTimes(1));
+    expect(createLink).not.toHaveBeenCalled();
+    const inputs = createLinks.mock.calls[0][1] as { url: string }[];
+    expect(inputs.map((i) => i.url)).toEqual(["https://a.com", "https://b.com"]);
+  });
+
+  it("같은 tick에 두 번 눌러도 한 번만 담는다 — 컬렉션이 두 벌 생기지 않는다", async () => {
+    listSpaces.mockResolvedValue(onlySpace);
+    stubTabs(MIXED);
+    createLinks.mockImplementation(() => new Promise(() => {})); // 끝나지 않게 둔다
+    renderNewTab();
+
+    await screen.findByText("지금 창의 탭 2개 담기", {}, { timeout: 4000 });
+    const btn = screen.getByRole("button", { name: /지금 창의 탭 2개 담기/ });
+    // 리렌더 전에 연달아 누른다. state 가드는 둘 다 이전 값(false)을 읽어 통과하므로 ref여야 막힌다.
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+
+    await waitFor(() => expect(createCollection).toHaveBeenCalledTimes(1));
+    // 잠시 더 기다려도 두 번째가 뒤늦게 들어오지 않아야 한다
+    await new Promise((r) => setTimeout(r, 80));
+    expect(createCollection).toHaveBeenCalledTimes(1);
+  });
+
+  it("담는 동안 결과의 골격을 먼저 보여준다 — 제목과 링크 수를 미리 안다", async () => {
+    listSpaces.mockResolvedValue(onlySpace);
+    stubTabs(MIXED);
+    let release: (v: unknown) => void = () => {};
+    createLinks.mockImplementation(() => new Promise((r) => { release = r; }));
+    renderNewTab();
+
+    await screen.findByText("지금 창의 탭 2개 담기", {}, { timeout: 4000 });
+    fireEvent.click(screen.getByRole("button", { name: /지금 창의 탭 2개 담기/ }));
+
+    // 창 1 골격이 실제 개수(2)로 떠 있어야 한다
+    expect(await screen.findByLabelText("창 1 담는 중")).toBeInTheDocument();
+    expect(screen.getByText("링크 2개 담는 중")).toBeInTheDocument();
+    release([{ id: "l1", url: "https://a.com" }, { id: "l2", url: "https://b.com" }]);
+    // 끝나면 골격이 사라진다
+    await waitFor(() => expect(screen.queryByLabelText("창 1 담는 중")).not.toBeInTheDocument());
+  });
+
+  it("담기가 실패하면 골격을 걷고 실패를 알린다", async () => {
+    listSpaces.mockResolvedValue(onlySpace);
+    stubTabs(MIXED);
+    createLinks.mockRejectedValue(new Error("network"));
+    renderNewTab();
+
+    await screen.findByText("지금 창의 탭 2개 담기", {}, { timeout: 4000 });
+    fireEvent.click(screen.getByRole("button", { name: /지금 창의 탭 2개 담기/ }));
+
+    expect(await screen.findByText(/담지 못했어요/)).toBeInTheDocument();
+    // 성공한 척 남아 있으면 최악이다 — 골격은 반드시 사라져야 한다
+    await waitFor(() => expect(screen.queryByLabelText("창 1 담는 중")).not.toBeInTheDocument());
   });
 
   it("담을 수 있는 탭이 없으면 첫 카드를 비활성하고 아무것도 만들지 않는다", async () => {

@@ -21,7 +21,9 @@ describe("ImportCodeDialog", () => {
 
     fireEvent.click(screen.getByText("개인"));
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
-    await waitFor(() => expect(onImport).toHaveBeenCalledWith("ABCD2345", "s1"));
+    // 조회 결과를 함께 넘긴다 — 호출부가 제목·링크 수로 골격을 그린다
+    await waitFor(() => expect(onImport).toHaveBeenCalledWith("ABCD2345", "s1",
+      { title: "공유 자료", icon: null, link_count: 3, shared_by: "앨리스" }));
   });
 
   it("defaultSpaceId를 주면 스페이스를 한 번 더 클릭하지 않고 바로 추가할 수 있다", async () => {
@@ -37,7 +39,8 @@ describe("ImportCodeDialog", () => {
     const add = screen.getByRole("button", { name: "추가" });
     expect(add).not.toBeDisabled();
     fireEvent.click(add);
-    await waitFor(() => expect(onImport).toHaveBeenCalledWith("ABCD2345", "s1"));
+    await waitFor(() => expect(onImport).toHaveBeenCalledWith("ABCD2345", "s1",
+      { title: "공유 자료", icon: null, link_count: 3, shared_by: null }));
   });
 
   it("존재하지 않는 defaultSpaceId는 무시하고 선택을 강제한다", async () => {

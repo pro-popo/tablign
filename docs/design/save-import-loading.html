@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 담기·가져오기 로딩 시안</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accent-weak:#edf0fe; --t:#1f2430; --muted:#868e96; --faint:#adb5bd;
+    --border:#eaecef; --border-card:#e9ebee; --bg:#fcfcfd; --surface:#fff; --surface2:#f1f3f5;
+    --lav:#c9d4ff; --greenDeep:#2f9e63; --danger:#e03131;
+    --pg:#eef0f4; --rule:#dfe3ea;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{background:var(--pg); color:var(--t);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    padding:30px 22px 90px}
+  .wrap{max-width:1280px}
+  h1{font-size:17px; font-weight:750; letter-spacing:-.025em}
+  h2{font-size:14px; font-weight:750; letter-spacing:-.02em; margin:40px 0 4px}
+  .sub{font-size:13px; color:#7c8695; line-height:1.75; margin-top:9px; max-width:880px}
+  .sub b{color:var(--t)} .sub .bad{color:var(--danger)} .sub .ok{color:var(--accent)}
+  .lede{font-size:12.5px; color:#7c8695; line-height:1.75; margin:7px 0 14px; max-width:900px}
+  .lede b{color:var(--t)} .lede .bad{color:var(--danger)} .lede .ok{color:var(--accent)}
+  .tag{display:inline-block; font-size:10.5px; font-weight:750; border-radius:5px; padding:2px 7px;
+    margin-left:8px; vertical-align:2px}
+  .tag.rec{background:var(--accent); color:#fff}
+  .tag.no{background:#fdecec; color:var(--danger)}
+  .tag.mid{background:#fff; color:#5c636b; border:1px solid var(--rule)}
+  code{background:#e4e8ef; border-radius:4px; padding:1px 5px; font-size:11.5px;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace}
+  table.t{border-collapse:collapse; font-size:12.5px; width:100%; max-width:900px; background:#fff;
+    border:1px solid var(--rule); border-radius:10px; overflow:hidden; box-shadow:0 4px 14px rgba(20,30,60,.06)}
+  table.t th,table.t td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--rule); vertical-align:top}
+  table.t th{background:var(--surface2); font-size:11px; font-weight:700; color:#7c8695}
+  table.t tr:last-child td{border-bottom:none}
+  table.t td:first-child{white-space:nowrap; font-weight:700}
+  table.t .bad{color:var(--danger)} table.t .ok{color:var(--greenDeep)}
+  .scroll{overflow-x:auto; padding-bottom:10px}
+  .row{display:flex; gap:18px; overflow-x:auto; padding-bottom:10px}
+  .cap{font-size:11px; font-weight:750; letter-spacing:.06em; color:#7c8695; margin-bottom:10px;
+    display:flex; align-items:center; gap:7px}
+  .cap i{width:5px; height:5px; border-radius:50%; background:var(--accent); flex:none; font-style:normal}
+  .why{background:#fff; border:1px solid var(--rule); border-radius:11px; padding:14px 16px;
+    font-size:12.5px; line-height:1.7; color:#7c8695; margin-top:12px; max-width:900px}
+  .why b{color:var(--t)} .why .bad{color:var(--danger)} .why .ok{color:var(--accent)}
+  .why ol{margin:8px 0 0 18px} .why li{margin-bottom:8px}
+  .play{display:inline-flex; align-items:center; gap:7px; background:var(--accent); color:#fff;
+    border:none; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700;
+    cursor:pointer; font-family:inherit; margin-bottom:12px}
+
+  /* ══ 제품 UI 실측 ══ */
+  .tl{background:var(--bg); border:1px solid #d5dae2; border-radius:10px; overflow:hidden;
+    box-shadow:0 10px 28px rgba(20,30,60,.1); flex:none; position:relative}
+  .board{padding:16px 18px; height:100%; overflow:hidden; display:flex; flex-direction:column}
+  .bhd{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:8px}
+  .bhd .l{display:flex; align-items:center; gap:8px}
+  .bhd .ttl{font-size:15px; font-weight:700} .bhd .cnt{font-size:14px; color:var(--faint)}
+  .split{display:inline-flex; align-items:stretch; border-radius:7px; overflow:hidden;
+    background:var(--accent); color:#fff; font-weight:600; flex:none}
+  .split .main{display:inline-flex; align-items:center; gap:6px; padding:6px 11px; font-size:13px}
+  .split .dv{width:1px; background:rgba(255,255,255,.32)}
+  .split .caret{display:inline-flex; align-items:center; padding:0 7px}
+
+  /* 빈 상태 카드 */
+  .es{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding-bottom:40px}
+  .eh{font-size:17px; font-weight:740; letter-spacing:-.02em; text-align:center}
+  .esub{font-size:13px; color:var(--muted); margin-top:6px; text-align:center}
+  .stack{width:100%; max-width:400px; margin-top:20px; display:flex; flex-direction:column; gap:10px}
+  .ac{box-sizing:border-box; display:flex; align-items:center; gap:12px; padding:13px 15px;
+    border-radius:13px; border:1px solid var(--border); background:#fff;
+    box-shadow:0 1px 3px rgba(20,30,60,.04)}
+  .ai{width:34px; height:34px; flex:none; border-radius:10px; display:flex; align-items:center; justify-content:center}
+  .ai.a{background:var(--accent); color:#fff; box-shadow:0 2px 6px rgba(59,91,219,.26)}
+  .ai.g{background:var(--greenDeep); color:#fff; box-shadow:0 2px 6px rgba(47,158,99,.26)}
+  .ai.n{background:var(--surface2); color:#5c636b}
+  .at{display:block; font-size:14px; font-weight:700; letter-spacing:-.01em}
+  .as{display:block; margin-top:3px; font-size:11.5px; color:var(--muted)}
+  .chev{color:var(--faint); display:flex; flex:none}
+  .ac.busy{opacity:.6}
+  .ac.dim{opacity:.4}
+
+  /* 스피너 — 기존 스켈레톤 톤에 맞춤 */
+  .spin{width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,.4);
+    border-top-color:#fff; animation:sp .7s linear infinite}
+  .spin.dark{border-color:rgba(59,91,219,.25); border-top-color:var(--accent)}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* 컬렉션 섹션(실측) */
+  .col{margin-bottom:22px; padding:8px}
+  .col .ch{display:flex; align-items:center; gap:8px; margin-bottom:10px}
+  .col .cn{font-size:14px; font-weight:700}
+  .col .cc{font-size:12px; color:var(--faint)}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:9px}
+  .lc{border:1px solid var(--border-card); border-radius:9px; padding:10px 11px; background:var(--surface)}
+  .lc .r1{display:flex; gap:8px; align-items:center}
+  .lc .nm{font-size:13px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; color:#3d444c}
+  .lc .dm{margin-top:5px; font-size:11px; color:var(--faint); height:14px; line-height:14px}
+  .fv{width:16px; height:16px; border-radius:4px; flex:none; display:flex; align-items:center;
+    justify-content:center; font-size:9px; font-weight:800; color:#fff}
+  /* 스켈레톤 바 — CollectionSkeleton과 동일한 펄스 */
+  .bar{background:var(--surface2); border-radius:6px; animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1} 50%{opacity:.45}}
+  .col.ghost{border:1px dashed var(--lav); border-radius:11px; background:rgba(237,240,254,.35)}
+  .col.ghost .cn{color:var(--accent)}
+  .arrive{animation:arrive .28s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes arrive{from{opacity:0; transform:translateY(-6px)} to{opacity:1; transform:none}}
+
+  /* 토스트 */
+  .toast{position:absolute; left:50%; bottom:18px; transform:translateX(-50%);
+    background:var(--t); color:#fff; font-size:13px; border-radius:8px; padding:9px 13px;
+    box-shadow:0 4px 14px rgba(0,0,0,.18); display:flex; align-items:center; gap:9px; white-space:nowrap}
+  .toast.hide{display:none}
+  .toast .pbar{width:96px; height:4px; border-radius:2px; background:rgba(255,255,255,.25); overflow:hidden}
+  .toast .pbar i{display:block; height:100%; background:#fff; border-radius:2px; transition:width .3s}
+  .toast .undo{color:#9db2ff; font-weight:700; cursor:pointer}
+
+  /* 다이얼로그 */
+  .ovl{position:absolute; inset:0; background:rgba(15,18,25,.38); display:flex;
+    align-items:center; justify-content:center}
+  .dlg{width:340px; background:#fff; border-radius:12px; padding:20px 20px 16px;
+    box-shadow:0 12px 40px rgba(0,0,0,.22)}
+  .dlg .dt{font-size:15px; font-weight:600}
+  .dlg .rowin{margin-top:12px; display:flex; gap:8px}
+  .dlg .inp{flex:1; height:34px; border:1px solid var(--border); border-radius:8px;
+    display:flex; align-items:center; padding:0 10px; font-size:14px; letter-spacing:.12em; font-weight:600}
+  .dlg .prev{margin-top:12px; padding:10px 12px; background:var(--surface2); border-radius:9px}
+  .dlg .prev .pn{font-size:13.5px; font-weight:600}
+  .dlg .prev .pm{font-size:12px; color:var(--muted); margin-top:3px}
+  .dlg .fl{margin-top:10px; font-size:12px; color:var(--faint)}
+  .dlg .sch{margin-top:6px; display:flex; gap:6px; flex-wrap:wrap}
+  .dlg .sc{border:1px solid var(--border); border-radius:8px; padding:5px 11px; font-size:12.5px; font-weight:600}
+  .dlg .sc.on{border-color:var(--accent); background:var(--accent-weak); color:var(--accent)}
+  .dlg .snap{margin-top:11px; font-size:11.5px; color:var(--faint); line-height:1.5}
+  .dlg .acts{margin-top:16px; display:flex; justify-content:flex-end; gap:8px}
+  .btn{border-radius:7px; font-size:13px; font-weight:600; padding:6px 11px;
+    display:inline-flex; align-items:center; gap:7px; background:var(--accent); color:#fff}
+  .btn.o{background:#fff; color:#5c636b; border:1px solid var(--border)}
+  .btn.off{opacity:.55}
+  .dlg.busy .inp,.dlg.busy .sc{opacity:.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>담기·가져오기 로딩 — 제안</h1>
+  <p class="sub">
+    “양이 많으면 바로 반영이 안 된다”는 게 정확한 관찰입니다. 원인이 로딩 표시가 없는 것만이 아니라
+    <b>요청을 하나씩 순차로 보내는 구조</b>에 있어서, 로딩 UI와 함께 그쪽도 같이 봐야 합니다.
+  </p>
+
+  <h2>1. 지금 무슨 일이 일어나는지</h2>
+  <table class="t">
+    <thead><tr><th>지점</th><th>지금</th><th>결과</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>링크 저장</td>
+        <td><code>createLink</code>가 <b>단건 insert</b>(<code>links.ts:36</code>)이고
+          <code>saveWindowInto</code>가 <code>for … await</code>로 <b>순차</b> 호출</td>
+        <td class="bad">탭 30개 = 왕복 30번. 한 번에 ~120ms만 잡아도 <b>3.6초</b></td>
+      </tr>
+      <tr>
+        <td>완료 후 재조회</td>
+        <td><code>loadCollections()</code>는 <code>collectionsLoaded</code>를 건드리지 않는다
+          (재조회 핸들러는 스켈레톤을 띄우지 않도록 의도된 설계)</td>
+        <td class="bad">그 사이 화면에 <b>아무 표시가 없다</b> → “안 눌렸나?”</td>
+      </tr>
+      <tr>
+        <td>카드·버튼</td>
+        <td>진행 중에도 비활성되지 않는다</td>
+        <td class="bad">두 번 누르면 <b>컬렉션이 두 벌 생긴다</b> — 로딩과 별개의 실제 버그</td>
+      </tr>
+      <tr>
+        <td>공유 코드</td>
+        <td>다이얼로그 「추가」가 <code>disabled</code>는 되지만 라벨은 그대로</td>
+        <td class="bad">눌렸는지 알 수 없다</td>
+      </tr>
+      <tr>
+        <td>아는 정보</td>
+        <td>담을 탭 수, 창별 개수 / 코드 조회 결과의 <code>title</code>·<code>link_count</code></td>
+        <td class="ok">완료 전에 <b>결과의 모양을 이미 알고 있다</b> → 진짜 스켈레톤이 가능</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2. 네 가지 방식</h2>
+  <div class="row" id="opts"></div>
+  <div class="why" id="optsWhy"></div>
+
+  <h2>3. 추천안 재생 — 열린 창 2개 / 탭 12개<span class="tag rec">L3</span></h2>
+  <p class="lede">
+    누른 즉시 <b>결과의 골격</b>을 그립니다. 창별 컬렉션과 링크 자리를 <b>실제 개수만큼</b> 미리 놓고,
+    도착하는 대로 채웁니다. 기다리는 화면이 아니라 <b class="ok">만들어지는 화면</b>이 됩니다.
+  </p>
+  <button class="play" id="play">▶ 재생</button>
+  <div class="scroll"><div class="tl" id="stage" style="width:902px; height:520px"></div></div>
+
+  <h2>4. 공유 코드 — 버튼 상태와 이후</h2>
+  <p class="lede">여기는 서버 RPC 한 번이라 진행률이 없습니다. <b>버튼 상태</b>로 알리고, 닫힌 뒤 보드에 골격을 놓습니다.</p>
+  <div class="row" id="dlgs"></div>
+
+  <h2>5. 적용 순서 제안</h2>
+  <div class="why">
+    <ol>
+      <li><b>중복 클릭 막기 (지금 당장).</b> 진행 중 카드·버튼 비활성. 로딩 디자인과 무관하게
+        <span class="bad">컬렉션이 두 벌 생기는 버그</span>를 먼저 막아야 합니다.</li>
+      <li><b>벌크 insert.</b> <code>createLinks(client, inputs[])</code>를 만들어
+        <code>.insert(배열)</code> 한 번으로. 창 3개면 왕복이 <b>36회 → 6회</b>가 되고,
+        체감 지연 대부분이 사라집니다. <b class="ok">가장 값싸고 효과가 큰 조치</b>입니다.</li>
+      <li><b>낙관적 골격(L3).</b> 벌크로 빨라진 뒤에도 남는 0.3~1초 구간을 덮습니다.
+        여기까지 하면 “바로 반영 안 된다”는 느낌이 없어집니다.</li>
+      <li><b>실패 롤백.</b> 낙관적 UI의 필수 조건 — 실패하면 골격을 걷고
+        <b>「담지 못했어요. 다시 시도해 주세요」</b>를 띄웁니다. 부분 성공(일부 링크만 저장)이면
+        저장된 것은 남기고 실패 수를 알립니다.</li>
+      <li><b>되돌리기(선택).</b> 「열린 창 전부」는 한 번에 컬렉션 여러 개를 만듭니다.
+        완료 토스트에 되돌리기를 붙이면 낙관적 UI의 위험이 상쇄됩니다 —
+        <code>Toast</code>에 액션 슬롯이 필요합니다.</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const I = {
+  plus:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>',
+  plusS:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>',
+  caret:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M6 9l6 6 6-6"/></svg>',
+  chev:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>',
+  stack:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="6.5" width="13" height="11" rx="2"/><path d="M2.5 10h13"/><path d="M8.5 6.5V5a1.5 1.5 0 011.5-1.5h9A1.5 1.5 0 0120.5 5v9a1.5 1.5 0 01-1.5 1.5h-1.5"/></svg>',
+  ticket:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="7" width="18" height="10" rx="2.5"/><path d="M8 7v10M13 12h4"/></svg>',
+};
+const $ = (id) => document.getElementById(id);
+
+const W1 = [
+  { m:'G', c:'#1a73e8', t:'Google Meet — 주간 스탠드업', d:'meet.google.com' },
+  { m:'N', c:'#191919', t:'Notion — 스프린트 26 보드',   d:'notion.so' },
+  { m:'F', c:'#a259ff', t:'Figma — 디자인 시스템 v3',    d:'figma.com' },
+  { m:'S', c:'#4a154b', t:'Slack — #product-design',    d:'app.slack.com' },
+  { m:'L', c:'#0052cc', t:'Linear — TAB-412',           d:'linear.app' },
+];
+const W2 = [
+  { m:'M', c:'#d93025', t:'Gmail — 받은 편지함',   d:'mail.google.com' },
+  { m:'A', c:'#ff9900', t:'AWS — 배포 로그',       d:'console.aws.amazon.com' },
+  { m:'Y', c:'#ff0000', t:'YouTube — 발표 리허설', d:'youtube.com' },
+  { m:'D', c:'#5865f2', t:'Discord — 팀 채널',     d:'discord.com' },
+  { m:'G', c:'#f34f29', t:'GitHub — PR #412',      d:'github.com' },
+  { m:'V', c:'#007acc', t:'VS Code — 문서',        d:'vscode.dev' },
+  { m:'T', c:'#00b4d8', t:'Trello — 백로그',       d:'trello.com' },
+];
+
+const BHD = (n) => `<div class="bhd">
+  <div class="l"><span class="ttl">업무</span><span class="cnt">· ${n} 컬렉션</span></div>
+  <span class="split"><span class="main">${I.plusS} 컬렉션</span>
+    <span class="dv"></span><span class="caret">${I.caret}</span></span></div>`;
+
+const linkCard = (t) => `<div class="lc"><div class="r1">
+  <span class="fv" style="background:${t.c}">${t.m}</span><span class="nm">${t.t}</span></div>
+  <div class="dm">${t.d}</div></div>`;
+const skelCard = () => `<div class="lc"><div class="r1">
+  <span class="bar" style="width:16px;height:16px;border-radius:4px"></span>
+  <span class="bar" style="flex:1;height:12px"></span></div>
+  <div class="dm"><span class="bar" style="display:block;width:40%;height:10px"></span></div></div>`;
+
+/* 유령 컬렉션: filled개는 실제 카드, 나머지는 스켈레톤 */
+function ghostCol(title, tabs, filled){
+  const cards = tabs.map((t, i) => (i < filled ? linkCard(t) : skelCard())).join('');
+  const done = filled >= tabs.length;
+  return `<div class="col ${done ? '' : 'ghost'} arrive">
+    <div class="ch">
+      <span class="cn">${title}</span>
+      <span class="cc">${done ? `링크 ${tabs.length}개` : `${filled} / ${tabs.length}`}</span>
+      ${done ? '' : '<span class="spin dark" style="width:13px;height:13px;border-width:2px"></span>'}
+    </div>
+    <div class="grid">${cards}</div></div>`;
+}
+
+/* 빈 상태 카드 3장 — busy면 첫 카드가 스피너 */
+function cards(state){
+  const busy = state === 'busy';
+  return `<div class="es">
+    <div class="eh">탭을 담을 첫 컬렉션을 만들어요</div>
+    <div class="esub">컬렉션은 탭을 모아두는 서랍이에요</div>
+    <div class="stack">
+      <div class="ac ${busy ? 'busy' : ''}">
+        <span class="ai a">${busy ? '<span class="spin"></span>' : I.stack}</span>
+        <span style="flex:1"><span class="at">${busy ? '담는 중…' : '열린 창 2개를 그대로 담기'}</span>
+          <span class="as">창별로 컬렉션 1개씩 · 탭 12개</span></span>
+        ${busy ? '' : `<span class="chev">${I.chev}</span>`}</div>
+      <div class="ac ${busy ? 'dim' : ''}"><span class="ai g">${I.ticket}</span>
+        <span style="flex:1"><span class="at">공유 코드로 추가</span>
+          <span class="as">코드 8자리로 컬렉션 복사</span></span>
+        <span class="chev">${I.chev}</span></div>
+      <div class="ac ${busy ? 'dim' : ''}"><span class="ai n">${I.plus}</span>
+        <span style="flex:1"><span class="at">빈 컬렉션 만들기</span>
+          <span class="as">이름부터 정하고 하나씩 담기</span></span>
+        <span class="chev">${I.chev}</span></div>
+    </div></div>`;
+}
+
+/* ── 2. 네 가지 방식 (보드만 크롭) ── */
+const OPTS = [
+  { cap:'L1 · 버튼 스피너만', w:470, h:330,
+    body: cards('busy') },
+  { cap:'L2 · 진행률 토스트', w:470, h:330,
+    body: cards('busy'),
+    toast:`<span class="spin" style="width:13px;height:13px;border-width:2px"></span>
+      탭 12개 중 7개 담는 중
+      <span class="pbar"><i style="width:58%"></i></span>` },
+  { cap:'L3 · 낙관적 골격 · 추천', w:470, h:330,
+    body: `<div style="overflow:hidden">${ghostCol('창 1', W1, 3)}</div>` },
+  { cap:'L4 · 보드 전체 스켈레톤', w:470, h:330,
+    body: `<div style="overflow:hidden">
+      ${['','',''].map(() => `<div class="col"><div class="ch">
+        <span class="bar" style="width:16px;height:16px;border-radius:4px"></span>
+        <span class="bar" style="width:130px;height:14px"></span></div>
+        <div class="grid">${skelCard()}${skelCard()}</div></div>`).join('')}</div>` },
+];
+$('opts').innerHTML = OPTS.map((o) => `<div>
+  <div class="cap"><i></i>${o.cap}</div>
+  <div class="tl" style="width:${o.w}px; height:${o.h}px">
+    <div class="board">${BHD(0)}${o.body}</div>
+    ${o.toast ? `<div class="toast">${o.toast}</div>` : ''}
+  </div></div>`).join('');
+
+$('optsWhy').innerHTML = `
+  <b>L1 · 버튼 스피너만</b> — 가장 싸고 <b>중복 클릭은 확실히 막습니다</b>. 다만 보드는 그대로라
+  “반영이 안 된다”는 느낌 자체는 남습니다. 지연이 짧을 때만 충분합니다.<br/><br/>
+  <b>L2 · 진행률 토스트</b> — 순차 루프라서 진행률을 <b>진짜로</b> 계산할 수 있습니다. 그런데
+  <span class="bad">벌크 insert로 고치면 진행률이 사라집니다</span>(요청이 1회가 되므로).
+  근본 수정과 방향이 어긋나므로 권하지 않습니다.<br/><br/>
+  <b>L3 · 낙관적 골격 — 추천.</b> 담을 탭 수와 창별 개수를 <b>이미 알고 있으니</b> 결과의 골격을 정확히 그릴 수 있습니다.
+  기다림이 <b class="ok">진행으로 보입니다</b>. 대가는 실패 롤백을 반드시 구현해야 한다는 것.<br/><br/>
+  <b>L4 · 보드 전체 스켈레톤</b> — <code>collectionsLoaded</code>를 false로 되돌리면 한 줄로 끝나지만,
+  <span class="bad">이미 있던 컬렉션까지 사라져</span> 되돌아가는 것처럼 보입니다. 컬렉션이 0개인 첫 담기에만 그럭저럭.`;
+
+/* ── 3. 재생 ── */
+const FRAMES = [
+  { t:0,    n:0, body: cards('idle'),  toast:null },
+  { t:400,  n:0, body: cards('busy'),  toast:null },
+  { t:900,  n:2, body: ghostCol('창 1', W1, 0) + ghostCol('창 2', W2, 0), toast:null },
+  { t:1700, n:2, body: ghostCol('창 1', W1, 3) + ghostCol('창 2', W2, 0), toast:null },
+  { t:2500, n:2, body: ghostCol('창 1', W1, 5) + ghostCol('창 2', W2, 4), toast:null },
+  { t:3300, n:2, body: ghostCol('창 1', W1, 5) + ghostCol('창 2', W2, 7),
+    toast:'컬렉션 2개에 탭 12개를 담았어요 <span class="undo">되돌리기</span>' },
+];
+let timers = [];
+function draw(f){
+  $('stage').innerHTML = `<div class="board">${BHD(f.n)}
+    <div style="overflow:hidden; flex:1">${f.body}</div></div>
+    ${f.toast ? `<div class="toast">${f.toast}</div>` : ''}`;
+}
+function play(){
+  timers.forEach(clearTimeout); timers = [];
+  FRAMES.forEach((f) => timers.push(setTimeout(() => draw(f), f.t)));
+}
+$('play').addEventListener('click', play);
+draw(FRAMES[0]);
+if (typeof requestAnimationFrame === 'function') requestAnimationFrame(play);
+
+/* ── 4. 공유 코드 다이얼로그 3단계 ── */
+const DLG = (stage) => {
+  const busy = stage === 'busy';
+  return `<div class="ovl"><div class="dlg ${busy ? 'busy' : ''}">
+    <div class="dt">공유 코드로 추가</div>
+    <div class="rowin"><div class="inp">7K3M9QP2</div>
+      <span class="btn ${busy ? 'off' : ''}">조회</span></div>
+    <div class="prev"><div class="pn">🎨 디자인 레퍼런스</div>
+      <div class="pm">링크 24개 · 지나님이 공유</div></div>
+    <div class="fl">어디에 추가할까요</div>
+    <div class="sch"><span class="sc on"># 업무</span><span class="sc"># 리서치</span></div>
+    <p class="snap">복사본으로 추가돼요. 원본이 바뀌어도 반영되지 않습니다.</p>
+    <div class="acts"><span class="btn o ${busy ? 'off' : ''}">취소</span>
+      <span class="btn ${busy ? 'off' : ''}">
+        ${busy ? '<span class="spin"></span>추가 중…' : '추가'}</span></div>
+  </div></div>`;
+};
+$('dlgs').innerHTML = [
+  { cap:'① 누르기 전', body: DLG('idle'), h:400 },
+  { cap:'② 진행 중 — 라벨이 바뀌고 입력·칩도 잠긴다', body: DLG('busy'), h:400 },
+  { cap:'③ 닫힌 뒤 — 조회 때 안 제목·개수로 골격을 놓는다',
+    body: `<div style="overflow:hidden">${ghostCol('🎨 디자인 레퍼런스', W2.concat(W1), 4)}</div>`, h:400 },
+].map((d) => `<div>
+  <div class="cap"><i></i>${d.cap}</div>
+  <div class="tl" style="width:470px; height:${d.h}px">
+    <div class="board">${BHD(0)}${d.body}</div></div></div>`).join('');
+</script>
+</body>
+</html>

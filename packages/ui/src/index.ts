@@ -5,6 +5,7 @@ export * from "./Button";
 export * from "./Card";
 export * from "./EmptyState";
 export * from "./CollectionSkeleton";
+export * from "./PendingCollection";
 export * from "./InlineInput";
 export * from "./Favicon";
 export * from "./LinkCard";

@@ -66,11 +66,13 @@ function TabRow({
 }
 
 function WindowGroupView({
-  group, index, selfTabId, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab,
+  group, index, selfTabId, saving, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab,
 }: {
   group: WindowGroup;
   index: number;
   selfTabId: number | null;
+  /** 이 창을 저장하는 중 — 두 번 눌러 컬렉션이 두 벌 생기는 것을 막는다 */
+  saving: boolean;
   onSaveWindow: (windowId: number) => void;
   onCloseWindow: (windowId: number) => void;
   onCloseTab: (tabId: number) => void;
@@ -95,11 +97,12 @@ function WindowGroupView({
           {collapsed && <span style={{ color: theme.textFaint, fontSize: 12 }}>· {group.tabs.length}</span>}
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <button type="button" disabled={saveable === 0}
-            title={saveable === 0 ? "담을 수 있는 탭이 없어요" : `담을 수 있는 탭 ${saveable}개 저장`}
-            aria-label={saveable === 0 ? `창 ${index + 1} — 담을 수 있는 탭이 없어요` : `창 ${index + 1}의 탭 ${saveable}개 저장`}
+          <button type="button" disabled={saveable === 0 || saving}
+            aria-busy={saving || undefined}
+            title={saving ? "담는 중…" : saveable === 0 ? "담을 수 있는 탭이 없어요" : `담을 수 있는 탭 ${saveable}개 저장`}
+            aria-label={saving ? `창 ${index + 1} 담는 중` : saveable === 0 ? `창 ${index + 1} — 담을 수 있는 탭이 없어요` : `창 ${index + 1}의 탭 ${saveable}개 저장`}
             onClick={(e) => { e.stopPropagation(); onSaveWindow(group.windowId); }}
-            style={{ border: "none", background: "none", cursor: saveable === 0 ? "not-allowed" : "pointer", display: "flex", color: theme.accent, opacity: saveable === 0 ? 0.35 : 1 }}>
+            style={{ border: "none", background: "none", cursor: saveable === 0 || saving ? "not-allowed" : "pointer", display: "flex", color: theme.accent, opacity: saveable === 0 || saving ? 0.35 : 1 }}>
             <Download size={15} />
           </button>
           <button type="button" title="이 창의 탭 전체 닫기" aria-label={`창 ${index + 1} 닫기`} onClick={(e) => { e.stopPropagation(); onCloseWindow(group.windowId); }}
@@ -126,6 +129,8 @@ export interface OpenTabsPanelProps {
   groups: WindowGroup[];
   /** tablign 새 탭 자신의 tabId. 목록에서 빼지 않고 '현재 탭' 배지로 표시한다. */
   selfTabId?: number | null;
+  /** 지금 저장 중인 창. 그 창의 저장 버튼만 잠근다. */
+  savingWindowId?: number | null;
   onSaveWindow: (windowId: number) => void;
   onCloseWindow: (windowId: number) => void;
   onCloseTab: (tabId: number) => void;
@@ -133,7 +138,7 @@ export interface OpenTabsPanelProps {
   onCollapse: () => void;
 }
 
-export function OpenTabsPanel({ groups, selfTabId = null, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab, onCollapse }: OpenTabsPanelProps) {
+export function OpenTabsPanel({ groups, selfTabId = null, savingWindowId = null, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab, onCollapse }: OpenTabsPanelProps) {
   // 보이는 개수와 담기는 개수가 다르면 안 된다 — 헤더에 실제 담을 수 있는 수를 둔다.
   const saveable = groups.reduce((n, g) => n + saveableTabs(g.tabs).length, 0);
   return (
@@ -152,6 +157,7 @@ export function OpenTabsPanel({ groups, selfTabId = null, onSaveWindow, onCloseW
       <div style={{ padding: "11px 13px", overflow: "auto" }}>
         {groups.map((g, i) => (
           <WindowGroupView key={g.windowId} group={g} index={i} selfTabId={selfTabId}
+            saving={savingWindowId === g.windowId}
             onSaveWindow={onSaveWindow} onCloseWindow={onCloseWindow} onCloseTab={onCloseTab} onActivateTab={onActivateTab} />
         ))}
       </div>
