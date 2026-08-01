@@ -658,6 +658,32 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     );
   });
 
+  it("조직 관리 메뉴는 프로필 설정 → 멤버 관리 → 북마크 가져오기 순이고, 조직 삭제는 구분선 뒤에 온다", async () => {
+    listOrganizations.mockResolvedValue([
+      { id: "org-personal", name: "개인", icon: null, color: null, owner_id: "u1", is_personal: true, created_at: "" },
+      { id: "org-team", name: "우리팀", icon: null, color: "#20a97e", owner_id: "u1", is_personal: false, created_at: "x" },
+    ]);
+    listMyOrgMemberships.mockResolvedValue([
+      { org_id: "org-team", user_id: "u1", role: "owner", created_at: "x" },
+    ]);
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+    ]);
+    renderNewTab();
+    await screen.findAllByText("개인");
+
+    fireEvent.click(screen.getByText("우리팀"));
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
+    const menu = await screen.findByRole("menu");
+
+    expect(screen.getAllByRole("menuitem").map((b) => b.textContent)).toEqual([
+      "프로필 설정", "멤버 관리", "북마크 가져오기", "조직 삭제",
+    ]);
+    // 되돌릴 수 없는 항목 앞에 구분선 — 색만으로는 오조작을 막지 못한다
+    const sep = within(menu).getByRole("separator");
+    expect(sep.nextElementSibling?.textContent).toBe("조직 삭제");
+  });
+
   it("개인 조직도 '조직 관리'(톱니 메뉴)가 노출되고, 메뉴에는 '프로필 설정'만 있다(멤버 관리·조직 삭제 없음)", async () => {
     listSpaces.mockResolvedValue([
       { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
@@ -748,7 +774,7 @@ describe("NewTab — 북마크 가져오기", () => {
     listSpaces.mockResolvedValue([]);
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "북마크 가져오기" }));
     fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
 
     expect(await screen.findByTestId("rail-dev")).toBeInTheDocument();
@@ -761,7 +787,7 @@ describe("NewTab — 북마크 가져오기", () => {
     listSpaces.mockResolvedValue([]);
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "북마크 가져오기" }));
     fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
 
     expect(await screen.findByTestId("import-org-fixed")).toHaveTextContent("개인");
@@ -773,7 +799,7 @@ describe("NewTab — 북마크 가져오기", () => {
     listSpaces.mockResolvedValue([]);
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "북마크 가져오기" }));
     fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
     await screen.findByTestId("rail-dev");
 
@@ -800,7 +826,7 @@ describe("NewTab — 북마크 가져오기", () => {
     listSpaces.mockResolvedValue([]);
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "북마크 가져오기" }));
     fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
     await screen.findByTestId("rail-dev");
 
@@ -810,23 +836,20 @@ describe("NewTab — 북마크 가져오기", () => {
     expect(screen.getByTestId("rail-dev")).toBeInTheDocument();
   });
 
-  it("온보딩 화면에서도 가져오기로 들어갈 수 있다", async () => {
-    stubBookmarks(bar);
+  it("온보딩 화면에는 가져오기 진입점을 두지 않는다", async () => {
+    // 진입점은 조직 헤더 더보기 메뉴 한 곳뿐이다
     listSpaces.mockResolvedValue([]);
     renderNewTab();
     await screen.findByRole("button", { name: /첫 스페이스 만들기/ });
 
-    fireEvent.click(screen.getByRole("button", { name: /북마크·Toby 가져오기/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
-
-    expect(await screen.findByTestId("rail-dev")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /가져오기/ })).not.toBeInTheDocument();
   });
 
   it("Toby 파일을 고르면 group→스페이스, list→컬렉션으로 미리보기가 나온다", async () => {
     listSpaces.mockResolvedValue([]);
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "북마크 가져오기" }));
 
     const toby = JSON.stringify({
       version: 4,
@@ -863,7 +886,7 @@ describe("NewTab — 북마크 가져오기", () => {
     listSpaces.mockResolvedValue([]);
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "북마크 가져오기" }));
 
     const file = new File(["{\"foo\":1}"], "wrong.json", { type: "application/json" });
     fireEvent.change(await screen.findByTestId("toby-file-input"), { target: { files: [file] } });

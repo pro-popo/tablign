@@ -1114,7 +1114,7 @@ export function NewTab() {
             <Board>
               {spacesLoaded && orgSpaces.length === 0 ? (
                 // 활성 조직에 스페이스가 0개(신규 가입 직후, 전부 삭제, 또는 방금 만든 빈 조직): 온보딩 빈 상태.
-                <SpaceOnboarding onCreate={() => addSpace("개인")} onImport={openImport} />
+                <SpaceOnboarding onCreate={() => addSpace("개인")} />
               ) : (
                 // 헤더 + 본문을 flex 컬럼으로 묶어, 빈 상태가 헤더 아래 '남은 공간'을 정확히 채우게 한다.
                 // (헤더 높이를 상수로 빼서 계산하면 헤더가 바뀔 때 어긋난다)

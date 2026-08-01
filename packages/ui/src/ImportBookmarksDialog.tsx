@@ -7,6 +7,7 @@ import {
 import { theme } from "./theme";
 import { Button } from "./Button";
 import { Favicon } from "./Favicon";
+import { ChevronDown } from "./icons";
 import { TriCheckbox, triCheckboxCss, type TriState } from "./TriCheckbox";
 import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
 
@@ -32,11 +33,37 @@ const mono = {
   fontVariantNumeric: "tabular-nums" as const,
 };
 
+/** 개수 표시. 체크박스를 연달아 누르다 숫자가 잡히는 걸 막으려고 선택을 끈다. */
+const count = {
+  ...mono,
+  WebkitUserSelect: "none" as const,
+  userSelect: "none" as const,
+};
+
 /**
  * 이 다이얼로그의 상호작용 스타일. 호버·포커스는 인라인 스타일로 표현할 수 없어 클래스로 뺐다.
  * 라벨은 체크박스를 여러 번 누르다 글자가 잡히는 걸 막으려고 선택을 끈다.
  */
 const importPreviewCss = `
+/* 조직 선택 — 네이티브 화살표는 글자에서 멀찍이 떨어져 있어 직접 그린다. */
+.tbl-imp-selwrap { position: relative; display: inline-flex; align-items: center }
+.tbl-imp-sel {
+  -webkit-appearance: none; appearance: none; box-sizing: border-box;
+  height: 28px; margin: 0; padding: 0 24px 0 10px;
+  /* 네이티브 폭은 가장 긴 항목에 고정돼 고른 값과 화살표 사이가 벌어진다.
+     field-sizing은 고른 값에 맞춰 줄인다(미지원이면 예전 폭으로 되돌아갈 뿐이다). */
+  field-sizing: content; max-width: 220px; text-overflow: ellipsis;
+  border: 1px solid ${theme.border}; border-radius: ${theme.radiusChip}px;
+  background: ${theme.surface}; color: ${theme.text};
+  font-family: inherit; font-size: 12.5px; font-weight: 600;
+  cursor: pointer; outline: none;
+  transition: background .14s ease, border-color .14s ease;
+}
+.tbl-imp-sel:hover:not(:disabled) { background: ${theme.surface2} }
+.tbl-imp-sel:focus-visible { border-color: ${theme.accent}; box-shadow: 0 0 0 3px ${theme.accentWeak} }
+.tbl-imp-sel:disabled { cursor: default; opacity: .55 }
+.tbl-imp-chev { position: absolute; right: 7px; display: flex; pointer-events: none }
+
 /* 레일 스페이스 행 — 체크박스와 라벨을 한 줄에서 수직 중앙 정렬 */
 .tbl-imp-row {
   display: flex; align-items: center; gap: 8px; padding: 6px 7px;
@@ -53,8 +80,9 @@ const importPreviewCss = `
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   transition: color .14s ease;
 }
+/* 제외한 스페이스도 이름 색은 그대로 둔다 — 포함/제외는 체크박스만으로 읽는다.
+   여기서 색까지 흐려지면 "보고 있는 스페이스"(data-cur)와 신호가 섞인다. */
 .tbl-imp-row[data-cur="true"] .tbl-imp-name { color: ${theme.accent}; font-weight: 700 }
-.tbl-imp-row[data-state="none"] .tbl-imp-name { color: ${theme.textFaint} }
 .tbl-imp-name:focus-visible { outline: 2px solid ${theme.accent}; outline-offset: 2px; border-radius: 4px }
 
 /* 컬렉션 카드 — 줄 전체가 누를 수 있다는 걸 호버로 알린다.
@@ -74,9 +102,8 @@ const importPreviewCss = `
 .tbl-imp-colname {
   font-size: 12.5px; font-weight: 740; line-height: 15px; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: ${theme.text}; transition: color .14s ease;
+  color: ${theme.text};
 }
-.tbl-imp-col[data-on="false"] .tbl-imp-colname { color: ${theme.textFaint} }
 
 /* 보드 헤더 스페이스 이름 */
 .tbl-imp-boardname {
@@ -84,10 +111,9 @@ const importPreviewCss = `
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: ${theme.text}; -webkit-user-select: none; user-select: none;
 }
-.tbl-imp-boardhd[data-state="none"] .tbl-imp-boardname { color: ${theme.textFaint} }
 
 @media (prefers-reduced-motion: reduce) {
-  .tbl-imp-row, .tbl-imp-col, .tbl-imp-name, .tbl-imp-colname { transition: none }
+  .tbl-imp-row, .tbl-imp-col, .tbl-imp-name, .tbl-imp-sel { transition: none }
 }
 `;
 
@@ -199,12 +225,15 @@ export function ImportBookmarksDialog({
             {orgs.length > 1 ? (
               <>
                 <label htmlFor="import-org" style={{ fontSize: 12, color: theme.textFaint }}>가져올 조직</label>
-                <select id="import-org" value={orgId} disabled={busy}
-                  onChange={(e) => setOrgId(e.target.value)}
-                  style={{ padding: "5px 8px", border: `1px solid ${theme.border}`, borderRadius: 8,
-                    fontSize: 12.5, fontFamily: "inherit", background: theme.surface, color: theme.text }}>
-                  {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                </select>
+                <span className="tbl-imp-selwrap">
+                  <select id="import-org" className="tbl-imp-sel" value={orgId} disabled={busy}
+                    onChange={(e) => setOrgId(e.target.value)}>
+                    {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                  </select>
+                  <span className="tbl-imp-chev" aria-hidden>
+                    <ChevronDown size={13} color={theme.textMuted} strokeWidth={2.4} />
+                  </span>
+                </span>
               </>
             ) : (
               <div data-testid="import-org-fixed" style={{ fontSize: 12.5, color: theme.textMuted }}>
@@ -221,7 +250,7 @@ export function ImportBookmarksDialog({
             <div style={{ ...eyebrow, display: "flex", alignItems: "baseline", padding: "11px 13px 7px" }}>
               <span>스페이스</span>
               <span data-testid="space-count"
-                style={{ ...mono, marginLeft: "auto", letterSpacing: 0, fontWeight: 700 }}>
+                style={{ ...count, marginLeft: "auto", letterSpacing: 0, fontWeight: 700 }}>
                 {plan.totals.spaces}/{outline.length}
               </span>
             </div>
@@ -230,12 +259,12 @@ export function ImportBookmarksDialog({
                 const st = spaceState(sp);
                 const cur = sp.sourceId === active?.sourceId;
                 return (
-                  <div key={sp.sourceId} className="tbl-imp-row" data-cur={cur} data-state={st}
+                  <div key={sp.sourceId} className="tbl-imp-row" data-cur={cur}
                     data-testid={`rail-${sp.sourceId}`}>
                     <TriCheckbox state={st} label={`${sp.name} 포함`} onToggle={() => toggleSpace(sp)} />
                     <button type="button" className="tbl-imp-name"
                       onClick={() => setActiveId(sp.sourceId)}>{sp.name}</button>
-                    <span style={{ ...mono, fontSize: 10, color: theme.textFaint, flex: "none" }}>
+                    <span style={{ ...count, fontSize: 10, color: theme.textFaint, flex: "none" }}>
                       {spaceTabs(sp)}
                     </span>
                   </div>
@@ -257,14 +286,13 @@ export function ImportBookmarksDialog({
             display: "flex", flexDirection: "column" }}>
             {active && (
               <>
-                <div className="tbl-imp-boardhd" data-testid="board-header"
-                  data-state={spaceState(active)}
+                <div data-testid="board-header"
                   style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 16px 10px",
                     borderBottom: `1px solid ${theme.border}`, background: theme.surface }}>
                   <TriCheckbox state={spaceState(active)} label={`${active.name} 포함`}
                     onToggle={() => toggleSpace(active)} />
                   <span className="tbl-imp-boardname">{active.name}</span>
-                  <span style={{ ...mono, marginLeft: "auto", flex: "none", fontSize: 10.5,
+                  <span style={{ ...count, marginLeft: "auto", flex: "none", fontSize: 10.5,
                     color: theme.textFaint }}>
                     컬렉션 {active.collections.length} · 탭 {spaceTabs(active)}
                   </span>
@@ -274,7 +302,7 @@ export function ImportBookmarksDialog({
                   {active.collections.map((c) => {
                     const on = !!enabled[c.sourceId];
                     return (
-                      <div key={c.sourceId} className="tbl-imp-col" data-on={on}
+                      <div key={c.sourceId} className="tbl-imp-col"
                         data-testid={`col-${c.sourceId}`}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                           <TriCheckbox state={on ? "on" : "none"} label={`${c.title} 포함`}
@@ -282,11 +310,12 @@ export function ImportBookmarksDialog({
                           <button type="button" className="tbl-imp-coltitle"
                             onClick={() => toggleCollection(c.sourceId)}>
                             <span className="tbl-imp-colname">{c.title}</span>
-                            <span style={{ ...mono, marginLeft: "auto", flex: "none", fontSize: 10.5,
+                            <span style={{ ...count, marginLeft: "auto", flex: "none", fontSize: 10.5,
                               color: theme.textFaint }}>탭 {c.links.length}</span>
                           </button>
                         </div>
-                        <div style={{ opacity: on ? 1 : 0.45 }}>
+                        {/* 제외해도 탭 목록은 그대로 — 포함/제외는 체크박스만으로 읽는다 */}
+                        <div>
                           {c.links.map((l, i) => (
                             <div key={`${l.url}-${i}`}
                               style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0,
