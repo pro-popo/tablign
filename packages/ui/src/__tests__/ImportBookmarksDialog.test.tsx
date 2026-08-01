@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import type { SourceNode } from "@tablign/core";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { directSourceId, looseSourceId, type SourceNode } from "@tablign/core";
 import { ImportBookmarksDialog } from "../ImportBookmarksDialog";
 
 const link = (id: string, url: string, title = id): SourceNode => ({ id, title, url });
@@ -8,10 +8,10 @@ const link = (id: string, url: string, title = id): SourceNode => ({ id, title, 
 const roots: SourceNode[] = [
   { id: "1", title: "북마크바", primary: true, children: [
     { id: "dev", title: "개발", children: [
-      { id: "react", title: "React", children: [link("r1", "https://react.dev/a")] },
-      link("d1", "https://dev.local/x"),
+      { id: "react", title: "React", children: [link("r1", "https://react.dev/a", "리액트 문서")] },
+      link("d1", "https://dev.local/x", "개발 직속"),
     ]},
-    { id: "news", title: "뉴스", children: [link("w1", "https://news.local/a")] },
+    { id: "news", title: "뉴스", children: [link("w1", "https://news.local/a", "뉴스 링크")] },
   ]},
 ];
 
@@ -29,66 +29,107 @@ function open(overrides: Partial<React.ComponentProps<typeof ImportBookmarksDial
   return { onImport };
 }
 
+const railOf = (id: string) => screen.getByTestId(`rail-${id}`);
+
 describe("ImportBookmarksDialog", () => {
-  it("1단 폴더를 스페이스로, 안쪽 폴더와 공유 폴더를 컬렉션으로 미리 보여준다", () => {
+  it("레일에 모든 스페이스를, 보드에는 첫 스페이스의 컬렉션만 보여준다", () => {
     open();
-    // 왼쪽 트리
-    expect(screen.getAllByText("개발").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("뉴스").length).toBeGreaterThan(0);
-    // 오른쪽 미리보기 — 개발 보드에 React와 공유 폴더
-    expect(screen.getByTestId("preview-space-dev")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-col-react")).toHaveTextContent("React");
-    expect(screen.getByTestId("preview-col-dev")).toHaveTextContent("공유 폴더");
+    expect(railOf("dev")).toBeInTheDocument();
+    expect(railOf("news")).toBeInTheDocument();
+
+    // 보드는 '개발'만 — React와 공유 폴더
+    expect(screen.getByTestId("board-header")).toHaveTextContent("개발");
+    expect(screen.getByTestId("col-react")).toHaveTextContent("React");
+    expect(screen.getByTestId(`col-${directSourceId("dev")}`)).toHaveTextContent("공유 폴더");
+    // 다른 스페이스의 컬렉션은 없다
+    expect(screen.queryByTestId(`col-${directSourceId("news")}`)).not.toBeInTheDocument();
   });
 
-  it("푸터에 링크 수와 스페이스 수를 요약한다", () => {
+  it("탭을 제목과 도메인이 있는 한 줄로 보여준다", () => {
     open();
-    expect(screen.getByTestId("import-summary")).toHaveTextContent("링크 3개");
-    expect(screen.getByTestId("import-summary")).toHaveTextContent("스페이스 2개");
+    const col = screen.getByTestId("col-react");
+    expect(within(col).getByText("리액트 문서")).toBeInTheDocument();
+    expect(within(col).getByText("react.dev")).toBeInTheDocument();
   });
 
-  it("폴더를 끄면 미리보기와 요약이 함께 줄어든다", () => {
+  it("레일에서 이름을 누르면 보드가 그 스페이스로 바뀐다", () => {
     open();
-    fireEvent.click(screen.getByTestId("tree-row-news"));
-    expect(screen.queryByTestId("preview-space-news")).not.toBeInTheDocument();
-    expect(screen.getByTestId("import-summary")).toHaveTextContent("링크 2개");
-    expect(screen.getByTestId("import-summary")).toHaveTextContent("스페이스 1개");
+    fireEvent.click(within(railOf("news")).getByRole("button"));
+    expect(screen.getByTestId("board-header")).toHaveTextContent("뉴스");
+    expect(screen.getByTestId(`col-${directSourceId("news")}`)).toBeInTheDocument();
+    expect(screen.queryByTestId("col-react")).not.toBeInTheDocument();
   });
 
-  it("스페이스를 끄면 그 안 컬렉션도 함께 꺼진다", () => {
+  it("레일 체크박스는 전환하지 않고 포함/제외만 바꾼다", () => {
     open();
-    fireEvent.click(screen.getByTestId("tree-row-dev"));
-    expect(screen.queryByTestId("preview-space-dev")).not.toBeInTheDocument();
-    // 다시 켜면 컬렉션도 돌아온다
-    fireEvent.click(screen.getByTestId("tree-row-dev"));
-    expect(screen.getByTestId("preview-col-react")).toBeInTheDocument();
+    fireEvent.click(within(railOf("news")).getByRole("checkbox"));
+    // 보드는 여전히 '개발'
+    expect(screen.getByTestId("board-header")).toHaveTextContent("개발");
+    // 제외된 스페이스는 계획에서 빠진다
+    expect(screen.getByTestId("space-count")).toHaveTextContent("1/2");
   });
 
-  it("스페이스가 꺼진 동안 자손 행은 다시 켤 수 없다(체크와 계획이 어긋나지 않는다)", () => {
+  it("컬렉션을 일부만 끄면 스페이스 체크가 부분 선택이 된다", () => {
     open();
-    fireEvent.click(screen.getByTestId("tree-row-dev"));
-    const before = screen.getByTestId("import-summary").textContent;
-    // 잠긴 자손을 눌러도 아무 일도 일어나지 않는다
-    fireEvent.click(screen.getByTestId("tree-row-react"));
-    expect(screen.getByTestId("tree-row-react")).toHaveAttribute("aria-disabled", "true");
-    expect(screen.queryByTestId("preview-space-dev")).not.toBeInTheDocument();
-    expect(screen.getByTestId("import-summary").textContent).toBe(before);
+    fireEvent.click(within(screen.getByTestId("col-react")).getByRole("checkbox"));
+    const railCheck = within(railOf("dev")).getByRole("checkbox");
+    expect(railCheck).toHaveAttribute("aria-checked", "mixed");
+    // 스페이스는 여전히 포함된다(공유 폴더가 남아 있으므로)
+    expect(screen.getByTestId("space-count")).toHaveTextContent("2/2");
   });
 
-  it("모든 폴더를 끄면 가져오기가 막힌다", () => {
+  it("공유 폴더만 따로 끌 수 있다", () => {
+    const { onImport } = open();
+    fireEvent.click(
+      within(screen.getByTestId(`col-${directSourceId("dev")}`)).getByRole("checkbox"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
+    return waitFor(() => {
+      const plan = onImport.mock.calls[0][1];
+      const dev = plan.spaces.find((s: { sourceId: string }) => s.sourceId === "dev");
+      expect(dev.collections.map((c: { title: string }) => c.title)).toEqual(["React"]);
+    });
+  });
+
+  it("스페이스를 꺼도 보드에 컬렉션이 남아 다시 켤 수 있다", () => {
     open();
-    fireEvent.click(screen.getByTestId("tree-row-dev"));
-    fireEvent.click(screen.getByTestId("tree-row-news"));
+    fireEvent.click(within(railOf("dev")).getByRole("checkbox"));
+    expect(screen.getByTestId("space-count")).toHaveTextContent("1/2");
+    // 사라지지 않는다
+    expect(screen.getByTestId("col-react")).toBeInTheDocument();
+    // 다시 켜기
+    fireEvent.click(within(railOf("dev")).getByRole("checkbox"));
+    expect(screen.getByTestId("space-count")).toHaveTextContent("2/2");
+  });
+
+  it("보드 헤더 체크박스도 스페이스 전체를 토글한다", () => {
+    open();
+    fireEvent.click(within(screen.getByTestId("board-header")).getByRole("checkbox"));
+    expect(screen.getByTestId("space-count")).toHaveTextContent("1/2");
+  });
+
+  it("스페이스를 전부 끄면 가져오기가 비활성된다 — 별도 안내 문구는 없다", () => {
+    open();
+    fireEvent.click(within(railOf("dev")).getByRole("checkbox"));
+    fireEvent.click(within(railOf("news")).getByRole("checkbox"));
     expect(screen.getByRole("button", { name: "가져오기" })).toBeDisabled();
+    expect(screen.getByTestId("space-count")).toHaveTextContent("0/2");
+    expect(screen.queryByText(/골라주세요/)).not.toBeInTheDocument();
   });
 
-  it("조직이 여럿이면 선택기를 보여주고 기본값이 선택돼 있다", () => {
+  it("개수 요약 문구는 어디에도 없다", () => {
     open();
-    const select = screen.getByLabelText("가져올 조직") as HTMLSelectElement;
-    expect(select.value).toBe("o1");
+    expect(screen.queryByText(/개를 가져와요/)).not.toBeInTheDocument();
   });
 
-  it("조직이 하나면 선택기 대신 읽기 전용으로 목적지를 보여준다", () => {
+  it("조직이 여럿이면 선택기를, 하나면 읽기 전용으로 보여준다", () => {
+    const { unmount } = render(
+      <ImportBookmarksDialog open roots={roots} orgs={orgs} defaultOrgId="o1"
+        onImport={vi.fn()} onClose={noop} />,
+    );
+    expect((screen.getByLabelText("가져올 조직") as HTMLSelectElement).value).toBe("o1");
+    unmount();
+
     open({ orgs: [{ id: "o1", name: "개인" }] });
     expect(screen.queryByLabelText("가져올 조직")).not.toBeInTheDocument();
     expect(screen.getByTestId("import-org-fixed")).toHaveTextContent("개인");
@@ -137,12 +178,10 @@ describe("ImportBookmarksDialog", () => {
         { id: "keep", title: "작은폴더", children: [link("k1", "https://k.com/1")] },
       ]},
     ];
-    render(
-      <ImportBookmarksDialog open roots={bigRoots} orgs={orgs} defaultOrgId="o1"
-        onImport={vi.fn()} onClose={noop} />,
-    );
-    expect(screen.queryByTestId("preview-space-later")).not.toBeInTheDocument();
-    expect(screen.getByTestId("preview-space-keep")).toBeInTheDocument();
+    open({ roots: bigRoots });
+    // 레일엔 남지만 계획에선 빠져 있다
+    expect(screen.getByTestId("rail-later")).toBeInTheDocument();
+    expect(screen.getByTestId("space-count")).toHaveTextContent("1/2");
     expect(screen.getByTestId("large-folder-note")).toBeInTheDocument();
   });
 
@@ -153,14 +192,23 @@ describe("ImportBookmarksDialog", () => {
           (_, i) => link(`h${i}`, `https://h.com/${i}`)) },
       ]},
     ];
-    render(
-      <ImportBookmarksDialog open roots={hugeRoots} orgs={orgs} defaultOrgId="o1"
-        onImport={vi.fn()} onClose={noop} />,
-    );
-    // 거대폴더는 100개 초과라 기본 해제 상태 → 먼저 켠 다음 상한을 확인한다
-    fireEvent.click(screen.getByTestId("tree-row-huge"));
+    open({ roots: hugeRoots });
+    // 100개 초과라 기본 해제 상태 → 먼저 켠 다음 상한을 확인한다
+    fireEvent.click(within(screen.getByTestId("rail-huge")).getByRole("checkbox"));
     expect(screen.getByRole("button", { name: "가져오기" })).toBeDisabled();
     expect(screen.getByTestId("over-limit-note")).toBeInTheDocument();
+  });
+
+  it("루트 직속 링크는 루트 이름의 스페이스로 레일에 나온다", () => {
+    const looseRoots: SourceNode[] = [
+      { id: "1", title: "북마크바", primary: true, children: [
+        { id: "a", title: "A", children: [link("l1", "https://a.com/1")] },
+        link("root1", "https://loose.com/1", "폴더 밖 링크"),
+      ]},
+    ];
+    open({ roots: looseRoots });
+    const rail = screen.getByTestId(`rail-${looseSourceId("1")}`);
+    expect(rail).toHaveTextContent("북마크바");
   });
 
   it("open이 false면 아무것도 그리지 않는다", () => {

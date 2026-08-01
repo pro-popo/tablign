@@ -751,9 +751,9 @@ describe("NewTab — 북마크 가져오기", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
     fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
 
-    expect(await screen.findByTestId("preview-space-dev")).toBeInTheDocument();
+    expect(await screen.findByTestId("rail-dev")).toBeInTheDocument();
     // 링크 2개가 폴더 직속이므로 공유 폴더 컬렉션 하나가 된다
-    expect(screen.getByTestId("preview-col-dev")).toHaveTextContent("공유 폴더");
+    expect(screen.getByTestId("col-dev:direct")).toHaveTextContent("공유 폴더");
   });
 
   it("조직이 개인 하나뿐이면 목적지를 읽기 전용으로 보여준다", async () => {
@@ -775,7 +775,7 @@ describe("NewTab — 북마크 가져오기", () => {
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
     fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
-    await screen.findByTestId("preview-space-dev");
+    await screen.findByTestId("rail-dev");
 
     fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
 
@@ -802,12 +802,12 @@ describe("NewTab — 북마크 가져오기", () => {
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "가져오기" }));
     fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
-    await screen.findByTestId("preview-space-dev");
+    await screen.findByTestId("rail-dev");
 
     fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
 
     expect(await screen.findByText(/가져오지 못했어요/)).toBeInTheDocument();
-    expect(screen.getByTestId("preview-space-dev")).toBeInTheDocument();
+    expect(screen.getByTestId("rail-dev")).toBeInTheDocument();
   });
 
   it("온보딩 화면에서도 가져오기로 들어갈 수 있다", async () => {
@@ -819,7 +819,7 @@ describe("NewTab — 북마크 가져오기", () => {
     fireEvent.click(screen.getByRole("button", { name: /북마크·Toby 가져오기/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Chrome 북마크/ }));
 
-    expect(await screen.findByTestId("preview-space-dev")).toBeInTheDocument();
+    expect(await screen.findByTestId("rail-dev")).toBeInTheDocument();
   });
 
   it("Toby 파일을 고르면 group→스페이스, list→컬렉션으로 미리보기가 나온다", async () => {
@@ -844,8 +844,8 @@ describe("NewTab — 북마크 가져오기", () => {
     fireEvent.change(await screen.findByTestId("toby-file-input"), { target: { files: [file] } });
 
     // group이 스페이스, list가 컬렉션
-    expect(await screen.findByTestId("preview-space-toby:0")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-col-toby:0:0")).toHaveTextContent("Client");
+    expect(await screen.findByTestId("rail-toby:0")).toBeInTheDocument();
+    expect(screen.getByTestId("col-toby:0:0")).toHaveTextContent("Client");
     expect(screen.getByRole("dialog", { name: "Toby 가져오기" })).toBeInTheDocument();
 
     // 가져오기 실행 — Toby가 준 파비콘이 그대로 페이로드에 실린다
@@ -869,6 +869,6 @@ describe("NewTab — 북마크 가져오기", () => {
     fireEvent.change(await screen.findByTestId("toby-file-input"), { target: { files: [file] } });
 
     expect(await screen.findByText(/Toby 내보내기 파일이 아니에요/)).toBeInTheDocument();
-    expect(screen.queryByTestId("import-summary")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("board-header")).not.toBeInTheDocument();
   });
 });
