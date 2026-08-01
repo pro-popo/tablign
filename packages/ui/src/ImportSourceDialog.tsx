@@ -7,22 +7,24 @@ import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
  * 호버에서 아이콘 박스가 옅은 배경 → 액센트 채움으로 바뀌어, 무엇을 고르는지 눈이 먼저 안다.
  */
 const importSourceCss = `
+/* 색·테두리는 반드시 여기에 둔다 — 인라인 스타일로 두면 :hover 규칙이 이길 수 없다. */
 .tbl-src-opt {
-  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
-  -webkit-user-select: none; user-select: none;
+  border: 1px solid ${theme.border}; border-radius: 11px; background: ${theme.surface};
+  cursor: pointer; -webkit-user-select: none; user-select: none;
+  transition: background .14s ease, border-color .14s ease;
 }
-.tbl-src-opt:hover:not(:disabled) {
-  border-color: #c9d4ff; box-shadow: 0 5px 16px rgba(59,91,219,.12); transform: translateY(-1px);
-}
-.tbl-src-opt:active:not(:disabled) {
-  transform: translateY(0); box-shadow: 0 2px 6px rgba(59,91,219,.1);
-}
+.tbl-src-opt:hover:not(:disabled) { background: ${theme.accentWeak}; border-color: #c9d4ff }
+.tbl-src-opt:active:not(:disabled) { background: #e4e9fd }
+.tbl-src-opt:disabled { cursor: default; opacity: .6 }
 .tbl-src-opt:focus-visible { outline: 2px solid ${theme.accent}; outline-offset: 2px }
-.tbl-src-ico { transition: background .15s ease, color .15s ease }
+.tbl-src-ico {
+  background: ${theme.accentWeak}; color: ${theme.accent};
+  transition: background .14s ease, color .14s ease;
+}
+/* 카드가 옅은 라벤더로 물들면 아이콘 박스가 배경에 묻히므로 채움으로 바꿔 살린다 */
 .tbl-src-opt:hover:not(:disabled) .tbl-src-ico { background: ${theme.accent}; color: #fff }
 @media (prefers-reduced-motion: reduce) {
   .tbl-src-opt, .tbl-src-ico { transition: none }
-  .tbl-src-opt:hover:not(:disabled) { transform: none }
 }
 `;
 
@@ -91,16 +93,14 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
     }
   }
 
+  // 레이아웃만 인라인. 색·테두리·커서는 importSourceCss가 갖는다(호버가 이길 수 있게).
   const option: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left",
-    padding: "12px 13px", border: `1px solid ${theme.border}`, borderRadius: 11,
-    background: theme.surface, cursor: busy ? "default" : "pointer",
-    opacity: busy ? 0.6 : 1, fontFamily: "inherit", boxSizing: "border-box",
+    padding: "12px 13px", fontFamily: "inherit", boxSizing: "border-box",
   };
   const iconBox: React.CSSProperties = {
     width: 34, height: 34, borderRadius: 9, flex: "none", display: "flex",
-    alignItems: "center", justifyContent: "center", background: theme.accentWeak,
-    color: theme.accent, fontSize: 16,
+    alignItems: "center", justifyContent: "center", fontSize: 16,
   };
 
   return (

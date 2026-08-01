@@ -57,9 +57,14 @@ const importPreviewCss = `
 .tbl-imp-row[data-state="none"] .tbl-imp-name { color: ${theme.textFaint} }
 .tbl-imp-name:focus-visible { outline: 2px solid ${theme.accent}; outline-offset: 2px; border-radius: 4px }
 
-/* 컬렉션 카드 — 줄 전체가 누를 수 있다는 걸 호버로 알린다 */
-.tbl-imp-col { transition: border-color .14s ease, box-shadow .14s ease }
-.tbl-imp-col:hover { border-color: #c9d4ff; box-shadow: 0 2px 10px rgba(59,91,219,.07) }
+/* 컬렉션 카드 — 줄 전체가 누를 수 있다는 걸 호버로 알린다.
+   색·테두리를 인라인에 두면 :hover가 이길 수 없어서 여기로 옮겼다. */
+.tbl-imp-col {
+  margin-bottom: 10px; padding: 9px 11px 6px; box-sizing: border-box; border-radius: 10px;
+  background: ${theme.surface}; border: 1px solid ${theme.borderCard};
+  transition: background .14s ease, border-color .14s ease;
+}
+.tbl-imp-col:hover { background: #f7f9ff; border-color: #dde4fb }
 .tbl-imp-coltitle {
   display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;
   border: none; background: none; padding: 0; margin: 0; text-align: left;
@@ -270,10 +275,7 @@ export function ImportBookmarksDialog({
                     const on = !!enabled[c.sourceId];
                     return (
                       <div key={c.sourceId} className="tbl-imp-col" data-on={on}
-                        data-testid={`col-${c.sourceId}`}
-                        style={{ marginBottom: 10, background: theme.surface, boxSizing: "border-box",
-                          border: `1px solid ${theme.borderCard}`, borderRadius: 10,
-                          padding: "9px 11px 6px" }}>
+                        data-testid={`col-${c.sourceId}`}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                           <TriCheckbox state={on ? "on" : "none"} label={`${c.title} 포함`}
                             onToggle={() => toggleCollection(c.sourceId)} />
