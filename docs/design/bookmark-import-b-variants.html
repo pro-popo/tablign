@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 북마크 가져오기 B안 · 시각 디자인 3안</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accent-weak:#edf0fe; --lav:#c9d4ff; --ink:#1f2430; --muted:#868e96;
+    --faint:#adb5bd; --border:#eaecef; --border-card:#e9ebee; --bg:#fcfcfd;
+    --surface:#fff; --surface2:#f1f3f5; --danger:#e03131; --amber:#f4c66a; --green:#7bc47f;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:#eef0f4; color:var(--ink); padding:28px 20px 90px; -webkit-font-smoothing:antialiased;
+    font-variant-numeric:tabular-nums;
+  }
+  .wrap{max-width:1120px; margin:0 auto}
+  h1{font-size:16px; font-weight:740; letter-spacing:-.02em; margin-bottom:5px}
+  .lead{font-size:12.5px; color:var(--muted); line-height:1.65; margin-bottom:7px}
+  .lead b{color:var(--ink)}
+  h2{font-size:13.5px; font-weight:740; letter-spacing:-.015em; margin:46px 0 4px}
+  h2 .badge{display:inline-block; vertical-align:2px; margin-right:8px; background:#8a929c; color:#fff;
+    font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:8px; letter-spacing:0}
+  h2 .badge.b1{background:#2b7a3d} h2 .badge.b2{background:var(--accent)} h2 .badge.b3{background:#7a5a15}
+  .thesis{font-size:12px; color:var(--muted); line-height:1.7; margin-bottom:14px; max-width:820px}
+  .thesis b{color:var(--ink)}
+  .why{font-size:12px; color:var(--muted); line-height:1.7; margin-top:13px; max-width:820px}
+  .why b{color:var(--ink)} .why .bad{color:var(--danger)} .why .good{color:#2b7a3d}
+  code{font-family:var(--mono); font-size:.92em; background:var(--surface2);
+    padding:1px 4px; border-radius:4px; color:#495057}
+
+  /* 무대 */
+  .stage{position:relative; border-radius:14px; overflow:hidden; background:var(--bg);
+    border:1px solid var(--border); box-shadow:0 10px 30px rgba(20,30,60,.09);
+    display:flex; align-items:center; justify-content:center; padding:26px 20px}
+  .stage::before{content:""; position:absolute; inset:0; background:
+    linear-gradient(90deg,#f6f7f9 0 44px, transparent 44px),
+    linear-gradient(90deg,transparent 0 44px,#fbfbfc 44px 222px, transparent 222px); opacity:.9}
+  .stage::after{content:""; position:absolute; inset:0; background:rgba(15,18,25,.34)}
+  .dlg{position:relative; z-index:2; background:#fff; border-radius:14px;
+    box-shadow:0 18px 50px rgba(0,0,0,.26); overflow:hidden}
+
+  .dh{padding:17px 18px 0}
+  .dt{font-size:15px; font-weight:700; letter-spacing:-.012em}
+  .ds{font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.5}
+  .df{display:flex; align-items:center; gap:8px; padding:12px 18px 14px; border-top:1px solid var(--border)}
+  .df .sum{font-size:12px; color:var(--muted); margin-right:auto; line-height:1.5}
+  .df .sum b{color:var(--ink); font-weight:700}
+  .df .sum .n{font-family:var(--mono); font-weight:700; color:var(--ink)}
+  .df .sum .sub{display:block; font-size:11px; color:var(--faint); margin-top:1px}
+
+  .btn{display:inline-flex; align-items:center; gap:5px; padding:7px 13px; border-radius:8px;
+    font-size:13px; font-weight:600; white-space:nowrap; border:1px solid transparent; cursor:pointer;
+    font-family:inherit}
+  .btn.pri{background:var(--accent); color:#fff} .btn.pri:hover{background:#3450c8}
+  .btn.out{background:#fff; color:#5c636b; border-color:var(--border)}
+  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  /* 패널 헤더(eyebrow) */
+  .ph{display:flex; align-items:baseline; gap:6px; padding:10px 13px 7px;
+    font-size:10.5px; font-weight:800; letter-spacing:.07em; color:var(--faint)}
+  .ph .n{margin-left:auto; font-family:var(--mono); font-weight:700; letter-spacing:0;
+    font-size:11px; color:var(--muted)}
+
+  /* ── 트리(3안 공통) ── */
+  .tr{display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:8px;
+    min-height:31px; font-size:13px; cursor:pointer}
+  .tr:hover{background:var(--surface2)}
+  .tr:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+  .tr .cb{width:15px; height:15px; border-radius:4.5px; border:1.5px solid #ccd2da; background:#fff;
+    flex:none; display:flex; align-items:center; justify-content:center}
+  .tr .cb.on{background:var(--accent); border-color:var(--accent)}
+  .tr .cb.on::after{content:""; width:7px; height:4px; border-left:1.6px solid #fff;
+    border-bottom:1.6px solid #fff; transform:rotate(-45deg) translate(0,-1px)}
+  .tr .fi{flex:none; color:var(--faint); display:flex; font-size:12px}
+  .tr .nm{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500}
+  .tr .ct{font-family:var(--mono); font-size:11px; color:var(--faint); flex:none}
+  .tr.off .nm,.tr.off .ct{color:var(--faint)} .tr.off .fi{opacity:.45}
+  .tr .rt{margin-left:auto; flex:none}
+  .tr.d2{margin-left:19px} .tr.d3{margin-left:38px}
+  .grp{padding:10px 9px 4px; font-size:10.5px; font-weight:800; letter-spacing:.07em; color:var(--faint)}
+  .role{display:inline-flex; align-items:center; height:22px; padding:0 7px; border-radius:7px;
+    font-size:10.5px; font-weight:700; background:var(--accent-weak); color:var(--accent);
+    border:1px solid var(--lav)}
+  .tr.off .role{background:var(--surface2); color:var(--faint); border-color:var(--border)}
+
+  /* ════════════ 시안 1 · 보드 미러 ════════════ */
+  #v1 .dlg{width:748px}
+  #v1 .cols{display:flex; border-top:1px solid var(--border); margin-top:15px}
+  #v1 .lft{width:330px; flex:none; border-right:1px solid var(--border)}
+  #v1 .lst{padding:2px 8px 10px; overflow-y:auto; height:372px}
+  /* 오른쪽은 '결과물'이라 앱 배경색을 그대로 쓴다 — 캔버스처럼 읽히게 */
+  #v1 .rgt{flex:1; min-width:0; background:var(--bg)}
+  #v1 .pv{padding:4px 12px 14px; overflow-y:auto; height:372px}
+
+  /* 축소된 실제 보드 */
+  .mb{margin-bottom:13px}
+  .mb .mbh{display:flex; align-items:center; gap:5px; padding:0 2px 6px}
+  .mb .mbi{width:13px; height:13px; border-radius:4px; background:var(--accent-weak);
+    border:1px solid var(--lav); flex:none}
+  .mb .mbn{font-size:11.5px; font-weight:740; letter-spacing:-.01em}
+  .mb .mbc{font-family:var(--mono); font-size:10px; color:var(--faint); margin-left:auto}
+  .mcard{background:#fff; border:1px solid var(--border-card); border-radius:9px;
+    padding:7px 8px 8px; margin-bottom:6px; box-shadow:0 1px 2px rgba(20,30,60,.03)}
+  .mcard .mch{display:flex; align-items:center; gap:5px; margin-bottom:6px}
+  .mcard .mcn{font-size:10.5px; font-weight:700; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+  .mcard .mcc{font-family:var(--mono); font-size:9.5px; color:var(--faint); margin-left:auto; flex:none}
+  .mcard.synth{border-style:dashed; border-color:var(--lav); background:#fbfcff}
+  .tiles{display:flex; gap:4px; flex-wrap:wrap}
+  .tile{width:26px; height:26px; border-radius:6px; background:var(--bg);
+    border:1px solid var(--border-card); display:flex; align-items:center; justify-content:center}
+  .tile i{width:10px; height:10px; border-radius:3px; display:block}
+  .tile.more{font-family:var(--mono); font-size:9px; color:var(--faint); font-weight:700}
+  .dupe{font-family:var(--mono); font-size:9.5px; font-weight:700; color:#a13030;
+    background:#fdeeee; border:1px solid #f5d0d0; border-radius:5px; padding:0 4px; flex:none}
+  @media (prefers-reduced-motion:no-preference){
+    .mcard{animation:tileIn .16s cubic-bezier(.2,.9,.3,1)}
+    @keyframes tileIn{from{opacity:0; transform:scale(.965)} to{opacity:1; transform:none}}
+  }
+
+  /* ════════════ 시안 2 · 매핑 ════════════ */
+  #v2 .dlg{width:792px}
+  #v2 .cols{display:flex; border-top:1px solid var(--border); margin-top:15px; position:relative}
+  #v2 .lft{width:322px; flex:none}
+  #v2 .lst{padding:2px 8px 10px; overflow-y:auto; height:364px}
+  #v2 .gut{width:64px; flex:none; position:relative; background:
+    linear-gradient(90deg, transparent, #fbfbfd 35%, #fbfbfd 65%, transparent);
+    border-left:1px solid var(--border); border-right:1px solid var(--border)}
+  #v2 .gut svg{position:absolute; inset:0; width:100%; height:100%; overflow:visible}
+  #v2 .gut .glbl{position:absolute; top:9px; left:0; right:0; text-align:center;
+    font-size:9px; font-weight:800; letter-spacing:.08em; color:var(--faint)}
+  #v2 .rgt{flex:1; min-width:0; background:var(--bg)}
+  #v2 .pv{padding:4px 12px 14px; overflow-y:auto; height:364px}
+  /* 선과 그 끝의 중복 마커는 한 그룹이라 함께 밝아지고 함께 잦아든다 */
+  #v2 g.link{opacity:.17; transition:opacity .14s}
+  #v2 g.link.dim{opacity:.05} #v2 g.link.hot{opacity:1}
+  #v2 path{fill:none; stroke:var(--accent); stroke-width:1.25;
+    transition:stroke-width .14s}
+  #v2 g.link.hot path{stroke-width:1.9}
+  #v2 path.drop{stroke:var(--danger); stroke-dasharray:2.5 2.5}
+  #v2 circle.cap{fill:#fff; stroke:var(--danger); stroke-width:1.2}
+  #v2 path.xm{stroke:var(--danger); stroke-width:1.4}
+  #v2 g.link.hot path.xm{stroke-width:1.6}
+  /* 매핑안의 결과는 선의 끝점이라 카드보다 '줄'이 맞다 */
+  .rsp{margin-bottom:11px}
+  .rsp .rh{display:flex; align-items:baseline; gap:6px; padding:0 2px 5px}
+  .rsp .rn{font-size:11.5px; font-weight:740; letter-spacing:-.01em}
+  .rsp .rc2{font-family:var(--mono); font-size:10px; color:var(--faint); margin-left:auto}
+  .rrow{display:flex; align-items:center; gap:7px; background:#fff; border:1px solid var(--border-card);
+    border-radius:7px; padding:6px 8px; margin-bottom:4px; font-size:11.5px;
+    transition:border-color .14s, background .14s}
+  .rrow.hot{border-color:var(--lav); background:var(--accent-weak)}
+  .rrow.synth{border-style:dashed; border-color:var(--lav)}
+  .rrow .rcn{font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .rrow .rcc{font-family:var(--mono); font-size:10.5px; color:var(--faint); margin-left:auto; flex:none}
+  .rrow .dot{width:8px; height:8px; border-radius:2.5px; flex:none}
+
+  /* ════════════ 시안 3 · 한 줄 ════════════ */
+  #v3 .dlg{width:452px}
+  #v3 .lst{padding:8px 10px 10px; overflow-y:auto; height:400px;
+    border-top:1px solid var(--border); margin-top:14px}
+  /* 스페이스가 되는 폴더 = 왼쪽에 액센트 헤어라인 */
+  .fcard{border:1px solid var(--border-card); border-left:2.5px solid var(--accent);
+    border-radius:9px; background:#fff; margin-bottom:7px; overflow:hidden;
+    box-shadow:0 1px 2px rgba(20,30,60,.03)}
+  .fcard.off{border-left-color:var(--border); background:var(--bg); box-shadow:none}
+  .fcard .fh{display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer}
+  .fcard .fh:hover{background:var(--surface2)}
+  .fcard .fh:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+  .fcard .fn{font-size:12.5px; font-weight:700; letter-spacing:-.01em; min-width:0;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .fcard.off .fn{color:var(--muted); font-weight:600}
+  .fcard .fm{font-family:var(--mono); font-size:10.5px; color:var(--faint); margin-left:auto; flex:none}
+  .fcard .fb{padding:0 10px 8px 10px; display:flex; flex-direction:column; gap:4px}
+  .fcard.off .fb{display:none}
+  .chip{display:flex; align-items:center; gap:7px; border:1px solid var(--border-card);
+    border-radius:7px; background:var(--bg); padding:5px 8px; cursor:pointer}
+  .chip:hover{background:var(--surface2)}
+  /* 원래 폴더가 아니라 가져오기가 만들어낸 컬렉션은 점선으로 구분한다 */
+  .chip.synth{border-style:dashed; border-color:var(--lav); background:#fbfcff}
+  .chip .cbs{width:13px; height:13px; border-radius:4px; border:1.5px solid #ccd2da; background:#fff;
+    flex:none; display:flex; align-items:center; justify-content:center}
+  .chip .cbs.on{background:var(--accent); border-color:var(--accent)}
+  .chip .cbs.on::after{content:""; width:6px; height:3.5px; border-left:1.5px solid #fff;
+    border-bottom:1.5px solid #fff; transform:rotate(-45deg) translate(0,-1px)}
+  .chip .cn{font-size:11.5px; font-weight:600; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+  .chip.off .cn{color:var(--faint); font-weight:500}
+  .chip .cc{font-family:var(--mono); font-size:10.5px; color:var(--faint); margin-left:auto; flex:none}
+  .legend{display:flex; align-items:center; gap:12px; padding:7px 12px 0;
+    font-size:10.5px; color:var(--faint)}
+  .legend span{display:inline-flex; align-items:center; gap:5px}
+  .legend i{width:16px; height:0; border-top:1px dashed var(--lav); display:block}
+  .legend i.solid{border-top:1px solid var(--border-card)}
+
+  .note{font-size:11.5px; color:var(--muted); line-height:1.55; padding:9px 12px;
+    background:var(--bg); border:1px solid var(--border); border-radius:9px; margin:11px 12px 0}
+  .note b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>북마크 가져오기 — B안 시각 디자인 3안</h1>
+  <p class="lead">
+    <b>구조는 고정</b>이다 — 왼쪽에서 고르면 오른쪽에 결과가 즉시 보이는 2단 미리보기, 규칙 ①(1단 폴더 = 스페이스),
+    직속 링크는 <code>공유 폴더</code>, 중복 URL 제거. 매핑 규칙 논의는
+    <code>bookmark-import-mapping.html</code>에 있다.
+  </p>
+  <p class="lead">
+    바뀌는 건 <b>"오른쪽 미리보기가 무엇인가"</b> 하나다. 세 시안은 사용자가 헷갈리는 지점을 각각 다르게 본다 —
+    <b>결과가 어떻게 생겼는지</b>(1안), <b>내 폴더가 어디로 갔는지</b>(2안), <b>어느 게 원래 것이고 어느 게 만들어진 것인지</b>(3안).
+    셋 다 같은 데이터로 <b>실제 동작</b>한다. 폴더를 눌러보면 숫자가 세 시안에서 똑같이 움직인다.
+  </p>
+  <p class="lead" style="color:var(--faint)">
+    공통 타이포 결정: 이 다이얼로그의 내용은 사실상 <b style="color:var(--ink)">숫자</b>다.
+    그래서 모든 개수는 고정폭(<code>ui-monospace</code>) + <code>tabular-nums</code>로 두어 열이 맞고,
+    이름과 숫자가 서로 다른 목소리를 갖게 했다.
+  </p>
+
+  <!-- ════════════════════════ 시안 1 ════════════════════════ -->
+  <h2><span class="badge b1">1안</span>보드 미러 — 오른쪽이 실제 보드의 축소판</h2>
+  <p class="thesis">
+    "컬렉션 4개"라는 글자는 아직 번역이 필요하다. 머릿속에서 보드를 그려봐야 한다.
+    그래서 오른쪽을 <b>추상적인 목록이 아니라 실제 tablign 보드의 미니어처</b>로 만들었다 —
+    컬렉션 카드, 링크 타일, 앱과 같은 배경색까지. 번역 단계가 0이 된다.
+    부수 효과가 하나 더 있다: 지저분한 북마크바를 보던 사람에게
+    <b>가져온 뒤가 얼마나 나은지</b>를 이 화면이 그대로 광고한다.
+    대신 좁은 폭에서 밀도를 포기해야 해서, 컬렉션마다 링크 타일을 다섯 개까지만 보여주고 나머지는 <code>+n</code>으로 접는다.
+  </p>
+  <div class="stage" id="v1"></div>
+  <div class="why">
+    <b>좋은 점</b> — <span class="good">설명이 필요 없다.</span> 점선 카드가 <code>공유 폴더</code>고,
+    빨간 <code>−1</code>이 중복이라는 걸 규칙을 몰라도 알아본다. 가져오기를 누른 직후 화면과 이 미리보기가
+    거의 같아서 <b>기대와 결과가 어긋나지 않는다.</b><br>
+    <b>약한 점</b> — 미니어처는 <span class="bad">링크를 다 못 보여준다.</span> <code>레퍼런스 24</code>에서
+    실제로 보이는 건 5개다. "다 들어왔나?"를 숫자로만 믿어야 하는 지점이 남는다.
+    구현 비용도 가장 높다 — 보드 컴포넌트의 축소판을 사실상 한 번 더 만들어야 한다
+    (실제 <code>CollectionSection</code>을 <code>transform: scale()</code>로 재사용하는 길이 있지만 클릭 영역·폰트 힌팅이 깨진다).
+  </div>
+
+  <!-- ════════════════════════ 시안 2 ════════════════════════ -->
+  <h2><span class="badge b2">2안</span>매핑 — 폴더와 결과를 선으로 잇는다</h2>
+  <p class="thesis">
+    사람들이 실제로 못 믿는 건 결과의 <b>모양</b>이 아니라 <b>관계</b>다.
+    <code>Hooks</code>는 어디로 갔나, 직속 링크 3개는 어디에 들어갔나, 중복으로 빠진 1개는 어디서 사라졌나.
+    그래서 좌우 사이에 <b>64px 거터를 두고 실제 연결선을 그렸다.</b>
+    변환 그 자체가 화면의 주인공이 된다.
+    <b>중복으로 버려진 링크는 오른쪽에 닿지 못하고 거터 중간에서 × 로 끝난다</b> — 이 시안의 서명이다.
+    기본 상태에서 선은 16% 불투명도라 조용하고, <b>폴더나 결과에 마우스를 올리면</b> 그 관계만 살아난다.
+  </p>
+  <div class="stage" id="v2"></div>
+  <div class="why">
+    <b>좋은 점</b> — 세 시안 중 <span class="good">변환을 보여주는 건 이것뿐이다.</span>
+    <code>Hooks</code>에 마우스를 올리면 <code>React/Hooks</code>로 이어지는 선 하나가 켜진다 —
+    이름 합침 규칙을 문장으로 읽는 것보다 빠르다. 중복 제거가 "숫자가 줄었다"가 아니라
+    <b>"이 링크는 여기까지만 왔다"</b>로 보인다.<br>
+    <b>약한 점</b> — <span class="bad">폴더가 40개면 선이 엉킨다.</span> 지금은 14개라 버티지만,
+    스크롤이 시작되면 화면 밖 끝점을 가진 선을 숨겨야 해서(현재 그렇게 동작한다) 선이 <b>깜빡이며 사라진다.</b>
+    다이얼로그 폭도 792px로 가장 넓고, 좌표를 재는 코드가 리사이즈·스크롤·토글마다 다시 돌아야 한다.
+    <b>마우스를 올려야</b> 정보가 나온다는 것도 약점이다 — 터치나 키보드에선 그 이점이 사라진다.
+  </div>
+
+  <!-- ════════════════════════ 시안 3 ════════════════════════ -->
+  <h2><span class="badge b3">3안</span>한 줄 — 2단을 버리고 트리가 결과를 겸한다</h2>
+  <p class="thesis">
+    규칙 ①에는 남들이 못 쓰는 성질이 있다. <b>폴더 이름과 스페이스 이름이 항상 같다.</b>
+    그러면 왼쪽과 오른쪽이 사실 거의 같은 것을 두 번 그리고 있는 셈이고, 눈은 그 사이를 왕복해야 한다.
+    그래서 2단을 버렸다. <b>폴더 카드 하나가 곧 스페이스 하나</b>이고, 그 안의 칩이 컬렉션이다.
+    왼쪽 액센트 헤어라인이 "이건 스페이스가 된다"는 표시다.
+    가져오기가 <b>만들어낸</b> 컬렉션(<code>공유 폴더</code>, <code>React/Hooks</code>처럼 이름을 합친 것)만
+    <b>점선</b>으로 구분한다 — 결과에서 어디가 원본이고 어디가 발명인지 한눈에 갈린다.
+    452px, 기존 tablign 다이얼로그와 같은 폭이다.
+  </p>
+  <div class="stage" id="v3"></div>
+  <div class="why">
+    <b>좋은 점</b> — <span class="good">가장 적게 만들고 가장 잘 들어맞는다.</span>
+    새 레이아웃 언어가 없어서 기존 다이얼로그 사이에 그냥 놓인다. 정보가 한 곳에만 있으니 왕복이 없고,
+    점선/실선이라는 한 가지 장치가 <b>"이 컬렉션은 원래 없던 것"</b>이라는, 다른 두 시안이 말하지 못한 사실을 말한다.
+    폭이 좁아 사이드 패널로 옮기기도 쉽다.<br>
+    <b>약한 점</b> — <span class="bad">보드가 어떻게 생길지는 여전히 안 보인다.</span>
+    칩 목록은 1안의 미니어처보다 추상적이다. 스페이스가 많은 사람은 카드가 쌓여
+    <b>스크롤이 길어진다</b>(규칙 ①이 스페이스를 늘리는 쪽이라 더 그렇다).
+    "결과를 상상하지 않게 만든다"는 B안의 원래 목표를 <b>가장 약하게 달성한다.</b>
+  </div>
+
+  <h2 style="margin-top:46px">고르는 기준</h2>
+  <div class="why" style="margin-top:6px">
+    셋은 서로 배타적이지 않다. <b>3안의 점선 장치</b>는 1안·2안에도 그대로 얹을 수 있고(지금 1안·2안에도 적용돼 있다),
+    <b>1안의 미니어처</b>를 3안 카드 안에 접어 넣는 것도 가능하다.
+    실제 결정은 이 질문 하나로 좁혀진다 —
+    <b>이 다이얼로그가 "설정 화면"인가, "결과를 보여주는 화면"인가.</b>
+    설정이면 3안, 결과면 1안, 변환을 가르치는 게 목적이면 2안이다.
+  </div>
+
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   공통 데이터 — 세 시안이 같은 트리·같은 plan 함수를 쓴다.
+   plan()은 실제 구현에서 쓸 planImport(tree, config)의 초안이기도 하다.
+   ════════════════════════════════════════════════════════════ */
+const ROOTS = [
+  { id:'bar', name:'북마크바', loose:{ raw:5, dupe:1 }, folders:[
+    { id:'dev', name:'개발', direct:{raw:3,dupe:0}, kids:[
+      { id:'react', name:'React', raw:8, dupe:0, kids:[
+        { id:'hooks', name:'Hooks', raw:5, dupe:0 },
+      ]},
+      { id:'node', name:'Node', raw:6, dupe:1 },
+    ]},
+    { id:'design', name:'디자인', direct:{raw:0,dupe:0}, kids:[
+      { id:'ref', name:'레퍼런스', raw:24, dupe:0 },
+      { id:'font', name:'폰트', raw:7, dupe:0 },
+    ]},
+    { id:'corp', name:'회사', direct:{raw:0,dupe:0}, kids:[
+      { id:'docs', name:'사내문서', raw:12, dupe:0 },
+      { id:'dash', name:'대시보드', raw:4, dupe:0 },
+    ]},
+    { id:'news', name:'뉴스', direct:{raw:12,dupe:2}, kids:[] },
+    { id:'later', name:'나중에 읽기', direct:{raw:156,dupe:0}, kids:[] },
+  ]},
+  { id:'other', name:'기타 북마크', loose:null, folders:[
+    { id:'old', name:'예전에 본 것', direct:{raw:340,dupe:0}, kids:[] },
+    { id:'tmp', name:'임시', direct:{raw:2,dupe:0}, kids:[] },
+  ]},
+];
+const LOOSE_ID = 'bar:loose';
+const OFF_BY_DEFAULT = ['later','old','tmp'];   // 링크 100개 초과 + 기타 북마크
+
+const TOTALS = { folders:14, links:584 };
+const SHARED = '공유 폴더';
+const DOTS = ['var(--lav)','var(--amber)','var(--green)','#9db7f0','#e8a9c4'];
+
+/** 트리 순회하며 각 노드에 부모 스페이스 id를 붙여 평탄한 목록으로 만든다. */
+function flatten() {
+  const rows = [];
+  for (const root of ROOTS) {
+    rows.push({ kind:'group', name:root.name });
+    for (const f of root.folders) {
+      rows.push({ kind:'space', id:f.id, name:f.name, depth:1, count:f.direct.raw,
+                  dupe:f.direct.dupe, space:f.id });
+      const walk = (kids, depth, prefix) => {
+        for (const k of kids) {
+          const joined = prefix ? prefix + '/' + k.name : k.name;
+          rows.push({ kind:'col', id:k.id, name:k.name, joined, depth, count:k.raw,
+                      dupe:k.dupe, space:f.id });
+          walk(k.kids || [], depth + 1, joined);
+        }
+      };
+      walk(f.kids, 2, '');
+    }
+    if (root.loose) {
+      rows.push({ kind:'loose', id:LOOSE_ID, name:'폴더에 없는 링크', depth:1,
+                  count:root.loose.raw, dupe:root.loose.dupe, space:LOOSE_ID,
+                  rootName:root.name });
+    }
+  }
+  return rows;
+}
+const ROWS = flatten();
+
+/** 켜진 폴더 → 만들어질 스페이스 목록. 세 시안이 이 결과만 보고 그린다. */
+function plan(state) {
+  const spaces = [];
+  for (const root of ROOTS) {
+    for (const f of root.folders) {
+      if (!state[f.id]) continue;
+      const cols = [];
+      const walk = (kids, prefix) => {
+        for (const k of kids) {
+          const joined = prefix ? prefix + '/' + k.name : k.name;
+          if (state[k.id]) {
+            cols.push({ id:k.id, name:joined, raw:k.raw, dupe:k.dupe, synth:!!prefix });
+          }
+          walk(k.kids || [], joined);
+        }
+      };
+      walk(f.kids, '');
+      if (f.direct.raw > 0) {
+        cols.push({ id:f.id, name:SHARED, raw:f.direct.raw, dupe:f.direct.dupe, synth:true });
+      }
+      if (cols.length) spaces.push({ id:f.id, name:f.name, cols });
+    }
+    if (root.loose && state[LOOSE_ID]) {
+      spaces.push({ id:LOOSE_ID, name:root.name, cols:[
+        { id:LOOSE_ID, name:SHARED, raw:root.loose.raw, dupe:root.loose.dupe, synth:true },
+      ]});
+    }
+  }
+  return spaces;
+}
+
+function tally(spaces) {
+  let cols = 0, links = 0, dupes = 0;
+  for (const s of spaces) for (const c of s.cols) {
+    cols++; links += c.raw - c.dupe; dupes += c.dupe;
+  }
+  return { spaces:spaces.length, cols, links, dupes };
+}
+
+function initialState() {
+  const s = {};
+  for (const r of ROWS) if (r.id) s[r.id] = !OFF_BY_DEFAULT.includes(r.id);
+  return s;
+}
+
+/* 스페이스를 끄면 그 안 컬렉션도 함께 꺼진다. */
+function toggle(state, id) {
+  const on = !state[id];
+  state[id] = on;
+  for (const r of ROWS) if (r.kind === 'col' && r.space === id) state[r.id] = on;
+}
+
+const el = (tag, cls, html) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (html != null) n.innerHTML = html;
+  return n;
+};
+const dot = (i) => DOTS[i % DOTS.length];
+const footSum = (t) => t.spaces
+  ? `링크 <span class="n">${t.links}</span>개를 스페이스 <span class="n">${t.spaces}</span>개로 가져와요`
+    + (t.dupes ? `<span class="sub">중복 URL ${t.dupes}개는 한 번만 담아요</span>` : '')
+  : `가져올 폴더가 없어요`;
+
+/** 세 시안이 공유하는 왼쪽 트리. onToggle은 각 시안이 넘긴다. */
+function buildTree(state, onToggle, opts = {}) {
+  const box = el('div');
+  for (const r of ROWS) {
+    if (r.kind === 'group') { box.append(el('div', 'grp', r.name)); continue; }
+    const on = state[r.id];
+    const row = el('div', `tr${r.depth > 1 ? ' d' + r.depth : ''}${on ? '' : ' off'}`);
+    row.tabIndex = 0;
+    row.dataset.id = r.id;
+    row.append(el('span', 'cb' + (on ? ' on' : '')));
+    row.append(el('span', 'fi', r.kind === 'loose' ? '⭐' : '📁'));
+    row.append(el('span', 'nm', r.kind === 'col' && opts.joinedNames ? r.joined : r.name));
+    if (r.count) row.append(el('span', 'ct', String(r.count)));
+    if (r.kind === 'space') row.append(el('span', 'rt', '<span class="role">스페이스</span>'));
+    if (r.kind === 'loose') row.append(el('span', 'rt', `<span class="role">${r.rootName}</span>`));
+    const fire = () => onToggle(r.id);
+    row.addEventListener('click', fire);
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); }
+    });
+    box.append(row);
+  }
+  return box;
+}
+
+function shell(title, sub) {
+  const dlg = el('div', 'dlg');
+  const dh = el('div', 'dh');
+  dh.append(el('div', 'dt', title), el('div', 'ds', sub));
+  dlg.append(dh);
+  return dlg;
+}
+function footer(onRender) {
+  const f = el('div', 'df');
+  const sum = el('span', 'sum');
+  f.append(sum, el('button', 'btn out', '취소'), el('button', 'btn pri', '가져오기'));
+  onRender(sum);
+  return f;
+}
+
+/* ════════════════════ 시안 1 · 보드 미러 ════════════════════ */
+(function () {
+  const stage = document.getElementById('v1');
+  const state = initialState();
+  const dlg = shell('북마크 가져오기',
+    `폴더 ${TOTALS.folders}개 · 북마크 ${TOTALS.links}개를 찾았어요. 왼쪽에서 고르면 오른쪽에 만들어질 보드가 보여요.`);
+
+  const cols = el('div', 'cols');
+  const lft = el('div', 'lft'), rgt = el('div', 'rgt');
+  const lhead = el('div', 'ph', '내 북마크 <span class="n"></span>');
+  const lst = el('div', 'lst');
+  const rhead = el('div', 'ph', '이렇게 만들어져요 <span class="n"></span>');
+  const pv = el('div', 'pv');
+  lft.append(lhead, lst); rgt.append(rhead, pv);
+  cols.append(lft, rgt); dlg.append(cols);
+
+  let sumEl;
+  dlg.append(footer((s) => { sumEl = s; }));
+  stage.append(dlg);
+
+  function draw() {
+    lst.replaceChildren(buildTree(state, (id) => { toggle(state, id); draw(); }));
+    const spaces = plan(state), t = tally(spaces);
+
+    pv.replaceChildren();
+    if (!spaces.length) {
+      pv.append(el('div', 'pempty', '가져올 폴더를 왼쪽에서 골라주세요.'));
+    }
+    spaces.forEach((sp) => {
+      const board = el('div', 'mb');
+      const h = el('div', 'mbh');
+      h.append(el('span', 'mbi'), el('span', 'mbn', sp.name),
+               el('span', 'mbc', `컬렉션 ${sp.cols.length}`));
+      board.append(h);
+      sp.cols.forEach((c, i) => {
+        const card = el('div', 'mcard' + (c.synth ? ' synth' : ''));
+        const ch = el('div', 'mch');
+        ch.append(el('span', 'mcn', c.name));
+        if (c.dupe) ch.append(el('span', 'dupe', `−${c.dupe}`));
+        ch.append(el('span', 'mcc', String(c.raw - c.dupe)));
+        card.append(ch);
+        const tiles = el('div', 'tiles');
+        const net = c.raw - c.dupe, shown = Math.min(net, 5);
+        for (let k = 0; k < shown; k++) {
+          tiles.append(el('div', 'tile', `<i style="background:${dot(i + k)}"></i>`));
+        }
+        if (net > shown) tiles.append(el('div', 'tile more', `+${net - shown}`));
+        card.append(tiles);
+        board.append(card);
+      });
+      pv.append(board);
+    });
+
+    lhead.querySelector('.n').textContent =
+      `폴더 ${ROWS.filter((r) => r.id && state[r.id]).length}개`;
+    rhead.querySelector('.n').textContent = `스페이스 ${t.spaces} · 컬렉션 ${t.cols}`;
+    sumEl.innerHTML = footSum(t);
+  }
+  draw();
+})();
+
+/* ════════════════════ 시안 2 · 매핑 ════════════════════ */
+(function () {
+  const stage = document.getElementById('v2');
+  const state = initialState();
+  const dlg = shell('북마크 가져오기',
+    `폴더 ${TOTALS.folders}개 · 북마크 ${TOTALS.links}개를 찾았어요. 폴더에 마우스를 올리면 어디로 가는지 보여요.`);
+
+  const cols = el('div', 'cols');
+  const lft = el('div', 'lft'), gut = el('div', 'gut'), rgt = el('div', 'rgt');
+  const lhead = el('div', 'ph', '내 북마크');
+  const lst = el('div', 'lst');
+  const rhead = el('div', 'ph', '결과 <span class="n"></span>');
+  const pv = el('div', 'pv');
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  lft.append(lhead, lst); rgt.append(rhead, pv);
+  gut.append(el('div', 'glbl', '어디로 가나'), svg);
+  cols.append(lft, gut, rgt); dlg.append(cols);
+
+  let sumEl;
+  dlg.append(footer((s) => { sumEl = s; }));
+  stage.append(dlg);
+
+  const svgNode = (tag, attrs) => {
+    const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  };
+
+  /** 트리 행 → 결과 행을 잇는 베지어. 끝점이 스크롤 밖이면 그리지 않는다. */
+  function drawLines() {
+    svg.replaceChildren();
+    const g = gut.getBoundingClientRect();
+    const lv = lst.getBoundingClientRect(), rv = pv.getBoundingClientRect();
+    const w = g.width;
+
+    lst.querySelectorAll('.tr').forEach((row) => {
+      const id = row.dataset.id;
+      if (!state[id]) return;
+      // 컬렉션이 도착지. 직속 링크가 없어 컬렉션이 안 생기는 폴더는 스페이스 제목으로 잇는다.
+      const target = pv.querySelector(`.rrow[data-src="${id}"]`)
+                  || pv.querySelector(`.rsp[data-sp="${id}"] .rh`);
+      const a = row.getBoundingClientRect();
+      const y1 = a.top + a.height / 2 - g.top;
+      const visA = a.top >= lv.top - 2 && a.bottom <= lv.bottom + 2;
+      if (!visA) return;
+
+      const grp = svgNode('g', { class: 'link', 'data-id': id });
+
+      // 중복으로 버려진 링크 — 오른쪽에 닿지 못하고 거터 중간에서 × 로 끝난다
+      const info = ROWS.find((r) => r.id === id);
+      if (info && info.dupe) {
+        const xm = w * 0.5, yd = y1 - 8;
+        grp.append(svgNode('path', {
+          d: `M0 ${y1} C ${w * 0.26} ${y1}, ${xm - 12} ${yd}, ${xm - 5} ${yd}`, class: 'drop',
+        }));
+        grp.append(svgNode('circle', { cx: xm, cy: yd, r: 5, class: 'cap' }));
+        grp.append(svgNode('path', {
+          d: `M${xm - 2.4} ${yd - 2.4} L${xm + 2.4} ${yd + 2.4}
+              M${xm + 2.4} ${yd - 2.4} L${xm - 2.4} ${yd + 2.4}`, class: 'xm',
+        }));
+      }
+
+      if (target) {
+        const b = target.getBoundingClientRect();
+        if (b.top >= rv.top - 2 && b.bottom <= rv.bottom + 2) {
+          const y2 = b.top + b.height / 2 - g.top;
+          grp.append(svgNode('path', {
+            d: `M0 ${y1} C ${w * 0.42} ${y1}, ${w * 0.58} ${y2}, ${w} ${y2}`,
+          }));
+        }
+      }
+      if (grp.childNodes.length) svg.append(grp);
+    });
+  }
+
+  function highlight(id) {
+    svg.querySelectorAll('g.link').forEach((n) => {
+      const mine = n.getAttribute('data-id') === id;
+      n.classList.toggle('hot', !!id && mine);
+      n.classList.toggle('dim', !!id && !mine);
+    });
+    pv.querySelectorAll('.rrow').forEach((r) => {
+      r.classList.toggle('hot', !!id && r.dataset.src === id);
+    });
+    lst.querySelectorAll('.tr').forEach((r) => {
+      r.style.background = (!!id && r.dataset.id === id) ? 'var(--surface2)' : '';
+    });
+  }
+
+  function draw() {
+    lst.replaceChildren(buildTree(state, (id) => { toggle(state, id); draw(); }));
+    const spaces = plan(state), t = tally(spaces);
+
+    pv.replaceChildren();
+    spaces.forEach((sp) => {
+      const g = el('div', 'rsp');
+      g.dataset.sp = sp.id;
+      const h = el('div', 'rh');
+      h.append(el('span', 'rn', sp.name), el('span', 'rc2', `컬렉션 ${sp.cols.length}`));
+      g.append(h);
+      sp.cols.forEach((c, i) => {
+        const row = el('div', 'rrow' + (c.synth ? ' synth' : ''));
+        row.dataset.src = c.id;
+        row.append(el('span', 'dot', '') , el('span', 'rcn', c.name));
+        row.querySelector('.dot').style.background = dot(i);
+        if (c.dupe) row.append(el('span', 'dupe', `−${c.dupe}`));
+        row.append(el('span', 'rcc', String(c.raw - c.dupe)));
+        row.addEventListener('mouseenter', () => highlight(c.id));
+        row.addEventListener('mouseleave', () => highlight(null));
+        g.append(row);
+      });
+      pv.append(g);
+    });
+
+    rhead.querySelector('.n').textContent = `스페이스 ${t.spaces} · 컬렉션 ${t.cols}`;
+    sumEl.innerHTML = footSum(t);
+
+    lst.querySelectorAll('.tr').forEach((row) => {
+      row.addEventListener('mouseenter', () => highlight(row.dataset.id));
+      row.addEventListener('mouseleave', () => highlight(null));
+    });
+    requestAnimationFrame(drawLines);
+  }
+  lst.addEventListener('scroll', drawLines);
+  pv.addEventListener('scroll', drawLines);
+  window.addEventListener('resize', drawLines);
+  draw();
+})();
+
+/* ════════════════════ 시안 3 · 한 줄 ════════════════════ */
+(function () {
+  const stage = document.getElementById('v3');
+  const state = initialState();
+  const dlg = shell('북마크 가져오기',
+    `폴더 ${TOTALS.folders}개 · 북마크 ${TOTALS.links}개를 찾았어요. 폴더 하나가 스페이스 하나가 돼요.`);
+
+  const legend = el('div', 'legend',
+    '<span><i class="solid"></i>내 폴더</span><span><i></i>가져오기가 만든 컬렉션</span>');
+  const lst = el('div', 'lst');
+  dlg.append(legend, lst);
+
+  let sumEl;
+  dlg.append(footer((s) => { sumEl = s; }));
+  stage.append(dlg);
+
+  function draw() {
+    lst.replaceChildren();
+    for (const root of ROOTS) {
+      lst.append(el('div', 'grp', root.name));
+      const entries = root.folders.map((f) => ({ id:f.id, name:f.name }));
+      if (root.loose) entries.push({ id:LOOSE_ID, name:root.name, loose:true });
+
+      for (const e of entries) {
+        const on = state[e.id];
+        const card = el('div', 'fcard' + (on ? '' : ' off'));
+        const head = el('div', 'fh');
+        head.tabIndex = 0;
+        head.append(el('span', 'cb' + (on ? ' on' : '')));
+        head.append(el('span', 'fi', e.loose ? '⭐' : '📁'));
+        head.append(el('span', 'fn', e.loose ? `${e.name} (폴더에 없는 링크)` : e.name));
+        head.append(el('span', 'fm'));
+        const fire = () => { toggle(state, e.id); draw(); };
+        head.addEventListener('click', fire);
+        head.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); fire(); }
+        });
+        card.append(head);
+
+        // 카드 본문 = 이 스페이스가 갖게 될 컬렉션
+        const body = el('div', 'fb');
+        const sp = plan(state).find((s) => s.id === e.id);
+        // 꺼진 하위 폴더도 다시 켤 수 있어야 하므로, plan 결과가 아니라 트리 기준으로 그린다
+        const owned = ROWS.filter((r) => r.kind === 'col' && r.space === e.id);
+        owned.forEach((r, i) => {
+          const cOn = state[r.id];
+          const chip = el('div', 'chip' + (r.joined.includes('/') ? ' synth' : '') + (cOn ? '' : ' off'));
+          chip.append(el('span', 'cbs' + (cOn ? ' on' : '')));
+          chip.append(el('span', 'cn', r.joined));
+          if (cOn && r.dupe) chip.append(el('span', 'dupe', `−${r.dupe}`));
+          chip.append(el('span', 'cc', String(r.count - (cOn ? r.dupe : 0))));
+          chip.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            state[r.id] = !state[r.id];
+            draw();
+          });
+          body.append(chip);
+        });
+        // 폴더 직속 링크 → 공유 폴더 (점선, 끌 수 없음: 폴더를 끄면 같이 사라진다)
+        const src = e.loose ? root.loose : root.folders.find((f) => f.id === e.id).direct;
+        if (src && src.raw > 0) {
+          const chip = el('div', 'chip synth');
+          chip.append(el('span', 'cbs on'), el('span', 'cn', SHARED));
+          if (src.dupe) chip.append(el('span', 'dupe', `−${src.dupe}`));
+          chip.append(el('span', 'cc', String(src.raw - src.dupe)));
+          chip.style.cursor = 'default';
+          body.append(chip);
+        }
+        card.append(body);
+
+        head.querySelector('.fm').textContent = sp
+          ? `컬렉션 ${sp.cols.length} · 링크 ${sp.cols.reduce((n, c) => n + c.raw - c.dupe, 0)}`
+          : '가져오지 않음';
+        lst.append(card);
+      }
+    }
+    sumEl.innerHTML = footSum(tally(plan(state)));
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

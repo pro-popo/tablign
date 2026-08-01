@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { listSpaces, createSpace, updateSpace, deleteSpace } from "../data/spaces";
 import { listCollections, createCollection, updateCollection, deleteCollection, listAllCollections } from "../data/collections";
-import { listLinks, createLink, updateLink, deleteLink, moveLink } from "../data/links";
+import { listLinks, createLink, createLinks, updateLink, deleteLink, moveLink } from "../data/links";
 import {
   listTags,
   createTag,
@@ -159,6 +159,24 @@ describe("links 데이터 접근", () => {
     });
     collectionId = c1.id;
     otherCollectionId = c2.id;
+  });
+
+  it("createLinks는 여러 링크를 한 번에 저장한다 — 왕복 1회", async () => {
+    const inputs = [1, 2, 3].map((n) => ({
+      user_id: user.id,
+      collection_id: collectionId,
+      url: `https://bulk-${n}.example.com`,
+      title: `벌크 ${n}`,
+    }));
+    const created = await createLinks(user.client, inputs);
+    expect(created).toHaveLength(3);
+    expect(created.map((l) => l.url).sort()).toEqual(inputs.map((i) => i.url).sort());
+    const list = await listLinks(user.client, collectionId);
+    for (const i of inputs) expect(list.some((l) => l.url === i.url)).toBe(true);
+  });
+
+  it("createLinks에 빈 배열을 주면 요청 없이 빈 배열을 돌려준다", async () => {
+    expect(await createLinks(user.client, [])).toEqual([]);
   });
 
   it("링크를 만들고 컬렉션별로 조회한다", async () => {

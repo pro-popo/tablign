@@ -22,4 +22,8 @@ export {
   Users,
   Check,
   Lock,
+  // 빈 상태 카드 — 공유 코드(Ticket)와 열린 창 담기(SquareStack: 창 여러 개)
+  Ticket,
+  SquareStack,
+  AppWindow,
 } from "lucide-react";

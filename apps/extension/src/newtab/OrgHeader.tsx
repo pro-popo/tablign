@@ -11,9 +11,11 @@ export interface OrgHeaderProps {
   onOpenMembers: () => void;
   onEditOrg?: () => void;
   onDeleteOrg?: () => void;
+  /** 주면 메뉴에 '북마크 가져오기'를 노출한다(삭제 바로 위) */
+  onImport?: () => void;
 }
 
-export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg }: OrgHeaderProps) {
+export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, onImport }: OrgHeaderProps) {
   const isPersonal = org.is_personal;
   // 멤버는 조직 관리 권한이 없어 메뉴를 열 수 없으므로 톱니바퀴를 숨긴다.
   // 개인 조직은 프로필 설정(onEditOrg)이 있으면 톱니를 노출한다(멤버 개념이 없어 myRole 판정은 무의미).
@@ -54,17 +56,29 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg }
               style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 60, minWidth: 148,
                 background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 4,
                 boxShadow: "0 12px 32px rgba(20,30,60,.18)", boxSizing: "border-box" }}>
+              {/* 범위가 좁아지는 순서: 조직 자체 → 사람 → 데이터.
+                  가져오기는 사실상 1회성이라 자주 쓰는 항목 뒤에 둔다. */}
+              {onEditOrg && (
+                <button type="button" role="menuitem" style={menuItem}
+                  onClick={() => { setMenuOpen(false); onEditOrg(); }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f3f5")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>프로필 설정</button>
+              )}
               {!isPersonal && (
                 <button type="button" role="menuitem" style={menuItem}
                   onClick={() => { setMenuOpen(false); onOpenMembers(); }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f3f5")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>멤버 관리</button>
               )}
-              {onEditOrg && (
+              {onImport && (
                 <button type="button" role="menuitem" style={menuItem}
-                  onClick={() => { setMenuOpen(false); onEditOrg(); }}
+                  onClick={() => { setMenuOpen(false); onImport(); }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f3f5")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>프로필 설정</button>
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>북마크 가져오기</button>
+              )}
+              {/* 되돌릴 수 없는 항목은 구분선으로 떼어낸다 — 색만으로는 오조작을 막지 못한다 */}
+              {onDeleteOrg && (
+                <div role="separator" style={{ height: 1, margin: "4px 0", background: theme.border }} />
               )}
               {onDeleteOrg && (
                 <button type="button" role="menuitem" style={{ ...menuItem, color: "#e03131" }}

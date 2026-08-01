@@ -11,4 +11,8 @@ vi.stubGlobal("chrome", {
       remove: (_keys: unknown, cb?: () => void) => cb?.(),
     },
   },
+  bookmarks: {
+    // 개별 테스트가 필요하면 stubGlobal로 덮어쓴다
+    getTree: () => Promise.resolve([{ id: "0", title: "", children: [] }]),
+  },
 });

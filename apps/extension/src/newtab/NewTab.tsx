@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   DndContext, DragOverlay, PointerSensor, pointerWithin, MeasuringStrategy, useSensor, useSensors,
@@ -30,20 +30,21 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, ShareCodeDialog, ImportCodeDialog, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, PendingCollection, ShareCodeDialog, ImportCodeDialog, type ImportCodeInfo, ImportBookmarksDialog, ImportSourceDialog, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users } from "@tablign/ui";
 import {
-  listSpaces, listMyMemberships, leaveSpace, listCollections, listLinks, createLink, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
+  listSpaces, listMyMemberships, leaveSpace, listCollections, listLinks, createLink, createLinks, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions,
   copyCollection, moveCollectionToSpace,
   createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
   listOrganizations, createOrganization, updateOrganization, deleteOrganization, listMyOrgMemberships, listOrgMembers, removeOrgMember, updateOrgMemberRole,
   inviteToOrg, listOrgInvitations, cancelOrgInvitation, listMyOrgInvitations, acceptOrgInvitation, declineOrgInvitation,
+  fromChromeTree, fromTobyExport, importBookmarks, type SourceNode, type ImportPlan,
   type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
   type Organization, type OrganizationMember, type OrgMemberWithProfile, type OrganizationInvitation, type OrgInvitationWithOrg,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
-import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, type WindowGroup, type WindowTab } from "../lib/tabs";
+import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, saveableTabs, type WindowGroup, type WindowTab } from "../lib/tabs";
 import { usePanelState } from "../lib/usePanelState";
 import { useActiveSpace } from "../lib/useActiveSpace";
 import { useActiveOrg } from "../lib/useActiveOrg";
@@ -54,7 +55,11 @@ import { ExtSearchBar } from "./ExtSearchBar";
 import { DndLinkList } from "./DndLinkList";
 import { AuthScreen } from "./AuthScreen";
 import { OrgHeader, type OrgRole } from "./OrgHeader";
-import { OrgFormDialog, type OrgFormValue } from "./OrgFormDialog";
+import type { OrgFormValue } from "./OrgFormDialog";
+
+// 조직 생성/수정 다이얼로그는 토스 이모지 데이터(@emoji-mart/data, ~423KB)를 끌고 오므로
+// 초기 번들에서 떼어내 다이얼로그를 처음 열 때만 로드한다.
+const OrgFormDialog = lazy(() => import("./OrgFormDialog").then((m) => ({ default: m.OrgFormDialog })));
 
 interface DragPreview { label: string; faviconUrl: string | null; domain: string }
 
@@ -116,11 +121,11 @@ export function NewTab() {
   const [orgFormOpen, setOrgFormOpen] = useState(false);
   const [orgFormMode, setOrgFormMode] = useState<"create" | "edit">("create");
   const [orgDeleteOpen, setOrgDeleteOpen] = useState(false);
-  const { activeOrgId, setActiveOrgId, loaded: orgLoaded } = useActiveOrg();
+  const { activeOrgId, selectOrg: persistOrg, showOrg, loaded: orgLoaded } = useActiveOrg();
   // 스페이스 목록 로드 완료 여부. 0개(신규 가입·전부 삭제)와 "아직 로딩 중"을 구분해
   // 온보딩 화면과 스켈레톤을 올바르게 가른다.
   const [spacesLoaded, setSpacesLoaded] = useState(false);
-  const { activeSpaceId, setActiveSpaceId, loaded: spaceLoaded } = useActiveSpace();
+  const { activeSpaceId, selectSpace, showSpace, loaded: spaceLoaded } = useActiveSpace();
   const [collections, setCollections] = useState<Collection[]>([]);
   // 첫 컬렉션 로드 완료 전에는 EmptyState 대신 스켈레톤을 보여줘 깜빡임을 막는다.
   const [collectionsLoaded, setCollectionsLoaded] = useState(false);
@@ -143,6 +148,14 @@ export function NewTab() {
   // 드래그 시작 시점의 groups 스냅샷(탭이 컬렉션 위로 돌아오거나 취소될 때 원복용).
   const groupsOriginRef = useRef<WindowGroup[]>([]);
   const [groups, setGroups] = useState<WindowGroup[]>([]);
+  const [selfTabId, setSelfTabId] = useState<number | null>(null);
+  /** 저장 중인 컬렉션의 골격. 제목·링크 수를 미리 알기 때문에 실제 결과와 자리 수가 일치한다. */
+  const [pending, setPending] = useState<{ key: string; title: string; count: number }[]>([]);
+  /** 저장 버튼을 잠그기 위한 표시용 상태(우측 패널). */
+  const [savingWindowId, setSavingWindowId] = useState<number | null>(null);
+  /** 중복 실행 차단은 ref로 한다 — state는 같은 tick에 두 번 눌리면 둘 다 이전 값(false)을 읽어
+   *  가드를 통과하고 컬렉션이 두 벌 생긴다. ref는 동기적으로 즉시 반영된다. */
+  const savingRef = useRef(false);
   useEffect(() => { groupsRef.current = groups; }, [groups]);
   const [active, setActive] = useState<Active>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
@@ -166,9 +179,12 @@ export function NewTab() {
       const [orgs, oms] = await Promise.all([listOrganizations(supabase), listMyOrgMemberships(supabase)]);
       setOrganizations(orgs);
       setOrgMemberships(oms);
-      const keep = activeOrgId && orgs.some((o) => o.id === activeOrgId);
+      // 조회가 비어 왔으면 판단 근거가 없다 — 저장값을 건드리지 않고 물러난다.
+      if (orgs.length === 0) return;
+      if (activeOrgId && orgs.some((o) => o.id === activeOrgId)) return; // 이미 맞다 → 쓸 일이 없다
+      // 폴백은 화면에만. 저장값을 남겨 두면 일시적 조회 실패가 다음 로드에 스스로 복구된다.
       const personal = orgs.find((o) => o.is_personal);
-      setActiveOrgId(keep ? activeOrgId : (personal?.id ?? orgs[0]?.id ?? null));
+      showOrg(personal?.id ?? orgs[0].id);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, orgLoaded]);
@@ -183,10 +199,11 @@ export function NewTab() {
       setSpaces(sp);
       setMemberships(ms);
       setSpacesLoaded(true);
+      if (activeSpaceId && sp.some((s) => s.id === activeSpaceId)) return; // 이미 맞다
       // 다른 조직의 스페이스로 폴백하지 않도록, 활성 조직 내 첫 스페이스로만 대체한다(없으면 null).
+      // 여기서도 저장하지 않는다 — 조회가 어긋난 것뿐이면 다음 로드에 원래 스페이스로 돌아온다.
       const first = sp.find((s) => s.org_id === (activeOrgId ?? "")) ?? null;
-      const keep = activeSpaceId && sp.some((s) => s.id === activeSpaceId);
-      setActiveSpaceId(keep ? activeSpaceId : (first?.id ?? null));
+      showSpace(first?.id ?? null);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, spaceLoaded]);
@@ -198,7 +215,7 @@ export function NewTab() {
     if (!orgLoaded || !spacesLoaded || !activeOrgId) return;
     if (activeSpaceId && spaces.some((s) => s.id === activeSpaceId && s.org_id === activeOrgId)) return;
     const fallback = spaces.find((s) => s.org_id === activeOrgId)?.id ?? null;
-    if (fallback !== activeSpaceId) setActiveSpaceId(fallback);
+    if (fallback !== activeSpaceId) showSpace(fallback);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgLoaded, spacesLoaded, activeOrgId, activeSpaceId, spaces]);
 
@@ -227,6 +244,12 @@ export function NewTab() {
       setGroups(groupTabsByWindow(tabs as WindowTab[]));
     })();
   }, [session]);
+
+  // tablign 새 탭 자신의 id. 목록에서 빼지 않고 '현재 탭' 배지로 구분한다 —
+  // 빼면 창의 탭 수와 목록 수가 어긋나 보인다.
+  useEffect(() => {
+    chrome.tabs.getCurrent?.().then((t) => setSelfTabId(t?.id ?? null)).catch(() => setSelfTabId(null));
+  }, []);
 
   useEffect(() => {
     if (!session) return;
@@ -297,16 +320,17 @@ export function NewTab() {
   async function addSpace(name: string) {
     if (!session) return;
     const s = await createSpace(supabase, { user_id: session.user.id, name, org_id: activeOrgId ?? undefined });
-    // 새 스페이스에는 기본 컬렉션을 하나 만들어 둔다.
-    await createCollection(supabase, { user_id: session.user.id, space_id: s.id, title: "새 컬렉션" });
+    // 컬렉션 없이 비워 둔다 — 빈 상태(CollectionOnboarding)가 담는 방법 세 가지를 알려주므로,
+    // 이름만 '새 컬렉션'인 빈 껍데기를 미리 만들어 두면 그 안내를 가로막는다.
     setSpaces((prev) => [...prev, s]);
-    setActiveSpaceId(s.id);
+    selectSpace(s.id);
   }
 
   function selectOrg(id: string) {
-    setActiveOrgId(id);
+    persistOrg(id);
     const firstInOrg = spaces.find((s) => s.org_id === id) ?? null;
-    setActiveSpaceId(firstInOrg?.id ?? null);
+    // 조직에 스페이스가 없으면 저장할 id가 없다 — 화면만 비운다.
+    if (firstInOrg) selectSpace(firstInOrg.id); else showSpace(null);
   }
 
   function openCreateOrg() {
@@ -328,8 +352,8 @@ export function NewTab() {
     if (orgFormMode === "create") {
       const org = await createOrganization(supabase, { name: v.name || "새 조직", owner_id: session.user.id, icon: v.icon, color: v.color, ...transform });
       setOrganizations((prev) => [...prev, org]);
-      setActiveOrgId(org.id);
-      setActiveSpaceId(null);
+      persistOrg(org.id);
+      showSpace(null);
     } else if (activeOrg) {
       const updated = await updateOrganization(supabase, activeOrg.id, { name: v.name || activeOrg.name, icon: v.icon, color: v.color, ...transform });
       setOrganizations((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
@@ -344,8 +368,8 @@ export function NewTab() {
     try {
       await deleteOrganization(supabase, id);
       setOrganizations((prev) => prev.filter((o) => o.id !== id));
-      setActiveOrgId(personal ? personal.id : null);
-      setActiveSpaceId(null);
+      if (personal) persistOrg(personal.id); else showOrg(null);
+      showSpace(null);
       setOrgDeleteOpen(false);
       toast.show("조직을 삭제했어요.");
     } catch (e) {
@@ -364,7 +388,7 @@ export function NewTab() {
     const remaining = spaces.filter((s) => s.id !== id);
     setSpaces(remaining);
     // 활성 스페이스를 지웠다면 남은 첫 스페이스로 전환한다(없으면 비활성).
-    if (activeSpaceId === id) setActiveSpaceId(remaining[0]?.id ?? null);
+    if (activeSpaceId === id) { const n = remaining[0]; if (n) selectSpace(n.id); else showSpace(null); }
   }
 
   async function handleLeaveSpace(id: string) {
@@ -373,7 +397,7 @@ export function NewTab() {
     const remaining = spaces.filter((s) => s.id !== id);
     setSpaces(remaining);
     setMemberships((prev) => prev.filter((m) => m.space_id !== id));
-    if (activeSpaceId === id) setActiveSpaceId(remaining[0]?.id ?? null);
+    if (activeSpaceId === id) { const n = remaining[0]; if (n) selectSpace(n.id); else showSpace(null); }
   }
 
   const toast = useToast();
@@ -406,8 +430,30 @@ export function NewTab() {
   const [shareTarget, setShareTarget] = useState<Collection | null>(null);
   const [issuedCode, setIssuedCode] = useState<ShareCode | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  // 북마크·Toby 가져오기 (공유 코드 가져오기 importOpen과 별개)
+  const [importSourceOpen, setImportSourceOpen] = useState(false);
+  const [bookmarkImportOpen, setBookmarkImportOpen] = useState(false);
+  const [bookmarkRoots, setBookmarkRoots] = useState<SourceNode[]>([]);
+  const [importTitle, setImportTitle] = useState("북마크 가져오기");
   // 컬렉션 삭제 확인 다이얼로그 대상 (스페이스 삭제와 동일한 2단계 확인)
   const [deleteColTarget, setDeleteColTarget] = useState<Collection | null>(null);
+
+  /**
+   * 컬렉션 삭제 요청. 링크가 하나도 없으면 잃을 게 없으므로 확인을 건너뛰고 바로 삭제한다.
+   * 링크 목록이 아직 로드되지 않았으면(키 자체가 없음) 비었다고 단정할 수 없으니 확인을 거친다 —
+   * `?? []`로 뭉개면 로딩 중에 링크가 있는 컬렉션을 확인 없이 지울 수 있다.
+   */
+  async function requestDeleteCollection(c: Collection) {
+    const links = linksByCol[c.id];
+    if (links && links.length === 0) {
+      await deleteCollection(supabase, c.id);
+      loadCollections();
+      // 다이얼로그를 건너뛰었으므로 삭제됐다는 사실은 토스트로 알린다(되돌리기는 없다)
+      toast.show(`'${c.title}' 컬렉션을 삭제했어요`);
+      return;
+    }
+    setDeleteColTarget(c);
+  }
   // 멤버 관리 다이얼로그 상태
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
@@ -472,14 +518,28 @@ export function NewTab() {
     }
   }
 
-  async function importByCode(code: string, targetSpaceId: string) {
-    await importCollectionByCode(supabase, code, targetSpaceId);
+  async function importByCode(code: string, targetSpaceId: string, info: ImportCodeInfo) {
+    // 조회 때 제목·링크 수를 이미 알고 있으니 서버를 기다리는 동안 골격을 놓는다.
+    // 다른 스페이스로 가져가면 activeSpaceId가 바뀌며 전체 스켈레톤이 떠서 골격이 필요 없다.
+    const sameSpace = targetSpaceId === activeSpaceId;
+    const key = `pending-import-${code}`;
+    if (sameSpace) {
+      const title = info.icon ? `${info.icon} ${info.title}` : info.title;
+      setPending((prev) => [...prev, { key, title, count: info.link_count }]);
+    }
+    try {
+      await importCollectionByCode(supabase, code, targetSpaceId);
+    } catch (e) {
+      setPending((prev) => prev.filter((p) => p.key !== key));
+      throw e; // 다이얼로그가 에러 문구를 띄우도록 그대로 올린다
+    }
     const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
     toast.show(`'${name}' 스페이스로 가져왔어요`);
     // 대상이 현재 스페이스면 activeSpaceId가 그대로라 재조회 effect가 돌지 않는다 → 직접 재조회
-    if (targetSpaceId === activeSpaceId) loadCollections();
+    if (sameSpace) await loadCollections();
+    setPending((prev) => prev.filter((p) => p.key !== key));
     // 가져온 스페이스로 이동해 결과를 바로 보여준다
-    setActiveSpaceId(targetSpaceId);
+    selectSpace(targetSpaceId);
   }
 
   async function addCollection() {
@@ -488,7 +548,7 @@ export function NewTab() {
     if (!spaceId) {
       const s = await createSpace(supabase, { user_id: session.user.id, name: "개인", org_id: activeOrgId ?? undefined });
       setSpaces((prev) => [...prev, s]);
-      setActiveSpaceId(s.id);
+      selectSpace(s.id);
       spaceId = s.id;
     }
     const created = await createCollection(supabase, { user_id: session.user.id, space_id: spaceId, title: "새 컬렉션" });
@@ -736,22 +796,115 @@ export function NewTab() {
     loadCollections();
   }
 
+  /** 대상 스페이스를 확보한다. 없으면 '개인'을 만들어 활성화. */
+  async function ensureSpaceId(): Promise<string | null> {
+    if (!session) return null;
+    if (activeSpaceId) return activeSpaceId;
+    const s = await createSpace(supabase, { user_id: session.user.id, name: "개인", org_id: activeOrgId ?? undefined });
+    setSpaces((prev) => [...prev, s]);
+    selectSpace(s.id);
+    return s.id;
+  }
+
+  /**
+   * 창 하나를 컬렉션 하나로. 담을 수 있는 탭이 0개면 아무것도 만들지 않는다(null 반환) —
+   * 예전에는 링크 0개짜리 컬렉션이 만들어졌다.
+   *
+   * 링크는 createLinks로 **한 번에** 저장한다. createLink를 루프로 돌리면 탭 수만큼 왕복이 생겨
+   * 탭 30개에 수 초가 걸렸고, 실패가 조용히 무시돼 "12개 담았다"는 숫자도 틀렸다.
+   *
+   * 만든 컬렉션과 링크를 그대로 돌려줘, 호출부가 전체 재조회를 기다리지 않고 화면에 바로 꽂을 수 있게 한다.
+   */
+  async function saveWindowInto(
+    spaceId: string, group: WindowGroup, title: string,
+  ): Promise<{ collection: Collection; links: Link[] } | null> {
+    if (!session) return null;
+    const savable = saveableTabs(group.tabs);
+    if (savable.length === 0) return null;
+    const collection = await createCollection(supabase, { user_id: session.user.id, space_id: spaceId, title });
+    const links = await createLinks(supabase, tabsToLinkInputs(savable, session.user.id, collection.id));
+    return { collection, links };
+  }
+
+  /** 저장이 끝난 컬렉션을 골격 대신 화면에 바로 꽂는다(재조회 대기 없음). */
+  function materialize(key: string, r: { collection: Collection; links: Link[] }) {
+    setPending((prev) => prev.filter((p) => p.key !== key));
+    setCollections((prev) => [...prev, r.collection]);
+    setLinksByCol((prev) => ({ ...prev, [r.collection.id]: r.links }));
+  }
+
   async function saveWindow(windowId: number) {
-    if (!session) return;
-    let spaceId = activeSpaceId;
-    if (!spaceId) {
-      const s = await createSpace(supabase, { user_id: session.user.id, name: "개인", org_id: activeOrgId ?? undefined });
-      setSpaces((prev) => [...prev, s]);
-      setActiveSpaceId(s.id);
-      spaceId = s.id;
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSavingWindowId(windowId);
+    const key = `pending-window-${windowId}`;
+    try {
+      const spaceId = await ensureSpaceId();
+      if (!spaceId) return;
+      const idx = groups.findIndex((g) => g.windowId === windowId);
+      const group = groups[idx];
+      if (!group) return;
+      const count = saveableTabs(group.tabs).length;
+      if (count === 0) { toast.show("담을 수 있는 탭이 없어요"); return; }
+
+      setPending((prev) => [...prev, { key, title: `창 ${idx + 1}`, count }]);
+      const r = await saveWindowInto(spaceId, group, `창 ${idx + 1}`);
+      if (!r) return;
+      materialize(key, r);
+      loadCollections();
+      toast.show(`탭 ${r.links.length}개를 담았어요`);
+    } catch (e) {
+      console.error(e);
+      toast.show("담지 못했어요. 다시 시도해 주세요.");
+      loadCollections();
+    } finally {
+      setPending((prev) => prev.filter((p) => p.key !== key));
+      setSavingWindowId(null);
+      savingRef.current = false;
     }
-    const idx = groups.findIndex((g) => g.windowId === windowId);
-    const group = groups[idx];
-    if (!group) return;
-    const created = await createCollection(supabase, { user_id: session.user.id, space_id: spaceId, title: `창 ${idx + 1}` });
-    const inputs = tabsToLinkInputs(group.tabs, session.user.id, created.id);
-    for (const input of inputs) { try { await createLink(supabase, input); } catch (e) { console.error(e); } }
-    loadCollections();
+  }
+
+  /**
+   * 열린 창 전부를 창별 컬렉션 1개씩으로. 담을 수 있는 탭이 없는 창은 건너뛴다.
+   * 창을 순차로 처리하므로 골격이 하나씩 실체가 되는 모습이 실제 진행과 일치한다.
+   */
+  async function saveOpenWindows() {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    const keys: string[] = [];
+    try {
+      const spaceId = await ensureSpaceId();
+      if (!spaceId) return;
+      const targets = groups
+        .map((group, i) => ({ group, title: `창 ${i + 1}`, count: saveableTabs(group.tabs).length }))
+        .filter((t) => t.count > 0);
+      if (targets.length === 0) { toast.show("담을 수 있는 탭이 없어요"); return; }
+
+      // 담기 전에 결과의 모양을 이미 안다 — 창별 이름과 링크 수로 골격을 먼저 놓는다.
+      const items = targets.map((t, i) => ({ key: `pending-all-${i}`, title: t.title, count: t.count }));
+      keys.push(...items.map((p) => p.key));
+      setPending((prev) => [...prev, ...items]);
+
+      let cols = 0;
+      let links = 0;
+      for (let i = 0; i < targets.length; i++) {
+        const r = await saveWindowInto(spaceId, targets[i].group, targets[i].title);
+        if (!r) continue;
+        cols++;
+        links += r.links.length;
+        materialize(items[i].key, r);
+      }
+      loadCollections();
+      toast.show(cols === 1 ? `탭 ${links}개를 담았어요` : `컬렉션 ${cols}개에 탭 ${links}개를 담았어요`);
+    } catch (e) {
+      console.error(e);
+      // 낙관적 골격을 걷고 실패를 알린다. 이미 저장된 창은 재조회로 남는다(부분 성공).
+      toast.show("담지 못했어요. 다시 시도해 주세요.");
+      loadCollections();
+    } finally {
+      setPending((prev) => prev.filter((p) => !keys.includes(p.key)));
+      savingRef.current = false;
+    }
   }
 
   async function closeTab(tabId: number) {
@@ -814,6 +967,79 @@ export function NewTab() {
   const ownedSpaces = orgSpaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
   const sharedSpaces = orgSpaces.filter((s) => memberships.some((m) => m.space_id === s.id));
 
+  // ── 북마크 가져오기 ──
+  // 스페이스를 만들 수 있는 조직만 목적지가 된다(RLS의 can_edit_org와 같은 기준: 오너이거나 admin).
+  const importableOrgs = organizations
+    .filter((o) => o.owner_id === userId
+      || orgMemberships.find((m) => m.org_id === o.id)?.role === "admin")
+    .map((o) => ({ id: o.id, name: o.name }));
+
+  /** 진입점(조직 메뉴·온보딩) 공통 — 소스 선택부터 시작한다 */
+  function openImport() {
+    // 조직 목록 로드 전 진입 방어 — 목적지 없이 다이얼로그를 열지 않는다
+    if (!importableOrgs.length) { toast.show("잠시 후 다시 시도해 주세요"); return; }
+    setImportSourceOpen(true);
+  }
+
+  async function pickBookmarkSource() {
+    // 권한이 아직 적용 안 된 상태(manifest 변경 후 확장 미새로고침)면 API 자체가 없다 —
+    // 일반 실패와 구분해 사용자가 스스로 고칠 수 있는 안내를 준다.
+    if (!chrome.bookmarks) {
+      toast.show("북마크 권한이 아직 적용되지 않았어요. chrome://extensions에서 tablign을 새로고침해 주세요.");
+      return;
+    }
+    try {
+      // Chrome 북마크는 여기서 읽기만 한다 — 생성·수정·삭제 코드는 앱 어디에도 없다(manifest의
+      // bookmarks 권한이 "읽기 및 변경"으로 표시되는 것은 Chrome에 읽기 전용 권한이 없어서다).
+      const tree = await chrome.bookmarks.getTree();
+      setBookmarkRoots(fromChromeTree(tree[0]?.children ?? []));
+    } catch (e) {
+      console.error(e);
+      toast.show(`북마크를 읽지 못했어요 — ${e instanceof Error ? e.message : String(e)}`);
+      return;
+    }
+    setImportTitle("북마크 가져오기");
+    setImportSourceOpen(false);
+    setBookmarkImportOpen(true);
+  }
+
+  function pickTobySource(text: string) {
+    let roots: SourceNode[];
+    try {
+      roots = fromTobyExport(JSON.parse(text));
+    } catch (e) {
+      console.error(e);
+      toast.show("Toby 내보내기 파일이 아니에요");
+      return;
+    }
+    if (!roots.length) { toast.show("가져올 링크가 없어요"); return; }
+    setBookmarkRoots(roots);
+    setImportTitle("Toby 가져오기");
+    setImportSourceOpen(false);
+    setBookmarkImportOpen(true);
+  }
+
+  async function runBookmarkImport(orgId: string, plan: ImportPlan) {
+    const result = await importBookmarks(supabase, orgId, plan); // 실패는 다이얼로그가 표시한다
+    // RPC는 이미 성공 — 이후 재조회가 실패해도 닫기·전환·토스트는 진행한다.
+    // 여기서 던지면 다이얼로그가 실패로 오해해 재시도를 유도하고, 링크가 짝으로 늘어난다.
+    try {
+      setSpaces(await listSpaces(supabase));
+    } catch (e) {
+      console.error(e);
+    }
+    setBookmarkImportOpen(false);
+    persistOrg(orgId);
+    selectSpace(result.first_space_id);
+    toast.show(`스페이스 ${result.space_ids.length}개를 만들었어요`);
+  }
+
+  // 담을 수 있는 탭만 센다. group.tabs.length로 세면 tablign 새 탭 자신과 chrome:// 페이지까지
+  // 세어 "보이는 개수 ≠ 담기는 개수"가 된다. groups가 갱신되면 이 값도 따라 바뀐다.
+  const saveablePerWindow = groups.map((g) => saveableTabs(g.tabs).length);
+  const saveableTabCount = saveablePerWindow.reduce((a, b) => a + b, 0);
+  const saveableWindowCount = saveablePerWindow.filter((n) => n > 0).length;
+
   // 커서 미리보기(오버레이)용 데이터 (탭/링크 카드용. 컬렉션은 별도 칩으로 렌더)
   const preview =
     active?.type === "tab"
@@ -862,13 +1088,12 @@ export function NewTab() {
                 spaces={ownedSpaces}
                 sharedSpaces={sharedSpaces}
                 activeSpaceId={activeSpaceId}
-                onSelectSpace={(id) => { setActiveSpaceId(id); }}
+                onSelectSpace={(id) => { selectSpace(id); }}
                 onAddSpace={addSpace}
                 onRenameSpace={renameSpace}
                 onDeleteSpace={deleteSpace}
                 onLeaveSpace={handleLeaveSpace}
                 onCollapse={toggleLeft}
-                onImportCode={() => setImportOpen(true)}
                 searchSlot={<ExtSearchBar />}
                 orgHeaderSlot={activeOrg ? (
                   <OrgHeader
@@ -877,12 +1102,13 @@ export function NewTab() {
                     onOpenMembers={openOrgMemberDialog}
                     onEditOrg={(myOrgRole === "owner" || myOrgRole === "admin") ? openEditOrg : undefined}
                     onDeleteOrg={(!activeOrg?.is_personal && myOrgRole === "owner") ? () => setOrgDeleteOpen(true) : undefined}
+                    onImport={openImport}
                   />
                 ) : null}
               />
             }
             right={
-              <OpenTabsPanel groups={groups} onSaveWindow={saveWindow} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab} onCollapse={toggleRight} />
+              <OpenTabsPanel groups={groups} selfTabId={selfTabId} savingWindowId={savingWindowId} onSaveWindow={saveWindow} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab} onCollapse={toggleRight} />
             }
           >
             <Board>
@@ -890,7 +1116,9 @@ export function NewTab() {
                 // 활성 조직에 스페이스가 0개(신규 가입 직후, 전부 삭제, 또는 방금 만든 빈 조직): 온보딩 빈 상태.
                 <SpaceOnboarding onCreate={() => addSpace("개인")} />
               ) : (
-                <>
+                // 헤더 + 본문을 flex 컬럼으로 묶어, 빈 상태가 헤더 아래 '남은 공간'을 정확히 채우게 한다.
+                // (헤더 높이를 상수로 빼서 계산하면 헤더가 바뀔 때 어긋난다)
+                <div style={{ boxSizing: "border-box", minHeight: "100%", display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -939,15 +1167,35 @@ export function NewTab() {
                   {isOwner && activeSpaceOrg?.is_personal && (
                     <Button variant="outline" onClick={openMemberDialog}><Users size={15} /> 멤버</Button>
                   )}
-                  {canEdit && <Button onClick={addCollection}><Plus size={15} /> 컬렉션</Button>}
+                  {canEdit && <AddCollectionButton onCreate={addCollection} onImportCode={() => setImportOpen(true)} />}
                 </div>
               </div>
+              {/* flex:"1 0 auto" — 내용이 짧으면 남은 공간을 채우고(빈 상태 세로 중앙),
+                  길면 줄어들지 않고 그대로 늘어난다(컬렉션 목록). */}
+              <div style={{ flex: "1 0 auto", display: "flex", flexDirection: "column", minWidth: 0 }}>
+              {/* 저장 중인 컬렉션의 골격은 실제 목록 위에 놓는다 — 방금 시작한 것이 맨 위에 보여야 한다 */}
+              {collectionsLoaded && pending.map((p) => (
+                <PendingCollection key={p.key} title={p.title} count={p.count} />
+              ))}
               {(() => {
                 const visibleCollections = collections;
                 return !collectionsLoaded ? (
                   <CollectionSkeleton />
                 ) : visibleCollections.length === 0 ? (
-                  <EmptyState title="컬렉션이 없어요. ‘＋ 컬렉션’으로 영역을 만든 뒤, 열린 탭을 드래그해 넣어보세요." />
+                  // 골격이 떠 있으면 빈 상태 카드를 함께 보여주지 않는다 — 이미 담고 있는 중이다.
+                  pending.length > 0 ? null
+                  // viewer는 컬렉션을 만들 수 없으니 행동 카드를 주지 않는다.
+                  : canEdit ? (
+                    <CollectionOnboarding
+                      windowCount={saveableWindowCount}
+                      tabCount={saveableTabCount}
+                      onSaveOpenWindows={saveOpenWindows}
+                      onCreateEmpty={addCollection}
+                      onImportCode={() => setImportOpen(true)}
+                    />
+                  ) : (
+                    <EmptyState title="아직 컬렉션이 없어요." />
+                  )
                 ) : (
                   <SortableContext items={visibleCollections.map((c) => `col:${c.id}`)} strategy={verticalListSortingStrategy}>
                     {visibleCollections.map((c) => (
@@ -969,7 +1217,7 @@ export function NewTab() {
                             onDeleteLink={canEdit ? async (id) => { await deleteLink(supabase, id); reloadCollection(c.id); } : undefined}
                             onAddLink={async (url) => { if (canEdit) { await createLink(supabase, { user_id: userId, collection_id: c.id, url }); reloadCollection(c.id); } }}
                             onOpenAll={() => links.forEach((l) => openUrl(l.url))}
-                            onDeleteCollection={canEdit ? () => setDeleteColTarget(c) : undefined}
+                            onDeleteCollection={canEdit ? () => requestDeleteCollection(c) : undefined}
                             linksSlot={
                               <DndLinkList
                                 collectionId={c.id}
@@ -1003,7 +1251,8 @@ export function NewTab() {
                   </SortableContext>
                 );
               })()}
-                </>
+              </div>
+                </div>
               )}
             </Board>
           </AppShell>
@@ -1055,9 +1304,26 @@ export function NewTab() {
       <ImportCodeDialog
         open={importOpen}
         spaces={spaces.map((s) => ({ id: s.id, name: s.name, icon: s.icon }))}
+        defaultSpaceId={activeSpaceId}
         onLookup={(code) => getShareCodeInfo(supabase, code)}
         onImport={importByCode}
         onClose={() => setImportOpen(false)}
+      />
+      <ImportSourceDialog
+        open={importSourceOpen}
+        onBookmarks={pickBookmarkSource}
+        onTobyFile={pickTobySource}
+        onClose={() => setImportSourceOpen(false)}
+      />
+      <ImportBookmarksDialog
+        open={bookmarkImportOpen}
+        title={importTitle}
+        roots={bookmarkRoots}
+        orgs={importableOrgs}
+        // 활성 조직이 편집 불가(일반 멤버)면 목록에 없으므로 첫 편집 가능 조직으로 폴백
+        defaultOrgId={importableOrgs.some((o) => o.id === activeOrgId) ? activeOrgId! : (importableOrgs[0]?.id ?? "")}
+        onImport={runBookmarkImport}
+        onClose={() => setBookmarkImportOpen(false)}
       />
       <ConfirmDialog
         open={deleteColTarget !== null}
@@ -1085,14 +1351,18 @@ export function NewTab() {
         onCancelInvite={async (id) => { try { await cancelInvitation(supabase, id); reloadMembers(); } catch (e) { console.error(e); toast.show("초대를 취소하지 못했어요."); } }}
         onClose={() => setMemberDialogOpen(false)}
       />
-      <OrgFormDialog
-        open={orgFormOpen}
-        mode={orgFormMode}
-        initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color, icon_scale: activeOrg.icon_scale, icon_x: activeOrg.icon_x, icon_y: activeOrg.icon_y } : undefined}
-        personal={orgFormMode === "edit" && !!activeOrg?.is_personal}
-        onSubmit={submitOrgForm}
-        onClose={() => setOrgFormOpen(false)}
-      />
+      {orgFormOpen && (
+        <Suspense fallback={null}>
+          <OrgFormDialog
+            open={orgFormOpen}
+            mode={orgFormMode}
+            initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color, icon_scale: activeOrg.icon_scale, icon_x: activeOrg.icon_x, icon_y: activeOrg.icon_y } : undefined}
+            personal={orgFormMode === "edit" && !!activeOrg?.is_personal}
+            onSubmit={submitOrgForm}
+            onClose={() => setOrgFormOpen(false)}
+          />
+        </Suspense>
+      )}
       <ConfirmDialog
         open={orgDeleteOpen}
         danger

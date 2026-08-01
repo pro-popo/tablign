@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "tablign",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "시각적 북마크·탭 관리",
   "icons": {
     "16": "icons/icon-16.png",
@@ -18,6 +18,6 @@
   },
   "background": { "service_worker": "assets/background.js", "type": "module" },
   "chrome_url_overrides": { "newtab": "newtab.html" },
-  "permissions": ["tabs", "storage", "identity"],
+  "permissions": ["tabs", "storage", "identity", "bookmarks"],
   "host_permissions": ["http://127.0.0.1:54321/*"]
 }

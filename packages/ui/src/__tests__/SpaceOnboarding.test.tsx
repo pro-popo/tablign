@@ -18,6 +18,12 @@ describe("SpaceOnboarding", () => {
     expect(onCreate).toHaveBeenCalledTimes(1);
   });
 
+  it("CTA 외에 다른 버튼은 두지 않는다", () => {
+    // 가져오기 진입점은 조직 헤더 더보기 메뉴에만 둔다 — 온보딩에서는 뺐다
+    render(<SpaceOnboarding onCreate={() => {}} />);
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+  });
+
   it("브라우저 팬터마임 그래픽은 장식이라 보조기기에 노출하지 않는다", () => {
     const { container } = render(<SpaceOnboarding onCreate={() => {}} />);
     expect(container.querySelector('[aria-hidden="true"]')).not.toBeNull();

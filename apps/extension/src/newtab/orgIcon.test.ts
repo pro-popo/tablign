@@ -9,15 +9,15 @@ describe("orgIconStyle", () => {
     expect(s.fontFamily).toBe(ORG_ICON_FONT);
     expect(ORG_ICON_FONT).toMatch(/^"Tossface"/);
   });
-  it("박스 비례 폰트 크기(0.68)를 유지한다", () => {
+  it("박스 비례 폰트 크기(0.58)를 유지한다", () => {
     const s = orgIconStyle({}, 100);
-    expect(s.fontSize).toBeCloseTo(68, 5);
+    expect(s.fontSize).toBeCloseTo(58, 5);
   });
 
   it("폰트 크기를 반올림하지 않는다(렌더 지점 간 baseline 정확 일치)", () => {
-    // 헤더 박스 28 → 19.04. 반올림하면 렌더 지점 정렬이 어긋난다(커밋 f11cfc4 참고).
+    // 헤더 박스 28 → 16.24. 반올림하면 렌더 지점 정렬이 어긋난다(커밋 f11cfc4 참고).
     const s = orgIconStyle({}, 28);
-    expect(s.fontSize).toBeCloseTo(19.04, 5);
+    expect(s.fontSize).toBeCloseTo(16.24, 5);
   });
 
   it("scale 1(100%)에서는 세로 보정이 0이다(소형 정중앙을 건드리지 않음)", () => {

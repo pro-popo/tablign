@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 빈 상태 카드 아이콘 색상안</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accent-weak:#edf0fe; --t:#1f2430; --muted:#868e96; --faint:#adb5bd;
+    --border:#eaecef; --bg:#fcfcfd; --surface:#fff; --surface2:#f1f3f5;
+    --lav:#c9d4ff; --amber:#f4c66a; --green:#7bc47f;
+    --pg:#eef0f4; --rule:#dfe3ea;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{background:var(--pg); color:var(--t);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    padding:30px 22px 90px}
+  .wrap{max-width:1280px}
+  h1{font-size:17px; font-weight:750; letter-spacing:-.025em}
+  .sub{font-size:13px; color:#7c8695; line-height:1.75; margin-top:9px; max-width:840px}
+  .sub b{color:var(--t)} .sub .bad{color:#e03131}
+  h2{font-size:14px; font-weight:750; letter-spacing:-.02em; margin:38px 0 4px}
+  .tag{display:inline-block; font-size:10.5px; font-weight:750; border-radius:5px; padding:2px 7px;
+    margin-left:8px; vertical-align:2px}
+  .tag.rec{background:var(--accent); color:#fff}
+  .tag.no{background:#fdecec; color:#e03131}
+  .tag.mid{background:#fff; color:#5c636b; border:1px solid var(--rule)}
+  .lede{font-size:12.5px; color:#7c8695; line-height:1.75; margin:7px 0 14px; max-width:860px}
+  .lede b{color:var(--t)} .lede .bad{color:#e03131} .lede .ok{color:var(--accent)}
+  .row{display:flex; gap:22px; flex-wrap:wrap; align-items:flex-start}
+
+  /* 실측 카드 */
+  .board{background:var(--bg); border:1px solid #d5dae2; border-radius:12px; padding:26px 24px;
+    box-shadow:0 10px 28px rgba(20,30,60,.1)}
+  .stack{width:400px; display:flex; flex-direction:column; gap:10px}
+  .ac{box-sizing:border-box; display:flex; align-items:center; gap:12px; padding:13px 15px;
+    border-radius:13px; border:1px solid var(--border); background:var(--surface);
+    box-shadow:0 1px 3px rgba(20,30,60,.04); cursor:pointer; transition:.15s}
+  .ac:hover{border-color:var(--lav); box-shadow:0 7px 20px rgba(59,91,219,.15); transform:translateY(-1px)}
+  .ai{box-sizing:border-box; width:34px; height:34px; flex:none; border-radius:10px;
+    display:flex; align-items:center; justify-content:center}
+  .tx{flex:1; min-width:0}
+  .at{display:block; font-size:14px; font-weight:700; letter-spacing:-.01em}
+  .as{display:block; margin-top:3px; font-size:11.5px; color:var(--muted)}
+  .chev{color:var(--faint); display:flex; flex:none}
+
+  .cap{font-size:11px; font-weight:750; letter-spacing:.06em; color:#7c8695; margin-bottom:11px}
+  .swatches{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
+  .sw{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:10.5px; border-radius:7px;
+    padding:5px 8px; border:1px solid var(--rule); background:#fff; display:flex; align-items:center; gap:6px}
+  .sw i{width:12px; height:12px; border-radius:4px; flex:none}
+  .sw b{font-weight:700}
+  .sw .ok{color:#2f9e5f} .sw .no{color:#e03131}
+  .why{background:#fff; border:1px solid var(--rule); border-radius:11px; padding:14px 16px;
+    font-size:12.5px; line-height:1.75; color:#7c8695; max-width:430px}
+  .why b{color:var(--t)} .why .bad{color:#e03131} .why .ok{color:var(--accent)}
+  .note{background:#fff; border:1px solid var(--rule); border-radius:11px; padding:15px 17px;
+    font-size:12.5px; line-height:1.75; color:#7c8695; max-width:880px; margin-top:16px}
+  .note b{color:var(--t)} .note .bad{color:#e03131} .note .ok{color:var(--accent)}
+  code{background:#e4e8ef; border-radius:4px; padding:1px 5px; font-size:11.5px;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>빈 상태 카드 — 개념별 아이콘 색상안</h1>
+  <p class="sub">
+    지금은 세 아이콘이 모두 accent 하나입니다. 개념별로 색을 나누려면 <b>제약 하나</b>를 먼저 통과해야 합니다 —
+    아이콘 글리프가 흰색이므로 배경이 충분히 어두워야 합니다.
+    아래 스와치의 대비값은 <b>페이지에서 실제로 계산</b>한 값이고, 아이콘·도형에 요구되는 기준은 <b>3:1</b>입니다(WCAG 비텍스트 대비).<br/>
+    <b class="bad">브랜드 앰버 <code>#f4c66a</code>는 흰 글리프로 쓸 수 없습니다</b> — 그래서 앰버를 넣는 안은 글리프 색을 따로 가져가야 합니다.
+  </p>
+
+  <h2>지금<span class="tag mid">현재 구현</span></h2>
+  <div class="row" id="cur"></div>
+
+  <h2>A · 의미 기반 — 파랑 / 중립 / 초록<span class="tag rec">추천</span></h2>
+  <p class="lede">
+    <b>담기</b>는 tablign의 핵심 동작이라 accent를 그대로 두고, <b>빈 컬렉션</b>은 말 그대로 비어 있으니 색을 주지 않고,
+    <b>공유 코드</b>는 남이 준 것이 들어오는 경로라 초록을 씁니다.
+    브랜드 초록 <code>#7bc47f</code>은 흰 글리프에 너무 밝아 같은 색조를 어둡게 내린 값을 씁니다.
+  </p>
+  <div class="row" id="a"></div>
+
+  <h2>B · 브랜드 트리오 — 파랑 / 앰버 / 초록<span class="tag no">대비 미달</span></h2>
+  <p class="lede">
+    로고·파비콘에 쓰는 3색을 그대로 옮긴 안. 가장 브랜드다워 보이지만
+    <b class="bad">앰버는 흰 글리프 대비가 기준에 한참 못 미칩니다.</b>
+    앰버만 글리프를 어둡게 하면 세 카드의 아이콘 처리가 달라져 오히려 정돈되지 않습니다.
+  </p>
+  <div class="row" id="b"></div>
+
+  <h2>C · 연한 배경 + 진한 글리프<span class="tag mid">대안</span></h2>
+  <p class="lede">
+    채움을 포기하고 <b>연한 틴트 + 진한 글리프</b>로 가면 앰버도 쓸 수 있습니다. 세 카드가 훨씬 조용해지고
+    브랜드 3색을 다 살릴 수 있지만, 아이콘의 존재감이 약해져 <b>카드가 눌러야 할 것으로 덜 읽힙니다</b>.
+    <code>accentWeak</code>만 있고 앰버·초록의 연한 변형이 없어 <b>새 토큰 2개</b>가 필요합니다.
+  </p>
+  <div class="row" id="c"></div>
+
+  <div class="note">
+    <b>정리 — 어느 쪽이든 새 토큰이 필요합니다.</b>
+    <br/>A안: 딥 그린 1개(<code>--green-deep</code>). 파랑은 기존 accent, 중립은 기존 <code>surface2</code>.
+    <br/>B안: 딥 앰버 + 딥 그린 2개 — 그런데 딥 앰버는 색이 탁해져 브랜드 앰버로 안 보입니다.
+    <br/>C안: 앰버·초록 연한 변형 2개.
+    <br/><br/>
+    <b>A안을 추천합니다.</b> 토큰이 하나만 늘고, 세 색이 <b class="ok">각 개념에 이유가 있습니다</b> —
+    파랑은 앱의 동작색, 중립은 ‘비어 있음’ 그 자체, 초록은 ‘외부에서 받음’.
+    확정했던 <b>세 경로 동등</b>과도 어긋나지 않습니다: 크기·형태·위계는 그대로고 색만 개념을 가리킵니다.
+    다만 중립 카드 하나가 다른 둘보다 조용해 보이는 건 사실이라, 그게 걸리면 C안이 대안입니다.
+  </div>
+</div>
+
+<script>
+const I = {
+  stack:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="6.5" width="13" height="11" rx="2"/><path d="M2.5 10h13"/><path d="M8.5 6.5V5a1.5 1.5 0 011.5-1.5h9A1.5 1.5 0 0120.5 5v9a1.5 1.5 0 01-1.5 1.5h-1.5"/></svg>',
+  plus:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>',
+  ticket:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="7" width="18" height="10" rx="2.5"/><path d="M8 7v10M13 12h4"/></svg>',
+  chev:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>',
+};
+
+/* 상대 휘도 & 대비비 — 실제로 계산해서 표시한다 */
+function lum(hex){
+  const c = hex.replace('#','');
+  const v = [0,2,4].map((i) => parseInt(c.slice(i,i+2),16)/255)
+    .map((x) => x <= 0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055, 2.4));
+  return 0.2126*v[0] + 0.7152*v[1] + 0.0722*v[2];
+}
+function ratio(a,b){
+  const la = lum(a), lb = lum(b);
+  const hi = Math.max(la,lb), lo = Math.min(la,lb);
+  return (hi+0.05)/(lo+0.05);
+}
+
+const CARDS = [
+  { icon:I.stack,  at:'열린 창 2개를 그대로 담기', as:'창별로 컬렉션 1개씩 · 탭 7개' },
+  { icon:I.plus,   at:'빈 컬렉션 만들기',          as:'이름부터 정하고 하나씩 담기' },
+  { icon:I.ticket, at:'공유 코드로 추가',          as:'코드 8자리로 컬렉션 복사' },
+];
+
+/* opt: [{bg, fg, shadow?}] 3개 */
+function render(id, cap, opt, why){
+  const cards = CARDS.map((c, i) => {
+    const o = opt[i];
+    const sh = o.shadow === false ? 'none' : `0 2px 6px ${o.glow ?? 'rgba(59,91,219,.26)'}`;
+    return `<div class="ac">
+      <span class="ai" style="background:${o.bg}; color:${o.fg}; box-shadow:${sh}">${c.icon}</span>
+      <span class="tx"><span class="at">${c.at}</span><span class="as">${c.as}</span></span>
+      <span class="chev">${I.chev}</span></div>`;
+  }).join('');
+
+  const sw = opt.map((o, i) => {
+    if (o.bg === 'transparent') return '';
+    const r = ratio(o.bg, o.fg);
+    const pass = r >= 3;
+    return `<span class="sw"><i style="background:${o.bg}"></i>
+      <b>${o.bg}</b> / ${o.fg}
+      <span class="${pass ? 'ok' : 'no'}">${r.toFixed(2)}:1 ${pass ? '통과' : '미달'}</span></span>`;
+  }).join('');
+
+  document.getElementById(id).innerHTML = `
+    <div>
+      <div class="cap">${cap}</div>
+      <div class="board"><div class="stack">${cards}</div>
+        <div class="swatches">${sw}</div></div>
+    </div>
+    ${why ? `<div class="why">${why}</div>` : ''}`;
+}
+
+const NEUTRAL = { bg:'#f1f3f5', fg:'#5c636b', shadow:false };
+
+render('cur', '세 아이콘 모두 accent',
+  [
+    { bg:'#3b5bdb', fg:'#ffffff' },
+    { bg:'#3b5bdb', fg:'#ffffff' },
+    { bg:'#3b5bdb', fg:'#ffffff' },
+  ],
+  `<b>지금 상태.</b> 대비는 넉넉하고 브랜드가 선명합니다. 다만 세 아이콘이 같은 색이라
+   <b>모양만으로</b> 구분해야 하고, 파랑이 세 번 반복돼 화면이 다소 무겁습니다.`);
+
+render('a', 'A · 파랑 / 중립 / 딥 그린',
+  [
+    { bg:'#3b5bdb', fg:'#ffffff' },
+    NEUTRAL,
+    { bg:'#2f9e63', fg:'#ffffff', glow:'rgba(47,158,99,.26)' },
+  ],
+  `<b>색마다 이유가 있습니다.</b> 파랑 = 앱의 동작색(핵심 경로), 중립 = ‘비어 있음’ 그 자체,
+   딥 그린 = 외부에서 받아오는 것.<br/>
+   브랜드 초록 <code>#7bc47f</code>은 흰 글리프에 밝아 같은 색조를 내린 <code>#2f9e63</code>을 씁니다.
+   <b class="ok">새 토큰 1개</b>로 끝납니다.`);
+
+render('b', 'B · 브랜드 3색 그대로',
+  [
+    { bg:'#3b5bdb', fg:'#ffffff' },
+    { bg:'#f4c66a', fg:'#ffffff', glow:'rgba(244,198,106,.3)' },
+    { bg:'#7bc47f', fg:'#ffffff', glow:'rgba(123,196,127,.3)' },
+  ],
+  `<b class="bad">앰버·초록 모두 기준 미달입니다.</b> 스와치의 계산값을 보세요 —
+   앰버는 흰 글리프가 거의 사라지고, 브랜드 초록도 3:1을 넘지 못합니다.
+   색을 어둡게 내리면 통과하지만(A안) 그 순간 <b>브랜드 앰버로는 보이지 않습니다</b>.`);
+
+render('c', 'C · 연한 틴트 + 진한 글리프',
+  [
+    { bg:'#edf0fe', fg:'#3b5bdb', shadow:false },
+    { bg:'#fdf3e0', fg:'#b47d16', shadow:false },
+    { bg:'#e8f6ec', fg:'#2f7d4f', shadow:false },
+  ],
+  `<b>브랜드 3색을 다 쓸 수 있는 유일한 안.</b> 틴트 배경이라 글리프를 진하게 둘 수 있어 대비가 넉넉합니다.
+   대신 아이콘이 조용해져 <b>카드가 누를 것으로 덜 읽히고</b>,
+   앰버·초록의 연한 변형이 없어 <b>새 토큰 2개</b>(+글리프색 2개)가 필요합니다.`);
+</script>
+</body>
+</html>

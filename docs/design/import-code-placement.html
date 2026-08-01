@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 공유 코드 진입점 + 컬렉션 0개 빈 상태(E2 리파인)</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accent-weak:#edf0fe; --ink:#1f2430; --muted:#868e96;
+    --faint:#adb5bd; --border:#eaecef; --border-card:#e9ebee; --bg:#fcfcfd;
+    --surface:#fff; --surface2:#f1f3f5; --danger:#e03131;
+    --lav:#c9d4ff; --amber:#f4c66a; --green:#7bc47f;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:#eef0f4; color:var(--ink); padding:28px 20px 70px;
+  }
+  h1{font-size:16px; font-weight:740; letter-spacing:-.02em; margin-bottom:4px}
+  h2{font-size:13.5px; font-weight:740; letter-spacing:-.01em; margin:38px 0 4px}
+  .note{font-size:12.5px; color:var(--muted); line-height:1.7; margin-bottom:16px; max-width:860px}
+  .note b{color:var(--ink)} .note .bad{color:var(--danger)}
+  .note ol{margin:8px 0 0 18px; padding:0}
+  .note li{margin-bottom:5px}
+  .hint{font-size:11.5px; color:var(--accent); font-weight:600; margin-bottom:12px}
+  .wrap{max-width:1360px}
+
+  .card{position:relative}
+  .tag{position:absolute; top:-9px; left:14px; z-index:6; background:var(--ink); color:#fff;
+    font-size:11px; font-weight:800; padding:3px 10px; border-radius:9px}
+  .tag.rec{background:var(--accent)}
+  .tag.cur{background:#8a929c}
+  .frame{position:relative; background:var(--bg); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; box-shadow:0 10px 30px rgba(20,30,60,.08); display:flex}
+  .frame.big{height:430px; max-width:900px}
+  .frame.sm{height:360px}
+  .why{font-size:12px; color:var(--muted); line-height:1.65; margin-top:10px; padding:0 4px}
+  .why b{color:var(--ink)} .why .bad{color:var(--danger)} .why .ok{color:var(--accent)}
+  .gridE{display:grid; grid-template-columns:repeat(auto-fit,minmax(650px,1fr)); gap:20px}
+
+  /* ── 셸 ── */
+  .rail{width:38px; flex:none; background:var(--surface); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; padding:9px 0; gap:7px}
+  .rail .logo{width:21px; height:21px; border-radius:6px; background:var(--accent)}
+  .rail .oa{width:21px; height:21px; border-radius:7px; background:var(--surface2); border:1px solid var(--border);
+    font-size:9px; font-weight:800; color:var(--muted); display:flex; align-items:center; justify-content:center}
+  .rail .oa.on{background:var(--accent-weak); border-color:var(--lav); color:var(--accent)}
+  .rail .acct{margin-top:auto; width:21px; height:21px; border-radius:50%; background:#dde2ea}
+
+  .side{width:160px; flex:none; background:var(--surface); border-right:1px solid var(--border);
+    display:flex; flex-direction:column}
+  .side .hd{padding:9px 10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:5px}
+  .side .hd .oi{width:15px; height:15px; border-radius:5px; background:var(--accent-weak); flex:none}
+  .side .hd .nm{font-size:11.5px; font-weight:700; flex:1; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+  .side .srch{margin:8px 9px; height:25px; border:1px solid var(--border); border-radius:7px; background:var(--bg);
+    display:flex; align-items:center; gap:5px; padding:0 7px; font-size:10.5px; color:var(--faint)}
+  .lbl{padding:4px 11px; font-size:10px; color:var(--faint); font-weight:700}
+  .rows{padding:0 6px; display:flex; flex-direction:column; gap:1px}
+  .row{display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:7px; font-size:11.5px; color:#495057}
+  .row.on{background:var(--accent-weak); color:var(--accent); font-weight:600}
+  .row.add{color:var(--faint)}
+  .side .foot{margin-top:auto; padding:0 6px 6px}
+
+  .rp{width:126px; flex:none; background:var(--surface); border-left:1px solid var(--border);
+    display:flex; flex-direction:column; padding-bottom:6px}
+  .rp .rh{padding:9px 10px; border-bottom:1px solid var(--border); font-size:10.5px; font-weight:700; color:var(--muted)}
+  .rp .wg{padding:7px 8px 3px; display:flex; align-items:center; justify-content:space-between}
+  .rp .wg .wn{font-size:10.5px; font-weight:700; color:#495057}
+  .rp .wg .wn.act{color:var(--accent)}
+  .rp .wg .sv{font-size:9.5px; color:var(--faint); font-weight:700}
+  .rp .tb{display:flex; align-items:center; gap:6px; margin:0 7px 3px; padding:4px 6px;
+    border-radius:6px; background:var(--bg); border:1px solid var(--border)}
+  .rp .tb.hl{border-color:var(--lav); background:var(--accent-weak)}
+  .rp .tb i{width:9px; height:9px; border-radius:3px; flex:none; background:var(--lav)}
+  .rp .tb i.o{background:var(--amber)} .rp .tb i.g{background:var(--green)}
+  .rp .tb s{height:6px; border-radius:3px; background:var(--surface2); text-decoration:none; flex:1}
+
+  .board{flex:1; min-width:0; padding:13px 15px; display:flex; flex-direction:column; position:relative}
+  .bhd{display:flex; justify-content:space-between; align-items:center; margin-bottom:13px; gap:8px}
+  .bhd .l{display:flex; align-items:center; gap:7px; min-width:0}
+  .bhd .ttl{font-size:12.5px; font-weight:700; white-space:nowrap}
+  .bhd .cnt{font-size:11px; color:var(--faint); white-space:nowrap}
+  .bhd .r{display:flex; align-items:center; gap:6px; flex:none}
+  .avs{display:flex} .avs i{width:17px; height:17px; border-radius:50%; background:#dde2ea; border:1.5px solid #fff; margin-left:-5px}
+  .avs i:first-child{margin-left:0}
+
+  .btn{display:inline-flex; align-items:center; gap:4px; padding:4px 8px; border-radius:7px;
+    font-size:11px; font-weight:600; white-space:nowrap; border:1px solid transparent; cursor:pointer}
+  .btn.pri{background:var(--accent); color:#fff}
+  .btn.out{background:#fff; color:#5c636b; border-color:var(--border)}
+  .btn.gh{background:transparent; color:var(--muted); font-weight:500}
+
+  .split{display:inline-flex; align-items:stretch; border-radius:7px; overflow:hidden;
+    background:var(--accent); color:#fff; cursor:pointer}
+  .split .main{display:inline-flex; align-items:center; gap:4px; padding:4px 8px; font-size:11px; font-weight:600}
+  .split .div{width:1px; background:rgba(255,255,255,.32)}
+  .split .caret{display:inline-flex; align-items:center; padding:0 5px; transition:transform .16s}
+  .split.open .caret{transform:rotate(180deg)}
+
+  .menu{position:absolute; z-index:5; background:#fff; border:1px solid var(--border); border-radius:9px;
+    box-shadow:0 8px 20px rgba(20,30,60,.15); padding:4px; min-width:140px}
+  .menu.hidden{display:none}
+  .menu .mi{display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:6px;
+    font-size:11.5px; color:#495057; cursor:pointer}
+  .menu .mi:hover{background:var(--surface2)}
+  .menu .mi.hl:hover{background:var(--accent-weak); color:var(--accent)}
+  .menu .sep{height:1px; background:var(--border); margin:3px 2px}
+
+  .col{border:1px solid var(--border-card); border-radius:9px; background:var(--surface); padding:8px 9px; margin-bottom:8px}
+  .col .ch{display:flex; align-items:center; justify-content:space-between; margin-bottom:7px}
+  .col .cn{font-size:11px; font-weight:700} .col .cm{font-size:11px; color:var(--faint)}
+  .col.new{border-color:var(--lav); background:var(--accent-weak); animation:pop .45s ease}
+  @keyframes pop{from{opacity:0; transform:translateY(-6px)} to{opacity:1; transform:none}}
+  .chips{display:flex; gap:5px; flex-wrap:wrap}
+  .chip{display:flex; align-items:center; gap:5px; border:1px solid var(--border-card); border-radius:7px;
+    background:var(--bg); padding:4px 7px}
+  .chip i{width:9px; height:9px; border-radius:3px; background:var(--lav); flex:none}
+  .chip i.o{background:var(--amber)} .chip i.g{background:var(--green)}
+  .chip s{width:32px; height:6px; border-radius:3px; background:var(--surface2); text-decoration:none}
+
+  /* ── 다이얼로그 ── */
+  .ovl{position:absolute; inset:0; background:rgba(15,18,25,.38); z-index:10;
+    display:flex; align-items:center; justify-content:center; animation:fin .16s ease}
+  .ovl.hidden{display:none}
+  @keyframes fin{from{opacity:0}to{opacity:1}}
+  .dlg{width:290px; background:#fff; border-radius:12px; padding:17px 17px 14px;
+    box-shadow:0 12px 40px rgba(0,0,0,.22); animation:pin .18s cubic-bezier(.2,.9,.3,1)}
+  @keyframes pin{from{opacity:0; transform:translateY(8px) scale(.98)}to{opacity:1; transform:none}}
+  .dlg .dt{font-size:13.5px; font-weight:700}
+  .dlg .rowin{margin-top:11px; display:flex; gap:7px}
+  .dlg .inp{flex:1; height:29px; border:1px solid var(--border); border-radius:8px; background:#fff;
+    display:flex; align-items:center; padding:0 9px; font-size:12.5px; letter-spacing:.12em; font-weight:600}
+  .dlg .inp.ph{color:var(--faint); font-weight:400; letter-spacing:0}
+  .dlg .prev{margin-top:11px; padding:9px 11px; background:var(--surface2); border-radius:9px}
+  .dlg .prev .pn{font-size:12.5px; font-weight:700}
+  .dlg .prev .pm{font-size:11px; color:var(--muted); margin-top:3px}
+  .dlg .fl{margin-top:10px; font-size:11px; color:var(--faint)}
+  .dlg .schips{margin-top:6px; display:flex; flex-wrap:wrap; gap:5px}
+  .dlg .sc{border:1px solid var(--border); background:#fff; border-radius:8px;
+    padding:4px 9px; font-size:11.5px; font-weight:600; cursor:pointer}
+  .dlg .sc.on{border-color:var(--accent); background:var(--accent-weak); color:var(--accent)}
+  .dlg .snap{margin-top:10px; font-size:10.5px; color:var(--faint); line-height:1.5}
+  .dlg .acts{display:flex; justify-content:flex-end; gap:6px; margin-top:13px}
+  .step2.hidden{display:none}
+  .toast{position:absolute; left:50%; bottom:14px; transform:translateX(-50%); z-index:20;
+    background:var(--ink); color:#fff; font-size:11.5px; font-weight:600; padding:7px 13px;
+    border-radius:9px; box-shadow:0 6px 18px rgba(20,30,60,.28)}
+  .toast.hidden{display:none}
+
+  .spot{position:relative}
+  .spot::after{content:""; position:absolute; inset:-5px; border-radius:11px; pointer-events:none;
+    border:1.5px solid var(--accent); animation:ring 2.4s ease-in-out infinite}
+  @keyframes ring{0%,100%{opacity:.25}50%{opacity:.95}}
+
+  .mgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:16px}
+  .mc{background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px;
+    box-shadow:0 6px 18px rgba(20,30,60,.07)}
+  .mc.pick{border-color:var(--lav); box-shadow:0 6px 20px rgba(59,91,219,.14)}
+  .mc .mt{font-size:11px; font-weight:800; color:var(--muted); margin-bottom:10px}
+  .mc.pick .mt{color:var(--accent)}
+  .mc .demo{display:flex; justify-content:center; padding:6px 0 12px}
+  .mbox{background:#fff; border:1px solid var(--border); border-radius:9px; padding:4px;
+    box-shadow:0 6px 16px rgba(20,30,60,.12); min-width:152px}
+  .mi2{display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:6px; font-size:11.5px; color:#495057}
+  .mi2.hl{background:var(--accent-weak); color:var(--accent); font-weight:600}
+  .why2{font-size:11.5px; color:var(--muted); line-height:1.6}
+  .why2 b{color:var(--ink)} .why2 .bad{color:var(--danger)}
+
+  /* ══ 빈 상태 공통 ══ */
+  .es{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:0 12px 16px}
+  .eh{font-size:13.5px; font-weight:740; letter-spacing:-.015em; color:var(--ink)}
+  .esub{font-size:11px; color:var(--muted); margin-top:4px; line-height:1.5}
+  .chev{margin-left:auto; color:var(--faint); display:flex; flex:none}
+
+  /* 원안 v1 */
+  .v1{display:flex; flex-direction:column; gap:7px; width:100%; max-width:258px}
+  .v1 .ac{display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:10px;
+    border:1px solid var(--border); background:#fff; text-align:left; cursor:pointer}
+  .v1 .ac.p{border-color:var(--lav); background:var(--accent-weak)}
+  .v1 .ai{width:26px; height:26px; border-radius:8px; flex:none; display:flex; align-items:center;
+    justify-content:center; background:var(--surface2); color:var(--muted)}
+  .v1 .ac.p .ai{background:var(--accent); color:#fff}
+  .v1 .at{font-size:11.5px; font-weight:700; display:block}
+  .v1 .as{font-size:10.5px; color:var(--muted); margin-top:1px; display:block}
+  .v1 .q{border:none; background:transparent; padding:5px 11px; justify-content:center}
+  .v1 .q .at{font-weight:600; color:var(--muted); font-size:11px}
+
+  /* R1 정돈형 */
+  .r1{display:flex; flex-direction:column; gap:8px; width:100%; max-width:296px; margin-top:14px}
+  .r1 .ac{display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:11px;
+    border:1px solid var(--border); background:#fff; text-align:left; cursor:pointer;
+    box-shadow:0 1px 3px rgba(20,30,60,.04); transition:.14s}
+  .r1 .ac:hover{border-color:var(--lav); box-shadow:0 5px 16px rgba(59,91,219,.13); transform:translateY(-1px)}
+  .r1 .ai{width:28px; height:28px; border-radius:9px; flex:none; display:flex; align-items:center;
+    justify-content:center; background:var(--surface2); color:var(--muted)}
+  .r1 .ac.p .ai{background:var(--accent); color:#fff; box-shadow:0 3px 9px rgba(59,91,219,.3)}
+  .r1 .tx{min-width:0}
+  .r1 .at{font-size:12px; font-weight:700; display:block; letter-spacing:-.01em}
+  .r1 .as{font-size:10.5px; color:var(--muted); margin-top:2px; display:block}
+  .r1 .lnk{margin-top:11px; font-size:11px; color:var(--muted); font-weight:600;
+    display:inline-flex; align-items:center; gap:5px; cursor:pointer}
+  .r1 .lnk:hover{color:var(--accent)}
+
+  /* R2 미리보기형 */
+  .r2{width:100%; max-width:300px; margin-top:14px; display:flex; flex-direction:column; gap:8px}
+  .r2 .big{border:1px solid var(--lav); border-radius:12px; background:#fff; padding:11px 12px;
+    text-align:left; cursor:pointer; box-shadow:0 3px 12px rgba(59,91,219,.1); transition:.14s}
+  .r2 .big:hover{box-shadow:0 7px 20px rgba(59,91,219,.18); transform:translateY(-1px)}
+  .r2 .bh{display:flex; align-items:center; gap:8px}
+  .r2 .bi{width:26px; height:26px; border-radius:8px; flex:none; background:var(--accent); color:#fff;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 3px 9px rgba(59,91,219,.3)}
+  .r2 .bt{font-size:12px; font-weight:700; letter-spacing:-.01em}
+  .r2 .pv{display:flex; gap:4px; margin-top:9px}
+  .r2 .pc{flex:1; height:26px; border-radius:7px; border:1px solid var(--border-card); background:var(--bg);
+    display:flex; align-items:center; justify-content:center}
+  .r2 .pc i{width:11px; height:11px; border-radius:3.5px}
+  .r2 .pm{font-size:10px; color:var(--faint); margin-top:7px}
+  .r2 .thin{display:flex; align-items:center; gap:9px; padding:9px 12px; border-radius:11px;
+    border:1px solid var(--border); background:#fff; text-align:left; cursor:pointer; transition:.14s}
+  .r2 .thin:hover{border-color:var(--lav); box-shadow:0 4px 13px rgba(59,91,219,.11)}
+  .r2 .ti{width:24px; height:24px; border-radius:8px; flex:none; background:var(--surface2); color:var(--muted);
+    display:flex; align-items:center; justify-content:center}
+  .r2 .tt{font-size:11.5px; font-weight:700}
+  .r2 .lnk{margin-top:9px; font-size:11px; color:var(--muted); font-weight:600;
+    display:inline-flex; align-items:center; gap:5px; cursor:pointer}
+
+  /* R3 2열 타일 */
+  .r3{display:flex; gap:9px; margin-top:15px; width:100%; max-width:320px}
+  .r3 .tile{flex:1; border:1px solid var(--border); border-radius:12px; background:#fff;
+    padding:14px 10px 12px; cursor:pointer; transition:.14s; box-shadow:0 1px 3px rgba(20,30,60,.04)}
+  .r3 .tile:hover{border-color:var(--lav); box-shadow:0 6px 18px rgba(59,91,219,.14); transform:translateY(-2px)}
+  .r3 .tile.p{border-color:var(--lav)}
+  .r3 .ti{width:32px; height:32px; border-radius:10px; margin:0 auto 9px; background:var(--surface2);
+    color:var(--muted); display:flex; align-items:center; justify-content:center}
+  .r3 .tile.p .ti{background:var(--accent); color:#fff; box-shadow:0 4px 11px rgba(59,91,219,.3)}
+  .r3 .tt{font-size:11.5px; font-weight:700; letter-spacing:-.01em}
+  .r3 .ts{font-size:10px; color:var(--muted); margin-top:3px; line-height:1.45}
+  .r3lnk{margin-top:12px; font-size:11px; color:var(--muted); font-weight:600;
+    display:inline-flex; align-items:center; gap:5px; cursor:pointer}
+
+  /* R4 리스트형 */
+  .r4{width:100%; max-width:280px; margin-top:13px; border:1px solid var(--border); border-radius:11px;
+    background:#fff; overflow:hidden; box-shadow:0 2px 8px rgba(20,30,60,.05)}
+  .r4 .li{display:flex; align-items:center; gap:9px; padding:10px 12px; text-align:left;
+    cursor:pointer; border-bottom:1px solid var(--border)}
+  .r4 .li:last-child{border-bottom:none}
+  .r4 .li:hover{background:var(--bg)}
+  .r4 .li .ii{width:20px; flex:none; display:flex; justify-content:center; color:var(--faint)}
+  .r4 .li.p .ii{color:var(--accent)}
+  .r4 .lt{font-size:11.5px; font-weight:600}
+  .r4 .li.p .lt{font-weight:700}
+  .r4 .ls{font-size:10px; color:var(--faint); margin-top:1px}
+
+  table.nm{border-collapse:collapse; font-size:12px; max-width:900px; width:100%; background:#fff;
+    border:1px solid var(--border); border-radius:10px; overflow:hidden}
+  table.nm th,table.nm td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:top}
+  table.nm th{background:var(--surface2); font-weight:700; font-size:11px; color:var(--muted)}
+  table.nm tr:last-child td{border-bottom:none}
+  table.nm td:first-child{white-space:nowrap; font-weight:700}
+  table.nm .pick{color:var(--accent)} table.nm .x{color:var(--danger)}
+  code{background:var(--surface2); border-radius:4px; padding:1px 4px; font-size:11px}
+  @media (prefers-reduced-motion: reduce){ .spot::after{animation:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>공유 코드 진입점 (B·M2) + 컬렉션 0개 빈 상태 (E2 리파인)</h1>
+  <p class="note">사이드바 라벨 <b>스페이스 / 공유 스페이스</b>, 메뉴 <b>「새 컬렉션 / 공유 코드로 추가」</b> 확정.</p>
+
+  <h2>1. 진입점 — 인터랙티브</h2>
+  <p class="hint">▾ → 「공유 코드로 추가」 → 「조회」 2번 → 스페이스 선택 → 「추가」</p>
+  <div class="card"><span class="tag rec">B · 확정</span><div class="frame big" id="fb"></div></div>
+
+  <h2>2. 메뉴 문구</h2>
+  <div class="mgrid" id="mg"></div>
+
+  <h2>3. 빈 상태 — E2 리파인 4안</h2>
+  <p class="note">
+    원안에서 손볼 지점 4개:
+    <ol>
+      <li><b>맥락 문장이 없다.</b> 카드 3장만 떠 있어서 “컬렉션이 뭔지” 모르는 사람에겐 선택지만 있고 설명이 없습니다. 짧은 헤드라인 1줄을 얹습니다.</li>
+      <li><b>‘탭 12개’가 부정확하다.</b> <code>saveWindow</code>는 <b>창 하나</b> 단위인데(NewTab.tsx:743) 창이 2개면 12개가 어디서 온 숫자인지 모릅니다 → <b>“지금 창의 탭 5개”</b>로 좁히고, 오른쪽 패널에서 대상 창을 하이라이트했습니다.</li>
+      <li><b>primary 카드가 ‘선택된 상태’로 읽힌다.</b> 카드 전체를 <code>accentWeak</code>로 칠하면 라디오처럼 보입니다 → 카드는 흰 배경, <b>아이콘만</b> accent.</li>
+      <li><b>누를 수 있다는 신호가 약하다.</b> 우측 <b>›</b>, hover 시 살짝 떠오르는 상태를 넣었습니다.</li>
+    </ol>
+  </p>
+  <div class="gridE" id="eg"></div>
+
+  <h2>4. 다이얼로그 문구</h2>
+  <table class="nm">
+    <tr><th>요소</th><th>현재</th><th>제안</th></tr>
+    <tr><td>제목</td><td>코드로 가져오기</td><td class="pick">공유 코드로 추가 — 메뉴 항목과 같은 말</td></tr>
+    <tr><td>확정 버튼</td><td class="x">가져오기 (제목과 중복)</td><td class="pick">추가</td></tr>
+    <tr><td>스페이스 라벨</td><td>가져올 스페이스</td><td class="pick">어디에 추가할까요</td></tr>
+    <tr><td>기본 선택</td><td class="x">없음 (클릭 강제)</td><td class="pick">현재 스페이스</td></tr>
+  </table>
+</div>
+
+<script>
+const I = {
+  hash:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>',
+  plus:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 5v14M5 12h14"/></svg>',
+  plusB:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>',
+  plusL:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>',
+  caret:'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>',
+  chev:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>',
+  tk:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="2.5"/><path d="M8 7v10M13 12h4"/></svg>',
+  tkB:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="2.5"/><path d="M8 7v10M13 12h4"/></svg>',
+  us:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16.5 5.4a3.2 3.2 0 010 5.2M18 20c0-2.3-.8-3.9-2-5"/></svg>',
+  sr:'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>',
+  pn:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16M16.5 9.5L14 12l2.5 2.5"/></svg>',
+  win:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/></svg>',
+  winL:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/></svg>',
+};
+
+const RAIL = `<div class="rail"><div class="logo"></div>
+  <div class="oa on">업</div><div class="oa">P</div><div class="oa">${I.plus}</div>
+  <div class="acct"></div></div>`;
+
+function side(){
+  return `<div class="side">
+    <div class="hd"><span class="oi"></span><span class="nm">업무 조직</span>
+      <span style="color:var(--faint);display:flex">${I.pn}</span></div>
+    <div class="srch">${I.sr}<span>검색</span></div>
+    <div class="lbl">스페이스</div>
+    <div class="rows">
+      <div class="row on">${I.hash} 업무</div>
+      <div class="row">${I.hash} 리서치</div>
+      <div class="row">${I.hash} 나중에 읽기</div>
+      <div class="row add">${I.plus} 스페이스 추가</div>
+    </div>
+    <div class="lbl" style="padding-top:8px">공유 스페이스</div>
+    <div class="rows"><div class="row">${I.hash} 팀 온보딩</div></div>
+    <div class="foot"></div></div>`;
+}
+
+/* hl=true면 창 1의 탭을 하이라이트해 '대상 창'을 보여준다 */
+function rp(hl){
+  const c = hl ? ' hl' : '';
+  return `<div class="rp">
+    <div class="rh">열린 탭</div>
+    <div class="wg"><span class="wn${hl?' act':''}">창 1</span><span class="sv">전체 저장</span></div>
+    <div class="tb${c}"><i></i><s></s></div><div class="tb${c}"><i class="o"></i><s></s></div>
+    <div class="tb${c}"><i class="g"></i><s></s></div><div class="tb${c}"><i></i><s></s></div>
+    <div class="tb${c}"><i class="o"></i><s></s></div>
+    <div class="wg"><span class="wn">창 2</span><span class="sv">전체 저장</span></div>
+    <div class="tb"><i class="g"></i><s></s></div><div class="tb"><i></i><s></s></div>
+  </div>`;
+}
+
+const COLS = `
+  <div class="col"><div class="ch"><span class="cn">주간 회의</span><span class="cm">⋯</span></div>
+    <div class="chips"><div class="chip"><i></i><s></s></div><div class="chip"><i class="o"></i><s></s></div>
+    <div class="chip"><i class="g"></i><s></s></div><div class="chip"><i></i><s></s></div></div></div>
+  <div class="col"><div class="ch"><span class="cn">스프린트 문서</span><span class="cm">⋯</span></div>
+    <div class="chips"><div class="chip"><i class="g"></i><s></s></div><div class="chip"><i></i><s></s></div>
+    <div class="chip"><i class="o"></i><s></s></div></div></div>`;
+
+const SPLIT = `<span class="split"><span class="main">${I.plus} 컬렉션</span>
+  <span class="div"></span><span class="caret">${I.caret}</span></span>`;
+
+/* ── 1. 인터랙티브 ── */
+document.getElementById('fb').innerHTML = `${RAIL}${side()}
+<div class="board">
+  <div class="bhd">
+    <div class="l"><span class="ttl">업무</span><span class="cnt">· 2 컬렉션</span>
+      <span class="btn out">초대</span></div>
+    <div class="r"><div class="avs"><i></i><i></i><i></i></div>
+      <span class="btn out">${I.us} 멤버</span>
+      <span class="spot" style="display:inline-flex">
+        <span class="split" id="sp"><span class="main">${I.plus} 컬렉션</span>
+          <span class="div"></span><span class="caret">${I.caret}</span></span></span></div>
+  </div>
+  <div class="menu hidden" id="mn" style="right:15px; top:37px">
+    <div class="mi" id="miEmpty">${I.plus} 새 컬렉션</div>
+    <div class="sep"></div>
+    <div class="mi hl" id="miCode">${I.tk} 공유 코드로 추가</div>
+  </div>
+  <div id="colwrap">${COLS}</div>
+</div>
+<div class="ovl hidden" id="ovl"><div class="dlg">
+  <div class="dt">공유 코드로 추가</div>
+  <div class="rowin"><div class="inp ph" id="inp">공유 코드 8자리</div>
+    <span class="btn pri" id="btnLook">조회</span></div>
+  <div class="step2 hidden" id="s2">
+    <div class="prev"><div class="pn">🎨 디자인 레퍼런스</div>
+      <div class="pm">링크 12개 · 지나님이 공유</div></div>
+    <div class="fl">어디에 추가할까요</div>
+    <div class="schips"><span class="sc on"># 업무</span><span class="sc"># 리서치</span><span class="sc"># 나중에 읽기</span></div>
+    <p class="snap">복사본으로 추가돼요. 원본이 바뀌어도 반영되지 않습니다.</p>
+    <div class="acts"><span class="btn gh" id="btnCancel">취소</span><span class="btn pri" id="btnAdd">추가</span></div>
+  </div>
+</div></div>
+<div class="toast hidden" id="tst">‘디자인 레퍼런스’를 업무에 추가했어요</div>`;
+
+(function(){
+  const $ = id => document.getElementById(id);
+  const sp=$('sp'), mn=$('mn'), ovl=$('ovl'), s2=$('s2'), inp=$('inp'), tst=$('tst');
+  const open = v => { mn.classList.toggle('hidden', !v); sp.classList.toggle('open', v); };
+  sp.onclick = e => { e.stopPropagation(); open(mn.classList.contains('hidden')); };
+  document.body.addEventListener('click', () => open(false));
+  mn.onclick = e => e.stopPropagation();
+  $('miCode').onclick = () => { open(false); s2.classList.add('hidden');
+    inp.textContent='공유 코드 8자리'; inp.classList.add('ph'); ovl.classList.remove('hidden'); };
+  $('miEmpty').onclick = () => { open(false); addCol('제목 없는 컬렉션', true); };
+  $('btnLook').onclick = () => {
+    if (inp.classList.contains('ph')) { inp.textContent='7K3M9QP2'; inp.classList.remove('ph'); return; }
+    s2.classList.remove('hidden'); };
+  ovl.onclick = e => { if (e.target === ovl) ovl.classList.add('hidden'); };
+  $('btnCancel').onclick = () => ovl.classList.add('hidden');
+  $('btnAdd').onclick = () => { ovl.classList.add('hidden'); addCol('🎨 디자인 레퍼런스', false);
+    tst.classList.remove('hidden'); setTimeout(() => tst.classList.add('hidden'), 2600); };
+  s2.querySelectorAll('.sc').forEach(c => c.onclick = () => {
+    s2.querySelectorAll('.sc').forEach(x => x.classList.remove('on')); c.classList.add('on'); });
+  function addCol(name, empty){
+    const d = document.createElement('div'); d.className='col new';
+    d.innerHTML = `<div class="ch"><span class="cn">${name}</span><span class="cm">⋯</span></div>
+      <div class="chips">${empty ? '<span style="font-size:10.5px;color:var(--faint)">탭을 드래그해 넣어보세요</span>'
+      : '<div class="chip"><i class="g"></i><s></s></div><div class="chip"><i></i><s></s></div><div class="chip"><i class="o"></i><s></s></div>'}</div>`;
+    $('colwrap').prepend(d); setTimeout(()=>d.classList.remove('new'),1400);
+  }
+})();
+
+/* ── 2. 메뉴 문구 ── */
+const MENUS = [
+  { t:'M2 · 확정', pick:true, a:'새 컬렉션', b:'공유 코드로 추가',
+    why:'<b>선택.</b> ‘새 컬렉션’은 다른 앱에서 익숙해 학습 비용이 0. 목록이 2줄뿐이라 품사 차이가 실사용에서 걸리지 않습니다.' },
+  { t:'M1 · 출처 대비', a:'직접 만들기', b:'공유 코드로 추가',
+    why:'품사는 맞지만 ‘직접 만들기’가 <b>무엇을</b> 만드는지 한 번 더 생각하게 만듭니다.' },
+  { t:'M3 · 서술형', a:'빈 컬렉션 만들기', b:'공유 코드로 가져오기',
+    why:'오해 여지는 최소지만 메뉴가 넓어지고, ‘빈’이 <span class="bad">“안 빈 컬렉션은?”</span>이라는 질문을 만듭니다.' },
+  { t:'M4 · 동작 그대로', a:'처음부터 만들기', b:'코드 붙여넣기',
+    why:'‘붙여넣기’는 <b>클립보드 자동 읽기</b>를 기대하게 만듭니다 — 그렇게 구현할 때만 최선.' },
+];
+document.getElementById('mg').innerHTML = MENUS.map(m => `
+  <div class="mc ${m.pick?'pick':''}"><div class="mt">${m.t}</div>
+    <div class="demo"><div class="mbox">
+      <div class="mi2">${I.plus} ${m.a}</div>
+      <div style="height:1px;background:var(--border);margin:3px 2px"></div>
+      <div class="mi2 hl">${I.tk} ${m.b}</div>
+    </div></div><p class="why2">${m.why}</p></div>`).join('');
+
+/* ── 3. 빈 상태 ── */
+function frame(inner, hl){
+  return `${RAIL}${side()}<div class="board">
+    <div class="bhd"><div class="l"><span class="ttl">업무</span><span class="cnt">· 0 컬렉션</span></div>
+      <div class="r">${SPLIT}</div></div>
+    ${inner}</div>${rp(hl)}`;
+}
+
+const V1 = `<div class="es"><div class="v1">
+  <div class="ac p"><span class="ai">${I.win}</span>
+    <span><span class="at">지금 열린 탭 12개 담기</span><span class="as">창 1·2를 그대로 컬렉션으로</span></span></div>
+  <div class="ac"><span class="ai">${I.plusB}</span>
+    <span><span class="at">빈 컬렉션 만들기</span><span class="as">이름부터 정하고 하나씩 담기</span></span></div>
+  <div class="ac q"><span class="at">${I.tk} 공유 코드로 추가</span></div>
+</div></div>`;
+
+const R1 = `<div class="es">
+  <div class="eh">탭을 담을 첫 칸을 만들어요</div>
+  <div class="esub">컬렉션은 탭을 모아두는 칸이에요</div>
+  <div class="r1">
+    <div class="ac p"><span class="ai">${I.winL}</span>
+      <span class="tx"><span class="at">지금 창의 탭 5개 담기</span>
+        <span class="as">창 1을 그대로 컬렉션으로</span></span>
+      <span class="chev">${I.chev}</span></div>
+    <div class="ac"><span class="ai">${I.plusL}</span>
+      <span class="tx"><span class="at">빈 컬렉션 만들기</span>
+        <span class="as">이름부터 정하고 하나씩 담기</span></span>
+      <span class="chev">${I.chev}</span></div>
+  </div>
+  <span class="lnk" style="margin-top:11px; font-size:11px; color:var(--muted); font-weight:600;
+    display:inline-flex; align-items:center; gap:5px">${I.tk} 공유 코드로 추가</span>
+</div>`;
+
+const R2 = `<div class="es">
+  <div class="eh">탭을 담을 첫 칸을 만들어요</div>
+  <div class="r2">
+    <div class="big">
+      <div class="bh"><span class="bi">${I.winL}</span>
+        <span class="bt">지금 창의 탭 5개 담기</span>
+        <span class="chev">${I.chev}</span></div>
+      <div class="pv">
+        <span class="pc"><i style="background:var(--lav)"></i></span>
+        <span class="pc"><i style="background:var(--amber)"></i></span>
+        <span class="pc"><i style="background:var(--green)"></i></span>
+        <span class="pc"><i style="background:var(--lav)"></i></span>
+        <span class="pc"><i style="background:var(--amber)"></i></span>
+      </div>
+      <div class="pm">창 1의 탭이 이대로 담겨요</div>
+    </div>
+    <div class="thin"><span class="ti">${I.plusB}</span>
+      <span class="tt">빈 컬렉션 만들기</span><span class="chev">${I.chev}</span></div>
+  </div>
+  <span style="margin-top:10px; font-size:11px; color:var(--muted); font-weight:600;
+    display:inline-flex; align-items:center; gap:5px">${I.tk} 공유 코드로 추가</span>
+</div>`;
+
+const R3 = `<div class="es">
+  <div class="eh">탭을 담을 첫 칸을 만들어요</div>
+  <div class="r3">
+    <div class="tile p"><div class="ti">${I.winL}</div>
+      <div class="tt">지금 창의 탭 담기</div>
+      <div class="ts">창 1의 탭 5개가<br/>그대로 들어가요</div></div>
+    <div class="tile"><div class="ti">${I.plusL}</div>
+      <div class="tt">빈 컬렉션</div>
+      <div class="ts">이름부터 정하고<br/>하나씩 담기</div></div>
+  </div>
+  <span class="r3lnk">${I.tk} 공유 코드로 추가</span>
+</div>`;
+
+const R4 = `<div class="es">
+  <div class="eh">탭을 담을 첫 칸을 만들어요</div>
+  <div class="r4">
+    <div class="li p"><span class="ii">${I.win}</span>
+      <span><span class="lt">지금 창의 탭 5개 담기</span><span class="ls">창 1을 그대로</span></span>
+      <span class="chev">${I.chev}</span></div>
+    <div class="li"><span class="ii">${I.plusB}</span>
+      <span><span class="lt">빈 컬렉션 만들기</span><span class="ls">이름부터 정하고</span></span>
+      <span class="chev">${I.chev}</span></div>
+    <div class="li"><span class="ii">${I.tkB}</span>
+      <span><span class="lt">공유 코드로 추가</span><span class="ls">받은 코드가 있다면</span></span>
+      <span class="chev">${I.chev}</span></div>
+  </div>
+</div>`;
+
+const EMPTIES = [
+  { tag:'원안 v1 (참고)', cls:'cur', html:V1, hl:false,
+    why:`헤드라인이 없어 카드만 떠 있고, ‘탭 12개’는 창 2개에서 온 숫자라 대상이 모호합니다.
+      primary 카드 전체가 파래서 <span class="bad">이미 선택된 항목</span>처럼 보이기도 합니다.` },
+  { tag:'R1 · 정돈형 · 추천', cls:'rec', html:R1, hl:true,
+    why:`<b>원안의 골격을 지키면서 4가지 문제만 고친 안.</b> 헤드라인 1줄 + 서브 1줄로 “컬렉션이 뭔지”를 먼저 말하고,
+      카드는 흰 배경 + <b>아이콘만 accent</b>라 위계는 살고 ‘선택됨’으로는 안 읽힙니다.
+      우측 <b>›</b> 와 hover 상승으로 클릭 가능함이 분명해지고, 3번째는 텍스트 링크로 내려 <span class="ok">위계가 3단</span>이 됩니다.<br/>
+      가장 예측 가능하고 구현이 단순해서 기본값으로 좋습니다.` },
+  { tag:'R2 · 미리보기형', cls:'', html:R2, hl:true,
+    why:`<b>결정을 가장 잘 돕는 안.</b> “탭 5개 담기”를 눌렀을 때 <b>무엇이</b> 담기는지 파비콘 칩으로 미리 보여줘서,
+      원안에 남아 있던 마지막 불확실성을 없앱니다. 오른쪽 패널 하이라이트와 칩이 시각적으로 이어져요.<br/>
+      대신 카드 하나가 커져 두 선택지의 <span class="bad">균형이 기울고</span>, 실제 파비콘을 5개 로드해야 해서 구현이 R1보다 무겁습니다.
+      탭이 1~2개뿐일 때 칸이 비어 보이는 것도 처리해야 합니다.` },
+  { tag:'R3 · 2열 타일', cls:'', html:R3, hl:true,
+    why:`두 선택지를 <b>동등하게</b> 보여줘 “둘 중 하나 고르세요”가 가장 명확합니다. 아이콘이 커져 시각적으로도 가볍고 밝아요.<br/>
+      다만 문구가 2줄로 줄바꿈돼 <span class="bad">보드가 좁아지면 쉽게 깨집니다</span>. 사이드 패널을 둘 다 펼친 상태(지금 시안)가 실제로 가장 좁은 조건인데, 이미 빡빡합니다.` },
+  { tag:'R4 · 리스트형', cls:'', html:R4, hl:true,
+    why:`가장 조용하고 정보 밀도가 높습니다. 세 경로가 <b>한 덩어리</b>로 묶여서 “여기서 시작하세요”가 명확하고, 항목을 늘려도 안 깨집니다.<br/>
+      대신 <span class="bad">위계가 거의 없어</span> 3개가 비슷한 무게로 보입니다 — 첫 항목을 굵게, 아이콘만 accent로 처리했지만 R1만큼 갈리지는 않아요.
+      빈 화면의 <b>환영하는 느낌</b>도 가장 약합니다.` },
+];
+
+document.getElementById('eg').innerHTML = EMPTIES.map(e => `
+  <div class="card"><span class="tag ${e.cls}">${e.tag}</span>
+    <div class="frame sm">${frame(e.html, e.hl)}</div>
+    <p class="why">${e.why}</p></div>`).join('');
+</script>
+</body>
+</html>

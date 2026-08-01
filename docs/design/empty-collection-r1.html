@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 컬렉션 0개 빈 상태 확정판</title>
+<style>
+  :root{
+    --accent:#3b5bdb; --accent-weak:#edf0fe; --ink:#1f2430; --muted:#868e96;
+    --faint:#adb5bd; --border:#eaecef; --border-card:#e9ebee; --bg:#fcfcfd;
+    --surface:#fff; --surface2:#f1f3f5; --danger:#e03131;
+    --lav:#c9d4ff; --amber:#f4c66a; --green:#7bc47f;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:#e7eaef; color:var(--ink); padding:26px 20px 80px;
+  }
+  h1{font-size:16px; font-weight:740; letter-spacing:-.02em; margin-bottom:5px}
+  h2{font-size:13.5px; font-weight:740; margin:38px 0 5px}
+  .note{font-size:12.5px; color:var(--muted); line-height:1.7; margin-bottom:14px; max-width:930px}
+  .note b{color:var(--ink)} .note .bad{color:var(--danger)} .note .ok{color:var(--accent)}
+  .note ol,.note ul{margin:8px 0 0 18px} .note li{margin-bottom:7px}
+  .meta{font-size:11px; color:var(--faint); font-weight:600; margin-bottom:9px; font-variant-numeric:tabular-nums}
+  .meta b{color:var(--accent)}
+  .decided{display:inline-block; font-size:10.5px; font-weight:800; color:#fff; background:var(--accent);
+    border-radius:6px; padding:2px 8px; margin-left:7px; vertical-align:2px}
+  .scroll{overflow-x:auto; padding-bottom:8px; margin-bottom:4px}
+  .app{height:900px; width:1440px; display:flex; background:var(--bg); border:1px solid #d8dde4;
+    border-radius:10px; overflow:hidden; box-shadow:0 12px 34px rgba(20,30,60,.13); flex:none}
+  .crop{overflow:hidden; background:var(--bg); border:1px solid #d8dde4; border-radius:10px;
+    box-shadow:0 8px 22px rgba(20,30,60,.1); flex:none; display:flex}
+
+  /* ══ 실측 셸 ══ */
+  .rail{width:54px; flex:none; background:var(--surface); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; padding:10px 0 12px; gap:8px}
+  .rail .logo{width:28px; height:28px; border-radius:8px; background:var(--accent); flex:none}
+  .rail .oa{width:34px; height:34px; border-radius:11px; background:var(--surface2);
+    border:1px solid var(--border); font-size:13px; font-weight:800; color:var(--muted);
+    display:flex; align-items:center; justify-content:center; flex:none}
+  .rail .oa.on{background:var(--accent-weak); border-color:var(--lav); color:var(--accent)}
+  .rail .oa.gh{border-style:dashed; color:var(--faint); background:transparent}
+  .rail .acct{margin-top:auto; width:30px; height:30px; border-radius:50%; background:#dde2ea; flex:none}
+
+  .side{width:212px; flex:none; background:var(--surface); border-right:1px solid var(--border);
+    display:flex; flex-direction:column}
+  .side .hd{padding:13px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center}
+  .side .hd .oi{width:20px; height:20px; border-radius:6px; background:var(--accent-weak); flex:none; margin-right:7px}
+  .side .hd .nm{font-size:13.5px; font-weight:700; flex:1; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+  .side .srch{margin:11px 12px; height:32px; border:1px solid var(--border); border-radius:8px;
+    background:var(--bg); display:flex; align-items:center; gap:7px; padding:0 9px; font-size:12.5px; color:var(--faint)}
+  .lbl{padding:4px 14px; font-size:10px; color:var(--faint); font-weight:700}
+  .rows{padding:0 8px; display:flex; flex-direction:column; gap:2px}
+  .row{display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:8px; font-size:14px; color:#495057}
+  .row.on{background:var(--accent-weak); color:var(--accent); font-weight:600}
+  .row.add{color:var(--faint)}
+  .side .foot{margin-top:auto; padding:0 8px 8px}
+
+  .rp{width:272px; flex:none; background:var(--surface); border-left:1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden}
+  .rp .rh{padding:13px 14px; border-bottom:1px solid var(--border); display:flex;
+    align-items:center; justify-content:space-between}
+  .rp .rh .t{font-size:13.5px; font-weight:700}
+  .rp .rh .c{font-size:11.5px; color:var(--faint); font-weight:600}
+  .rp .wg{padding:11px 12px 6px; display:flex; align-items:center; justify-content:space-between}
+  .rp .wg .wn{font-size:13px; font-weight:600; color:#495057; display:flex; align-items:center; gap:6px}
+  .rp .wg .wn.act{color:var(--accent)}
+  .rp .wg .ax{display:flex; gap:2px; color:var(--faint)}
+  .rp .tabs{padding:0 12px; display:flex; flex-direction:column; gap:6px}
+  .rp .tb{display:flex; gap:8px; align-items:center; border:1px solid var(--border); border-radius:9px;
+    padding:8px 9px; background:#fff; font-size:13px; cursor:grab}
+  .rp .tb.hl{border-color:var(--lav); background:var(--accent-weak)}
+  .rp .tb .tt{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#3d444c}
+  .rp .lock{display:flex; flex:none; color:var(--faint)}
+  /* P2 확정: 글자 대비 유지 + 점선 + 배경. 커서는 pointer(끌 수 없고 누를 수 있음) */
+  .rp .tb.nosave{background:var(--surface2); border-style:dashed; cursor:pointer}
+  .chip{font-size:10px; font-weight:700; color:var(--muted); background:#fff; border:1px solid var(--border);
+    border-radius:5px; padding:1px 5px; flex:none; white-space:nowrap}
+
+  .fv{width:16px; height:16px; border-radius:4px; flex:none; display:flex; align-items:center;
+    justify-content:center; font-size:9px; font-weight:800; color:#fff; letter-spacing:-.03em}
+  .fv.gh{background:var(--surface2); color:var(--faint); border:1px solid var(--border); font-size:8px}
+
+  .board{flex:1; min-width:0; padding:16px 18px; display:flex; flex-direction:column; overflow:hidden}
+  .bhd{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:8px}
+  .bhd .l{display:flex; align-items:center; gap:8px; min-width:0}
+  .bhd .ttl{font-size:15px; font-weight:700; white-space:nowrap}
+  .bhd .cnt{font-size:14px; color:var(--faint); white-space:nowrap}
+  .bhd .r{display:flex; align-items:center; gap:8px; flex:none}
+  .split{display:inline-flex; align-items:stretch; border-radius:7px; overflow:hidden;
+    background:var(--accent); color:#fff; cursor:pointer; font-weight:600}
+  .split .main{display:inline-flex; align-items:center; gap:6px; padding:6px 11px; font-size:13px}
+  .split .div{width:1px; background:rgba(255,255,255,.32)}
+  .split .caret{display:inline-flex; align-items:center; padding:0 7px}
+
+  /* ══ 빈 상태 ══ */
+  .es{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding-bottom:40px}
+  .eh{font-size:17px; font-weight:740; letter-spacing:-.02em; text-align:center}
+  .esub{font-size:13px; color:var(--muted); margin-top:6px; text-align:center; line-height:1.55; max-width:360px}
+  .stack{width:100%; max-width:400px; margin-top:20px; display:flex; flex-direction:column; gap:10px}
+
+  /* 세 카드 동등: 아이콘·테두리·배경 모두 동일. 위계는 순서만 */
+  .ac{display:flex; align-items:center; gap:12px; padding:13px 15px; border-radius:13px;
+    border:1px solid var(--border); background:#fff; cursor:pointer; transition:.15s;
+    box-shadow:0 1px 3px rgba(20,30,60,.04)}
+  .ac:hover{border-color:var(--lav); box-shadow:0 7px 20px rgba(59,91,219,.15); transform:translateY(-1px)}
+  .ai{width:34px; height:34px; border-radius:10px; flex:none; background:var(--surface2);
+    color:#5c636b; display:flex; align-items:center; justify-content:center}
+  .tx{flex:1; min-width:0}
+  .at{font-size:14px; font-weight:700; letter-spacing:-.01em; display:block}
+  .as{font-size:11.5px; color:var(--muted); margin-top:3px; display:block}
+  .chev{color:var(--faint); display:flex; flex:none}
+  /* F1 비활성 */
+  .ac.dead{opacity:.55; cursor:not-allowed; box-shadow:none}
+  .ac.dead:hover{border-color:var(--border); transform:none; box-shadow:none}
+  .ac.dead .ai{color:var(--faint)}
+  .badge{display:inline-block; font-size:10.5px; font-weight:700; border-radius:5px; padding:1px 6px;
+    margin-left:6px; color:var(--muted); background:var(--surface2)}
+
+  .lbl2{font-size:11px; font-weight:800; margin-bottom:10px; text-align:center}
+  .lbl2.no{color:var(--danger)} .lbl2.yes{color:var(--accent)} .lbl2.mid{color:var(--muted)}
+  .fnd{background:#fff; border:1px solid var(--border); border-radius:12px; padding:15px 17px;
+    max-width:930px; box-shadow:0 6px 18px rgba(20,30,60,.07); font-size:12.5px; line-height:1.7; color:var(--muted)}
+  .fnd b{color:var(--ink)} .fnd .bad{color:var(--danger)} .fnd .ok{color:var(--accent)}
+  .fnd ol{margin:6px 0 0 18px} .fnd li{margin-bottom:10px}
+  table.t{border-collapse:collapse; font-size:12px; max-width:930px; width:100%; background:#fff;
+    border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 4px 14px rgba(20,30,60,.06)}
+  table.t th,table.t td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:top}
+  table.t th{background:var(--surface2); font-weight:700; font-size:11px; color:var(--muted)}
+  table.t tr:last-child td{border-bottom:none}
+  table.t td:first-child{white-space:nowrap; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:11.5px; font-weight:600}
+  table.t .no{color:var(--danger); font-weight:700} table.t .yes{color:var(--accent); font-weight:700}
+  code{background:var(--surface2); border-radius:4px; padding:1px 5px; font-size:11.5px}
+</style>
+</head>
+<body>
+  <h1>컬렉션 0개 빈 상태 — 확정판</h1>
+  <p class="note">
+    반영 완료: 서브 문구 <b>S1</b> · <b>세 경로 동등</b>(accent 강조 제거) ·
+    저장 불가 탭 <b>P2</b> · <b>tablign 새 탭도 목록에 표시</b>.
+  </p>
+
+  <h2>1. 확정 화면<span class="decided">확정</span></h2>
+  <p class="meta">1440 × 900 · 보드 내부 <b>866px</b> · 카드 <b>max-width 400px</b> · 창 2개 / 담을 수 있는 탭 7개</p>
+  <div class="scroll"><div class="app" id="a1"></div></div>
+  <p class="note">
+    <b>세 카드가 완전히 동등해졌습니다</b> — 아이콘 배경·테두리·크기가 모두 같고 accent는 어디에도 없습니다.
+    유일한 위계는 <b>순서</b>이므로, 빈도가 높을 것 같은 순서로 배치했습니다.<br/>
+    한 가지 짚어둘 점: 화면에 accent가 사라지면 시선의 <b>첫 착지점</b>이 없어집니다.
+    지금은 헤더의 <code>＋ 컬렉션</code>이 유일한 accent라 오히려 그쪽이 눈에 먼저 들어옵니다 —
+    빈 상태에서 헤더로 시선이 가는 게 나쁘지 않으니(같은 기능) 문제는 아니지만, 의도한 결과인지 확인해 두면 좋습니다.
+  </p>
+
+  <h2>2. “컬렉션은 탭을 모아두는 ○○이에요” — ○○ 후보</h2>
+  <p class="note">
+    헤드라인은 <b>“탭을 담을 첫 컬렉션을 만들어요”</b>로 확정. 서브의 ‘칸’만 교체합니다.<br/>
+    <b>먼저 못 쓰는 말 두 개.</b>
+    <b class="bad">‘공간’</b>은 스페이스(Space)의 한국어와 정면 충돌해 두 개념을 헷갈리게 만듭니다.
+    <b class="bad">‘보드’</b>는 컬렉션들을 담는 <b>상위 영역</b>의 이름(<code>Board.tsx</code>)이라 위계가 뒤집힙니다.
+    <b class="bad">‘폴더’</b>도 피하는 게 좋습니다 — 중첩되는 계층을 연상시키는데 컬렉션은 중첩되지 않고, 북마크 폴더와도 혼동됩니다.
+  </p>
+  <div class="scroll"><div class="crop" id="ct" style="width:1010px; height:640px"></div></div>
+  <p class="note" style="margin-top:10px">
+    <b>서랍을 추천합니다.</b> 이 문장의 임무는 헤드라인에 처음 나온 낯선 말 ‘컬렉션’을 아는 것에 붙여주는 것이라,
+    은유가 <b class="ok">해석할 틈을 주지 않는 게</b> 가장 중요합니다. ‘선반’이 실제 UI와는 더 정확하지만 한 박자 걸리고,
+    ‘묶음’은 은유가 없어 안전하지만 ‘모아둔 묶음’이 동어반복이 됩니다.<br/>
+    참고로 헤드라인과 서브에 <b>‘컬렉션’이 두 번</b> 나오는데, 이건 고칠 필요가 없습니다 —
+    앞에서 처음 등장한 용어를 뒤에서 곧바로 정의하는 구조라 <b>반복이 오히려 연결 장치</b>로 작동합니다.<br/>
+    받침에 따라 조사가 갈립니다: 서랍·선반·묶음·상자는 <b>“…이에요”</b>, 바구니·자리는 <b>“…예요”</b>.
+  </p>
+
+  <h2>3. 창 수에 따른 문구 분기</h2>
+  <div class="scroll"><div class="crop" id="c2" style="width:902px; height:400px"></div></div>
+
+  <h2>4. 담을 수 있는 탭이 0개 — F1<span class="decided">확정</span></h2>
+  <p class="note">
+    세 카드가 동등해졌으니 <b>승격 개념이 없어졌습니다</b>. 첫 카드만 비활성으로 내려앉고 나머지 둘은 그대로입니다 —
+    레이아웃이 완전히 동일해서 상태가 바뀌어도 화면이 흔들리지 않습니다.<br/>
+    비활성 표현은 <b>chevron 제거 + 아이콘 흐리게 + 회색 배지</b>로 합니다. ›가 남으면 “왜 안 눌리지”가 되고,
+    빨간 배지는 오류가 아닌 상태에 경고색을 쓰는 셈이라 뺐습니다.
+  </p>
+  <div class="scroll"><div class="crop" id="c3" style="width:902px; height:400px"></div></div>
+
+  <h2>5. 저장 불가 탭 — P2<span class="decided">확정</span></h2>
+  <p class="note">
+    글자 대비는 <b>정상 유지</b>(클릭 가능함을 지킴), <b>점선 테두리 + 회색 배경 + 자물쇠</b>로 “담을 수는 없다”만 따로 말합니다.
+    커서가 핵심 장치입니다 — 저장 가능 탭은 <code>grab</code>, 저장 불가 탭은 <code>pointer</code>.
+    <b>tablign 새 탭도 목록에 남깁니다.</b> 대신 자물쇠 자리에 <b>「현재 탭」 배지</b>를 달아,
+    눌러도 화면이 그대로인 이유를 미리 알려줍니다.
+  </p>
+  <div class="scroll"><div class="crop" id="c5" style="width:600px; height:340px"></div></div>
+
+  <h2>6. 구현 체크리스트</h2>
+  <div class="fnd">
+    <ol>
+      <li><b>드래그를 아예 막기.</b> 지금은 저장 불가 탭도 <code>useSortable</code>로 잡히고, 컬렉션에 드롭하면
+        <code>tabDropToLinkInput</code>이 <code>null</code>을 반환해 <span class="bad">아무 일도 일어나지 않습니다</span>
+        (<code>lib/tabs.ts:44</code>). <code>useSortable({disabled:true})</code> + <code>cursor:pointer</code>로 바꿔야 합니다.</li>
+      <li><b>카운트는 http(s) 필터 이후로.</b> “탭 7개”를 <code>group.tabs.length</code>로 세면 tablign 자신과
+        <code>chrome://</code> 페이지까지 세어 <span class="bad">실제 담기는 수와 어긋납니다</span>.
+        <code>tabsToLinkInputs</code>와 같은 기준으로 세야 합니다.</li>
+      <li><b>담을 탭이 0인 창은 건너뛰기.</b> 「열린 창 전부」가 창을 돌 때 담을 게 없는 창까지 컬렉션을 만들면
+        빈 컬렉션이 딸려 나옵니다. 우측 패널의 창별 「전체 저장」도 같은 문제가 있어
+        <span class="bad">지금 링크 0개 컬렉션을 만들 수 있습니다</span> — 빈 상태와 무관한 별개 버그입니다.</li>
+      <li><b>컬렉션 제목.</b> <code>saveWindow</code>는 <code>창 {i+1}</code>로 붙입니다(<code>NewTab.tsx:755</code>).
+        첫 경험 이름이 ‘창 1’이면 아까우니, 생성 직후 첫 컬렉션에 <b>인라인 이름 편집</b>을 띄우는 정도가 적당합니다.</li>
+      <li><b>되돌리기.</b> 「열린 창 전부」는 한 번에 컬렉션 N개 + 링크 수십 개를 만듭니다.
+        토스트에 <b>「되돌리기」</b>가 필요합니다 — 현재 토스트는 문구만 띄웁니다.</li>
+      <li><b>0개 판정은 실시간으로.</b> 빈 상태를 보는 중에 사용자가 다른 창에서 탭을 열면 첫 카드가 <b>살아나야</b> 합니다.
+        첫 렌더 값으로 고정하지 않도록 주의.</li>
+      <li><b>자물쇠 <code>title</code>은 스킴별로.</b> <code>file://</code>은 “내 컴퓨터의 파일은 담을 수 없어요”,
+        그 외는 “브라우저 내부 페이지는 담을 수 없어요”.</li>
+    </ol>
+  </div>
+
+  <h2>7. “넣을 수 없는 탭”의 기준</h2>
+  <p class="note">
+    <code>lib/tabs.ts:9</code>의 <code>isHttp()</code>가 <b><code>url</code>이 있고 <code>http://</code> 또는
+    <code>https://</code>로 시작</b>하는 탭만 통과시킵니다. <code>tabsToLinkInputs</code>가 이 필터를 쓰므로
+    드래그 드롭·창 전체 저장·모든 저장 경로에 동일하게 적용됩니다.
+    <code>permissions: ["tabs"]</code>가 있어 <code>url</code>은 항상 채워지니, 실패는 사실상 <b>스킴 때문</b>입니다.
+  </p>
+  <table class="t">
+    <tr><th>URL</th><th>저장</th><th>실제로 언제 보이나</th></tr>
+    <tr><td>https:// · http://</td><td class="yes">가능</td><td>일반 웹페이지, 웹에서 연 PDF</td></tr>
+    <tr><td>http://localhost:3000</td><td class="yes">가능</td><td>http라서 통과합니다. <b>팀에 공유하면 남의 기기에서는 안 열립니다</b> — 의도한 동작인지 확인이 필요한 지점</td></tr>
+    <tr><td>chrome-extension://</td><td class="no">불가</td><td><b>tablign 새 탭 자신</b>, 다른 확장의 페이지</td></tr>
+    <tr><td>chrome://</td><td class="no">불가</td><td>설정, 확장 프로그램, 방문 기록, 다운로드, 북마크 관리자</td></tr>
+    <tr><td>file://</td><td class="no">불가</td><td>로컬에서 연 PDF·HTML. 다른 기기에서 열 수 없으니 제외가 맞습니다</td></tr>
+    <tr><td>about:blank</td><td class="no">불가</td><td>빈 탭</td></tr>
+    <tr><td>data: · blob: · view-source:</td><td class="no">불가</td><td>인라인 문서, 소스 보기</td></tr>
+    <tr><td>devtools://</td><td class="no">불가</td><td>개발자 도구를 별 탭으로 띄운 경우</td></tr>
+    <tr><td>(url 빈 값)</td><td class="no">불가</td><td>탭이 아직 로딩 전. <code>tabs</code> 권한이 있어 드문 케이스</td></tr>
+  </table>
+
+<script>
+const I = {
+  hash:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>',
+  plus:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>',
+  plusL:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>',
+  caret:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M6 9l6 6 6-6"/></svg>',
+  chev:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>',
+  chevD:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>',
+  tkL:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="7" width="18" height="10" rx="2.5"/><path d="M8 7v10M13 12h4"/></svg>',
+  sr:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>',
+  pnl:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16M16.5 9.5L14 12l2.5 2.5"/></svg>',
+  pnr:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M15 4v16M7.5 9.5L10 12l-2.5 2.5"/></svg>',
+  win:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/></svg>',
+  wins:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="6.5" width="13" height="11" rx="2"/><path d="M2.5 10h13"/><path d="M8.5 6.5V5a1.5 1.5 0 011.5-1.5h9A1.5 1.5 0 0120.5 5v9a1.5 1.5 0 01-1.5 1.5h-1.5"/></svg>',
+  dl:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>',
+  x:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  lock:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>',
+};
+
+const W1 = [
+  { m:'G', c:'#1a73e8', t:'Google Meet — 주간 스탠드업' },
+  { m:'N', c:'#191919', t:'Notion — 스프린트 26 보드' },
+  { m:'F', c:'#a259ff', t:'Figma — 디자인 시스템 v3' },
+  { m:'S', c:'#4a154b', t:'Slack — #product-design' },
+  { m:'L', c:'#0052cc', t:'Linear — TAB-412 공유 코드' },
+];
+const W2 = [
+  { m:'M', c:'#d93025', t:'Gmail — 받은 편지함' },
+  { m:'A', c:'#ff9900', t:'AWS 콘솔 — 배포 로그' },
+];
+const fv = t => `<span class="fv" style="background:${t.c}">${t.m}</span>`;
+const GH = `<span class="fv gh">▦</span>`;
+/* P2: 저장 불가 탭 */
+const NOSAVE = (label) => `<div class="tb nosave">${GH}<span class="tt">${label}</span>
+  <span class="lock">${I.lock}</span></div>`;
+/* P2 + 현재 탭 배지: tablign 새 탭 자신 */
+const SELF = `<div class="tb nosave">${GH}<span class="tt">tablign — 새 탭</span>
+  <span class="chip">현재 탭</span></div>`;
+
+const RAIL = `<div class="rail"><div class="logo"></div>
+  <div class="oa on">업</div><div class="oa">P</div><div class="oa gh">＋</div>
+  <div class="acct"></div></div>`;
+
+const SIDE = `<div class="side">
+  <div class="hd"><span class="oi"></span><span class="nm">업무 조직</span>
+    <span style="color:var(--faint);display:flex">${I.pnl}</span></div>
+  <div class="srch">${I.sr}<span>검색</span></div>
+  <div class="lbl">스페이스</div>
+  <div class="rows">
+    <div class="row on">${I.hash} 업무</div>
+    <div class="row">${I.hash} 리서치</div>
+    <div class="row">${I.hash} 나중에 읽기</div>
+    <div class="row add">${I.plus} 스페이스 추가</div>
+  </div>
+  <div class="lbl" style="padding-top:8px">공유 스페이스</div>
+  <div class="rows"><div class="row">${I.hash} 팀 온보딩</div></div>
+  <div class="foot"></div></div>`;
+
+const tabRows = (list, hl) => list.map(t =>
+  `<div class="tb${hl?' hl':''}">${fv(t)}<span class="tt">${t.t}</span></div>`).join('');
+
+/* 담을 수 있는 탭 7개(창1의 5 + 창2의 2). 자기 탭·chrome:// 은 카운트 제외 */
+const RP_MAIN = `<div class="rp">
+  <div class="rh"><span class="t">열린 탭</span><span class="c">담을 수 있는 탭 7개</span></div>
+  <div class="wg"><span class="wn act">${I.chevD} 창 1</span><span class="ax">${I.dl}${I.x}</span></div>
+  <div class="tabs">${tabRows(W1, true)}${SELF}</div>
+  <div class="wg"><span class="wn act">${I.chevD} 창 2</span><span class="ax">${I.dl}${I.x}</span></div>
+  <div class="tabs">${tabRows(W2, true)}${NOSAVE('chrome://settings')}</div>
+</div>`;
+
+const SPLIT = `<span class="split"><span class="main">${I.plus} 컬렉션</span>
+  <span class="div"></span><span class="caret">${I.caret}</span></span>`;
+const BHD = `<div class="bhd">
+  <div class="l"><span class="ttl">업무</span><span class="cnt">· 0 컬렉션</span></div>
+  <div class="r">${SPLIT}</div></div>`;
+
+/* 카드 — 세 장 완전 동일 구조. primary 없음 */
+function card({icon, title, sub, dead, badge}){
+  return `<div class="ac${dead?' dead':''}">
+    <span class="ai">${icon}</span>
+    <span class="tx"><span class="at">${title}${badge||''}</span><span class="as">${sub}</span></span>
+    ${dead ? '' : `<span class="chev">${I.chev}</span>`}</div>`;
+}
+const C_ALL = (w,t) => card({icon:I.wins, title:`열린 창 ${w}개를 그대로 담기`, sub:`창별로 컬렉션 1개씩 · 탭 ${t}개`});
+const C_ONE = t => card({icon:I.win, title:`지금 창의 탭 ${t}개 담기`, sub:'창 1을 그대로 컬렉션으로'});
+const C_NEW = card({icon:I.plusL, title:'빈 컬렉션 만들기', sub:'이름부터 정하고 하나씩 담기'});
+const C_CODE = card({icon:I.tkL, title:'공유 코드로 추가', sub:'코드 8자리로 컬렉션 복사'});
+
+/* 확정 헤드라인 + 추천 OO(서랍) */
+const HEAD = `<div class="eh">탭을 담을 첫 컬렉션을 만들어요</div>
+  <div class="esub">컬렉션은 탭을 모아두는 서랍이에요</div>`;
+
+const $ = id => document.getElementById(id);
+
+/* 1. 확정 화면 */
+$('a1').innerHTML = `${RAIL}${SIDE}<div class="board">${BHD}
+  <div class="es">${HEAD}<div class="stack">${C_ALL(2,7)}${C_NEW}${C_CODE}</div></div>
+</div>${RP_MAIN}`;
+
+/* 2. 문구 후보 */
+const HL = '탭을 담을 첫 컬렉션을 만들어요';
+const COPIES = [
+  { k:'서랍 · 추천', cls:'yes', h:HL, s:'컬렉션은 탭을 모아두는 서랍이에요',
+    why:`<b>즉시 이해되고 애매함이 0.</b> 이 문장의 임무는 낯선 말 ‘컬렉션’을 아는 것에 연결하는 것이라, 은유가 <b>생각할 틈을 주지 않는 게</b> 가장 중요합니다. ‘정리해서 넣어둔다’는 함의도 목적과 맞습니다.` },
+  { k:'선반', cls:'mid', h:HL, s:'컬렉션은 탭을 모아두는 선반이에요',
+    why:`<b>실제 UI와 가장 정확히 맞습니다</b> — 내용이 열려 보이고, 여러 개가 위아래로 쌓이는 게 컬렉션 섹션 그대로예요. 서랍은 “닫혀 있다”는 함의가 있어 이 점만은 어긋납니다. 다만 ‘선반’은 읽는 데 한 박자 걸립니다.` },
+  { k:'묶음', cls:'mid', h:HL, s:'컬렉션은 탭을 모아둔 묶음이에요',
+    why:`<b>은유를 아예 안 쓰는 안.</b> 비유를 해석할 필요가 없어 가장 정확합니다. 대신 ‘모아둔 묶음’이 <b>동어반복</b>에 가깝고, 앱에 없던 용어를 하나 더 만듭니다.` },
+  { k:'바구니', cls:'mid', h:HL, s:'컬렉션은 탭을 모아두는 바구니예요',
+    why:`가장 캐주얼하고 친근합니다. 다만 장바구니 연상 때문에 <b class="bad">임시로 담아두는 느낌</b>이 나서, 오래 두고 다시 꺼내 쓰는 용도와 어긋납니다.` },
+  { k:'자리', cls:'mid', h:HL, s:'컬렉션은 탭을 모아두는 자리예요',
+    why:`예전에 검토했던 <b>‘지정석’ 계열</b>과 결이 맞고 가장 부드럽습니다. 다만 ‘자리’는 <b>하나짜리</b> 느낌이 강해 여러 탭을 담는다는 게 약하게 전달됩니다.` },
+  { k:'상자', cls:'mid', h:HL, s:'컬렉션은 탭을 모아두는 상자예요',
+    why:`무난하지만 서랍과 장단점이 똑같으면서 <b>덜 정돈된 느낌</b>입니다. 서랍이 있으면 굳이 고를 이유가 없습니다.` },
+];
+$('ct').innerHTML = `<div class="board" style="width:100%; overflow:auto">
+  <div style="display:flex; flex-direction:column; gap:14px; padding-top:12px">
+    ${COPIES.map(v => `
+      <div style="display:flex; align-items:center; gap:14px">
+        <span class="lbl2 ${v.cls}" style="width:62px; margin:0; text-align:right; flex:none">${v.k}</span>
+        <div style="width:400px; flex:none; text-align:center">
+          <div class="eh" style="font-size:16px">${v.h}</div>
+          <div class="esub" style="margin:5px auto 0">${v.s}</div>
+        </div>
+        <p style="font-size:11.5px; color:var(--muted); line-height:1.55; flex:1">${v.why}</p>
+      </div>`).join('')}
+  </div></div>`;
+
+/* 3. 창 수 분기 */
+$('c2').innerHTML = `<div class="board" style="width:100%">
+  <div style="display:flex; gap:26px; justify-content:center; padding-top:18px">
+    <div><div class="lbl2 mid">창이 2개 이상</div>
+      <div class="stack" style="margin:0; width:400px">${C_ALL(3,21)}${C_NEW}${C_CODE}</div></div>
+    <div><div class="lbl2 mid">창이 1개</div>
+      <div class="stack" style="margin:0; width:400px">${C_ONE(5)}${C_NEW}${C_CODE}</div></div>
+  </div></div>`;
+
+/* 4. F1 — 담을 탭 0개 */
+const DEAD = card({icon:I.wins, title:'열린 창 담기', sub:'브라우저 내부 페이지만 열려 있어요',
+  dead:true, badge:'<span class="badge">담을 탭 0개</span>'});
+$('c3').innerHTML = `<div class="board" style="width:100%">
+  <div style="display:flex; gap:26px; justify-content:center; padding-top:18px">
+    <div><div class="lbl2 mid">담을 수 있는 탭 7개</div>
+      <div class="stack" style="margin:0; width:400px">${C_ALL(2,7)}${C_NEW}${C_CODE}</div></div>
+    <div><div class="lbl2 yes">담을 수 있는 탭 0개 — F1</div>
+      <div class="stack" style="margin:0; width:400px">${DEAD}${C_NEW}${C_CODE}</div></div>
+  </div></div>`;
+
+/* 5. P2 확정 — 저장 가능 / 불가 / 현재 탭 */
+$('c5').innerHTML = `<div style="display:flex; width:100%; background:var(--surface2)">
+  <div style="flex:1; padding:14px">
+    <div class="lbl2 yes">P2 · 세 가지 상태가 한 목록에</div>
+    <div class="rp" style="width:100%; border:1px solid var(--border); border-radius:9px">
+      <div class="rh"><span class="t">열린 탭</span><span class="c">담을 수 있는 탭 2개</span></div>
+      <div class="wg"><span class="wn">${I.chevD} 창 1</span><span class="ax">${I.dl}${I.x}</span></div>
+      <div class="tabs">
+        <div class="tb">${fv(W1[0])}<span class="tt">Google Meet — 주간 스탠드업</span></div>
+        ${NOSAVE('chrome://settings')}
+        ${SELF}
+        <div class="tb">${fv(W1[1])}<span class="tt">Notion — 스프린트 26</span></div>
+      </div>
+    </div></div>
+  <div style="flex:1; padding:14px; border-left:1px solid #d8dde4; font-size:12px; color:var(--muted); line-height:1.75">
+    <div class="lbl2 mid" style="text-align:left">각 상태가 말하는 것</div>
+    <p><b style="color:var(--ink)">일반 탭</b> — 흰 배경, 실선. 커서 <code>grab</code>.
+      드래그로 컬렉션에 넣을 수 있고 클릭하면 이동합니다.</p>
+    <p style="margin-top:9px"><b style="color:var(--ink)">저장 불가 탭</b> — 회색 배경, 점선, 자물쇠. 커서 <code>pointer</code>.
+      <b>글자 대비는 그대로</b>라 클릭 가능함이 살아 있고, 자물쇠 <code>title</code>로 이유를 띄웁니다.</p>
+    <p style="margin-top:9px"><b style="color:var(--ink)">tablign 새 탭</b> — 같은 점선 처리 + <b>「현재 탭」 배지</b>.
+      눌러도 화면이 그대로인 이유를 배지가 미리 말해줍니다.</p>
+  </div>
+</div>`;
+</script>
+</body>
+</html>
