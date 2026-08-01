@@ -7,6 +7,7 @@ import {
 import { theme } from "./theme";
 import { Button } from "./Button";
 import { Favicon } from "./Favicon";
+import { TriCheckbox, triCheckboxCss, type TriState } from "./TriCheckbox";
 import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
 
 export interface ImportOrgOption { id: string; name: string }
@@ -24,52 +25,12 @@ export interface ImportBookmarksDialogProps {
   onClose: () => void;
 }
 
-/** 스페이스의 선택 상태 — 전체/일부/제외. */
-type SpaceState = "on" | "some" | "none";
+
 
 const mono = {
   fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
   fontVariantNumeric: "tabular-nums" as const,
 };
-
-/** 3상태 체크박스. `mixed`는 일부만 켜진 스페이스를 뜻한다. */
-function Check({ state, label, onToggle }: {
-  state: SpaceState; label: string; onToggle: () => void;
-}) {
-  const on = state !== "none";
-  return (
-    <span
-      role="checkbox"
-      tabIndex={0}
-      aria-checked={state === "some" ? "mixed" : state === "on"}
-      aria-label={label}
-      onClick={(e) => { e.stopPropagation(); onToggle(); }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onToggle(); }
-      }}
-      style={{
-        position: "relative", width: 15, height: 15, flex: "none", borderRadius: 4.5,
-        boxSizing: "border-box", cursor: "pointer",
-        border: `1.5px solid ${on ? theme.accent : "#ccd2da"}`,
-        background: on ? theme.accent : theme.surface,
-      }}
-    >
-      {state === "on" && (
-        <span style={{
-          position: "absolute", left: 3.2, top: 3.8, width: 7, height: 4,
-          borderLeft: "1.6px solid #fff", borderBottom: "1.6px solid #fff",
-          transform: "rotate(-45deg)",
-        }} />
-      )}
-      {state === "some" && (
-        <span style={{
-          position: "absolute", left: 3, top: 5.7, width: 7, height: 2,
-          background: "#fff", borderRadius: 1,
-        }} />
-      )}
-    </span>
-  );
-}
 
 /**
  * 가져오기 미리보기.
@@ -124,7 +85,7 @@ export function ImportBookmarksDialog({
   const active: PlannedSpace | undefined =
     outline.find((s) => s.sourceId === activeId) ?? outline[0];
 
-  function spaceState(sp: PlannedSpace): SpaceState {
+  function spaceState(sp: PlannedSpace): TriState {
     const on = sp.collections.filter((c) => enabled[c.sourceId]).length;
     if (on === 0) return "none";
     return on === sp.collections.length ? "on" : "some";
@@ -167,7 +128,7 @@ export function ImportBookmarksDialog({
     <div role="presentation" onClick={() => !busy && onClose()}
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn,
         display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
-      <style>{overlayAnimationCss}</style>
+      <style>{overlayAnimationCss + triCheckboxCss}</style>
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
         style={{ boxSizing: "border-box", width: 770, maxWidth: "calc(100vw - 32px)", animation: panelIn,
           background: theme.surface, borderRadius: 14, boxShadow: "0 18px 50px rgba(0,0,0,.26)",
@@ -214,7 +175,7 @@ export function ImportBookmarksDialog({
                     style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 7px",
                       borderRadius: 8, minWidth: 0, boxSizing: "border-box",
                       background: cur ? theme.accentWeak : "transparent" }}>
-                    <Check state={st} label={`${sp.name} 포함`} onToggle={() => toggleSpace(sp)} />
+                    <TriCheckbox state={st} label={`${sp.name} 포함`} onToggle={() => toggleSpace(sp)} />
                     <button type="button" onClick={() => setActiveId(sp.sourceId)}
                       style={{ flex: 1, minWidth: 0, border: "none", background: "none", padding: 0,
                         textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}>
@@ -250,7 +211,7 @@ export function ImportBookmarksDialog({
                 <div data-testid="board-header"
                   style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 16px 10px",
                     borderBottom: `1px solid ${theme.border}`, background: theme.surface }}>
-                  <Check state={spaceState(active)} label={`${active.name} 포함`}
+                  <TriCheckbox state={spaceState(active)} label={`${active.name} 포함`}
                     onToggle={() => toggleSpace(active)} />
                   <span style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: "-.015em",
                     minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -272,7 +233,7 @@ export function ImportBookmarksDialog({
                           border: `1px solid ${theme.borderCard}`, borderRadius: 10,
                           padding: "9px 11px 6px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                          <Check state={on ? "on" : "none"} label={`${c.title} 포함`}
+                          <TriCheckbox state={on ? "on" : "none"} label={`${c.title} 포함`}
                             onToggle={() => toggleCollection(c.sourceId)} />
                           <button type="button" onClick={() => toggleCollection(c.sourceId)}
                             style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0,

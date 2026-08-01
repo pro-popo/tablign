@@ -17,6 +17,7 @@ export * from "./Toast";
 export * from "./ConfirmDialog";
 export * from "./ShareCodeDialog";
 export * from "./ImportCodeDialog";
+export * from "./TriCheckbox";
 export * from "./ImportBookmarksDialog";
 export * from "./ImportSourceDialog";
 export * from "./usePanelState";
