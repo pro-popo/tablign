@@ -982,6 +982,12 @@ export function NewTab() {
   }
 
   async function pickBookmarkSource() {
+    // 권한이 아직 적용 안 된 상태(manifest 변경 후 확장 미새로고침)면 API 자체가 없다 —
+    // 일반 실패와 구분해 사용자가 스스로 고칠 수 있는 안내를 준다.
+    if (!chrome.bookmarks) {
+      toast.show("북마크 권한이 아직 적용되지 않았어요. chrome://extensions에서 tablign을 새로고침해 주세요.");
+      return;
+    }
     try {
       // Chrome 북마크는 여기서 읽기만 한다 — 생성·수정·삭제 코드는 앱 어디에도 없다(manifest의
       // bookmarks 권한이 "읽기 및 변경"으로 표시되는 것은 Chrome에 읽기 전용 권한이 없어서다).
@@ -989,7 +995,7 @@ export function NewTab() {
       setBookmarkRoots(fromChromeTree(tree[0]?.children ?? []));
     } catch (e) {
       console.error(e);
-      toast.show("북마크를 읽지 못했어요");
+      toast.show(`북마크를 읽지 못했어요 — ${e instanceof Error ? e.message : String(e)}`);
       return;
     }
     setImportTitle("북마크 가져오기");
