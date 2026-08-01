@@ -2,6 +2,30 @@ import { useEffect, useRef, useState } from "react";
 import { theme } from "./theme";
 import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
 
+/**
+ * 소스 선택 카드의 상호작용 스타일. 호버·active는 인라인으로 표현할 수 없어 클래스로 뺀다.
+ * 호버에서 아이콘 박스가 옅은 배경 → 액센트 채움으로 바뀌어, 무엇을 고르는지 눈이 먼저 안다.
+ */
+const importSourceCss = `
+.tbl-src-opt {
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+  -webkit-user-select: none; user-select: none;
+}
+.tbl-src-opt:hover:not(:disabled) {
+  border-color: #c9d4ff; box-shadow: 0 5px 16px rgba(59,91,219,.12); transform: translateY(-1px);
+}
+.tbl-src-opt:active:not(:disabled) {
+  transform: translateY(0); box-shadow: 0 2px 6px rgba(59,91,219,.1);
+}
+.tbl-src-opt:focus-visible { outline: 2px solid ${theme.accent}; outline-offset: 2px }
+.tbl-src-ico { transition: background .15s ease, color .15s ease }
+.tbl-src-opt:hover:not(:disabled) .tbl-src-ico { background: ${theme.accent}; color: #fff }
+@media (prefers-reduced-motion: reduce) {
+  .tbl-src-opt, .tbl-src-ico { transition: none }
+  .tbl-src-opt:hover:not(:disabled) { transform: none }
+}
+`;
+
 export interface ImportSourceDialogProps {
   open: boolean;
   /** Chrome 북마크를 골랐을 때. 실패(토스트 후 return)해도 다시 시도할 수 있게 완료를 기다린다. */
@@ -83,7 +107,7 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
     <div role="presentation" onClick={() => !busy && onClose()}
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn,
         display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
-      <style>{overlayAnimationCss}</style>
+      <style>{overlayAnimationCss + importSourceCss}</style>
       <div role="dialog" aria-modal="true" aria-label="가져오기" onClick={(e) => e.stopPropagation()}
         style={{ boxSizing: "border-box", width: 340, maxWidth: "calc(100vw - 32px)", animation: panelIn,
           background: theme.surface, borderRadius: 14, padding: "20px 18px 16px",
@@ -92,8 +116,8 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
         <div style={{ marginTop: 4, fontSize: 12.5, color: theme.textMuted }}>어디서 가져올까요?</div>
 
         <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-          <button type="button" style={option} disabled={busy} onClick={pickBookmarks}>
-            <span aria-hidden style={iconBox}>★</span>
+          <button type="button" className="tbl-src-opt" style={option} disabled={busy} onClick={pickBookmarks}>
+            <span aria-hidden className="tbl-src-ico" style={iconBox}>★</span>
             <span style={{ minWidth: 0 }}>
               <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: theme.text }}>Chrome 북마크</span>
               <span style={{ display: "block", marginTop: 2, fontSize: 12, color: theme.textMuted }}>
@@ -102,9 +126,9 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
             </span>
           </button>
 
-          <button type="button" style={option} disabled={busy}
+          <button type="button" className="tbl-src-opt" style={option} disabled={busy}
             onClick={() => fileRef.current?.click()}>
-            <span aria-hidden style={iconBox}>⬒</span>
+            <span aria-hidden className="tbl-src-ico" style={iconBox}>⬒</span>
             <span style={{ minWidth: 0 }}>
               <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: theme.text }}>Toby</span>
               <span style={{ display: "block", marginTop: 2, fontSize: 12, color: theme.textMuted }}>
