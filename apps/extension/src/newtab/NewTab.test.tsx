@@ -221,6 +221,24 @@ describe("NewTab — 스페이스가 없을 때", () => {
     expect(screen.getByText("컬렉션은 탭을 모아두는 서랍이에요")).toBeInTheDocument();
   });
 
+  it("사이드바에서 추가한 스페이스는 맨 위에 붙고, 새로고침 후에도 위에 있도록 기존 최소 position보다 작게 저장한다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "기존A", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+      { id: "s2", user_id: "u1", name: "기존B", icon: null, position: 2000, created_at: "x", org_id: "org-personal" },
+    ]);
+    createSpace.mockImplementation(async (_c: unknown, input: { name: string; position: number }) =>
+      ({ id: "s3", user_id: "u1", name: input.name, icon: null, position: input.position, created_at: "x", org_id: "org-personal" }));
+    renderNewTab();
+    fireEvent.click(await screen.findByRole("button", { name: /스페이스 추가/ }));
+    const input = screen.getByPlaceholderText("스페이스 이름");
+    fireEvent.change(input, { target: { value: "새것" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(createSpace).toHaveBeenCalledTimes(1));
+    expect(createSpace.mock.calls[0][1]).toMatchObject({ name: "새것", position: 0 });
+    const names = (await screen.findAllByText(/^(기존A|기존B|새것)$/)).map((el) => el.textContent?.trim());
+    expect(names.indexOf("새것")).toBeLessThan(names.indexOf("기존A"));
+  });
+
   it("스페이스가 있으면 온보딩 대신 보드를 보여준다", async () => {
     listSpaces.mockResolvedValue([
       { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },

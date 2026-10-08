@@ -33,7 +33,7 @@ const collisionDetection: CollisionDetection = (args) => {
 import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, PendingCollection, ShareCodeDialog, ImportCodeDialog, type ImportCodeInfo, ImportBookmarksDialog, ImportSourceDialog, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users } from "@tablign/ui";
 import {
   listSpaces, listMyMemberships, leaveSpace, listCollections, listLinks, createLink, createLinks, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
-  updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions,
+  updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions, positionBetween,
   copyCollection, moveCollectionToSpace,
   createCollectionShareCode, revokeCollectionShareCode, getShareCodeInfo, importCollectionByCode,
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
@@ -320,10 +320,12 @@ export function NewTab() {
 
   async function addSpace(name: string, icon: string | null) {
     if (!session) return;
-    const s = await createSpace(supabase, { user_id: session.user.id, name, icon, org_id: activeOrgId ?? undefined });
+    // 맨 위에 붙인다 — DB 기본값(1000)으로 두면 기존 스페이스와 position이 같아져 새로고침 시 순서가 뒤바뀐다.
+    const top = ownedSpaces.length ? Math.min(...ownedSpaces.map((x) => x.position)) : undefined;
+    const s = await createSpace(supabase, { user_id: session.user.id, name, icon, org_id: activeOrgId ?? undefined, position: positionBetween(undefined, top) });
     // 컬렉션 없이 비워 둔다 — 빈 상태(CollectionOnboarding)가 담는 방법 세 가지를 알려주므로,
     // 이름만 '새 컬렉션'인 빈 껍데기를 미리 만들어 두면 그 안내를 가로막는다.
-    setSpaces((prev) => [...prev, s]);
+    setSpaces((prev) => [s, ...prev]);
     selectSpace(s.id);
   }
 
