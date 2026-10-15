@@ -4,9 +4,11 @@ import { ORG_ICON_FONT } from "./orgIcon";
 
 export interface TossEmojiPickerProps {
   onSelect: (native: string) => void;
+  /** 주면 하단에 '기본 아이콘으로' 버튼을 보여준다(아이콘을 지워 기본값으로 되돌리기). */
+  onClear?: () => void;
 }
 
-export function TossEmojiPicker({ onSelect }: TossEmojiPickerProps) {
+export function TossEmojiPicker({ onSelect, onClear }: TossEmojiPickerProps) {
   const categories = useMemo(() => buildTossCategories(), []);
   const [query, setQuery] = useState("");
   const [preview, setPreview] = useState<{ native: string; name: string } | null>(null);
@@ -88,6 +90,7 @@ export function TossEmojiPicker({ onSelect }: TossEmojiPickerProps) {
         <span style={{ ...footBig, fontFamily: ORG_ICON_FONT }}>{preview?.native ?? "🚀"}</span>
         <span data-testid="toss-preview-name" style={footName}>{preview?.name ?? "로켓"}</span>
         <span style={attrText}>토스페이스 · 토스팀 제공</span>
+        {onClear && <button type="button" onClick={onClear} style={clearBtn}>기본 아이콘으로</button>}
       </div>
     </div>
   );
@@ -117,3 +120,4 @@ const footBox: CSSProperties = { borderTop: "1px solid #f1f3f5", padding: "8px 1
 const footBig: CSSProperties = { fontSize: 26 };
 const footName: CSSProperties = { fontSize: 12.5, color: "#868e96" };
 const attrText: CSSProperties = { marginLeft: "auto", fontSize: 10.5, color: "#ced4da" };
+const clearBtn: CSSProperties = { border: "none", background: "none", padding: "4px 0", cursor: "pointer", fontSize: 11.5, fontWeight: 600, color: "#3b5bdb", whiteSpace: "nowrap" };

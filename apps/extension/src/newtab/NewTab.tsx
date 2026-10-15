@@ -56,6 +56,7 @@ import { DndLinkList } from "./DndLinkList";
 import { AuthScreen } from "./AuthScreen";
 import { OrgHeader, type OrgRole } from "./OrgHeader";
 import type { OrgFormValue } from "./OrgFormDialog";
+import { ORG_ICON_FONT } from "./orgIcon";
 
 // 조직 생성/수정 다이얼로그는 토스 이모지 데이터(@emoji-mart/data, ~423KB)를 끌고 오므로
 // 초기 번들에서 떼어내 다이얼로그를 처음 열 때만 로드한다.
@@ -317,9 +318,9 @@ export function NewTab() {
     toast.show("조직에 참여했어요");
   }
 
-  async function addSpace(name: string) {
+  async function addSpace(name: string, icon: string | null) {
     if (!session) return;
-    const s = await createSpace(supabase, { user_id: session.user.id, name, org_id: activeOrgId ?? undefined });
+    const s = await createSpace(supabase, { user_id: session.user.id, name, icon, org_id: activeOrgId ?? undefined });
     // 컬렉션 없이 비워 둔다 — 빈 상태(CollectionOnboarding)가 담는 방법 세 가지를 알려주므로,
     // 이름만 '새 컬렉션'인 빈 껍데기를 미리 만들어 두면 그 안내를 가로막는다.
     setSpaces((prev) => [...prev, s]);
@@ -378,9 +379,9 @@ export function NewTab() {
     }
   }
 
-  async function renameSpace(id: string, name: string) {
-    await updateSpace(supabase, id, { name });
-    setSpaces((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)));
+  async function editSpace(id: string, name: string, icon: string | null) {
+    await updateSpace(supabase, id, { name, icon });
+    setSpaces((prev) => prev.map((s) => (s.id === id ? { ...s, name, icon } : s)));
   }
 
   async function deleteSpace(id: string) {
@@ -1090,7 +1091,7 @@ export function NewTab() {
                 activeSpaceId={activeSpaceId}
                 onSelectSpace={(id) => { selectSpace(id); }}
                 onAddSpace={addSpace}
-                onRenameSpace={renameSpace}
+                onEditSpace={editSpace}
                 onDeleteSpace={deleteSpace}
                 onLeaveSpace={handleLeaveSpace}
                 onCollapse={toggleLeft}
@@ -1114,7 +1115,7 @@ export function NewTab() {
             <Board>
               {spacesLoaded && orgSpaces.length === 0 ? (
                 // 활성 조직에 스페이스가 0개(신규 가입 직후, 전부 삭제, 또는 방금 만든 빈 조직): 온보딩 빈 상태.
-                <SpaceOnboarding onCreate={() => addSpace("개인")} />
+                <SpaceOnboarding onCreate={() => addSpace("개인", null)} />
               ) : (
                 // 헤더 + 본문을 flex 컬럼으로 묶어, 빈 상태가 헤더 아래 '남은 공간'을 정확히 채우게 한다.
                 // (헤더 높이를 상수로 빼서 계산하면 헤더가 바뀔 때 어긋난다)
@@ -1273,7 +1274,7 @@ export function NewTab() {
             background: "#fff", boxShadow: "0 8px 20px rgba(20,30,60,.22)", cursor: "grabbing",
             fontWeight: 600, color: theme.text, fontSize: 12.5,
           }}>
-            {active.space.icon ? `${active.space.icon} ` : ""}{active.space.name}
+            {active.space.icon && <span style={{ fontFamily: ORG_ICON_FONT }}>{active.space.icon} </span>}{active.space.name}
           </div>
         ) : preview ? (
           <div style={{
