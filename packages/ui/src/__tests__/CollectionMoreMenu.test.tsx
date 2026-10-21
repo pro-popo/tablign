@@ -59,4 +59,13 @@ describe("CollectionMoreMenu", () => {
     expect(screen.getByText("공유 코드")).toBeInTheDocument();
     expect(screen.queryByText("다른 스페이스로 이동")).not.toBeInTheDocument();
   });
+
+  it("onCopyLinks가 있으면 '링크 전체 복사' 클릭 시 호출되고 닫힌다", () => {
+    const onCopyLinks = vi.fn();
+    render(<CollectionMoreMenu spaces={[]} onMove={noop} onCopy={noop} onCopyLinks={onCopyLinks} />);
+    fireEvent.click(screen.getByRole("button", { name: "컬렉션 메뉴" }));
+    fireEvent.click(screen.getByText("링크 전체 복사"));
+    expect(onCopyLinks).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("링크 전체 복사")).not.toBeInTheDocument();
+  });
 });
