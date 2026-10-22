@@ -39,7 +39,7 @@ import {
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
   listOrganizations, createOrganization, updateOrganization, deleteOrganization, listMyOrgMemberships, listOrgMembers, removeOrgMember, updateOrgMemberRole,
   inviteToOrg, listOrgInvitations, cancelOrgInvitation, listMyOrgInvitations, acceptOrgInvitation, declineOrgInvitation,
-  fromChromeTree, fromTobyExport, importBookmarks, type SourceNode, type ImportPlan,
+  fromChromeTree, fromTobyExport, importBookmarks, linksToText, type SourceNode, type ImportPlan,
   type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
   type Organization, type OrganizationMember, type OrgMemberWithProfile, type OrganizationInvitation, type OrgInvitationWithOrg,
 } from "@tablign/core";
@@ -426,6 +426,16 @@ export function NewTab() {
     } catch (e) {
       console.error(e);
       toast.show("복사에 실패했어요. 다시 시도해 주세요.");
+    }
+  }
+
+  async function copyCollectionLinks(collection: Collection, links: Link[]) {
+    try {
+      await navigator.clipboard.writeText(linksToText(collection.title, links));
+      toast.show(`링크 ${links.length}개를 복사했어요`);
+    } catch (e) {
+      console.error(e);
+      toast.show("복사하지 못했어요. 다시 시도해 주세요.");
     }
   }
 
@@ -1239,6 +1249,7 @@ export function NewTab() {
                                 onMove={(sid) => moveCollectionTo(c, sid)}
                                 onCopy={(sid) => copyCollectionTo(c, sid)}
                                 onShare={() => openShareDialog(c)}
+                                onCopyLinks={links.length > 0 ? () => copyCollectionLinks(c, links) : undefined}
                                 isPrivate={c.is_private}
                                 onTogglePrivate={c.user_id === userId ? async () => {
                                   await updateCollection(supabase, c.id, { is_private: !c.is_private });
