@@ -18,6 +18,5 @@
   },
   "background": { "service_worker": "assets/background.js", "type": "module" },
   "chrome_url_overrides": { "newtab": "newtab.html" },
-  "permissions": ["tabs", "storage", "identity", "bookmarks"],
-  "host_permissions": ["http://127.0.0.1:54321/*"]
+  "permissions": ["tabs", "storage", "identity", "bookmarks"]
 }
