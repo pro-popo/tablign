@@ -1204,7 +1204,7 @@ export function NewTab() {
                 onDeleteSpace={deleteSpace}
                 onLeaveSpace={handleLeaveSpace}
                 onCollapse={toggleLeft}
-                searchSlot={<ExtSearchBar />}
+                searchSlot={<ExtSearchBar key={activeOrgId} orgId={activeOrgId} onSelectSpace={selectSpace} />}
                 orgHeaderSlot={activeOrg ? (
                   <OrgHeader
                     org={activeOrg}

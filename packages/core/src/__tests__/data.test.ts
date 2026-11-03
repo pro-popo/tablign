@@ -15,7 +15,8 @@ import {
   listTagsForCollection,
   listCollectionIdsForTag,
 } from "../data/tags";
-import { searchCollections, searchLinks } from "../data/search";
+import { searchLinks } from "../data/search";
+import { createOrganization } from "../data/organizations";
 
 const envText = readFileSync(resolve(__dirname, "../../.env.test"), "utf8");
 const env = Object.fromEntries(
@@ -280,10 +281,18 @@ describe("tags 데이터 접근", () => {
 
 describe("search 데이터 접근", () => {
   let user: { client: SupabaseClient; id: string };
+  let orgId: string;
+  let spaceId: string;
 
   beforeAll(async () => {
     user = await makeUser(`search-${Date.now()}@test.local`);
     const space = await createSpace(user.client, { user_id: user.id, name: "개인" });
+    orgId = space.org_id;
+    spaceId = space.id;
+    const other = await createOrganization(user.client, { name: "다른 조직", owner_id: user.id });
+    const otherSpace = await createSpace(user.client, { user_id: user.id, name: "팀", org_id: other.id });
+    const oc = await createCollection(user.client, { user_id: user.id, space_id: otherSpace.id, title: "팀 자료" });
+    await createLink(user.client, { user_id: user.id, collection_id: oc.id, url: "https://nextjs.org/team", title: "Next.js 팀" });
     const c = await createCollection(user.client, {
       user_id: user.id,
       space_id: space.id,
@@ -297,24 +306,24 @@ describe("search 데이터 접근", () => {
     });
   });
 
-  it("컬렉션 제목으로 검색한다", async () => {
-    const results = await searchCollections(user.client, "리액트");
-    expect(results.some((c) => c.title.includes("리액트"))).toBe(true);
-  });
-
   it("링크 제목으로 검색한다", async () => {
-    const results = await searchLinks(user.client, "Next.js");
+    const results = await searchLinks(user.client, "Next.js", orgId);
     expect(results.some((l) => (l.title ?? "").includes("Next.js"))).toBe(true);
   });
 
   it("링크 url로 검색한다", async () => {
-    const results = await searchLinks(user.client, "nextjs.org");
+    const results = await searchLinks(user.client, "nextjs.org", orgId);
     expect(results.some((l) => l.url.includes("nextjs.org"))).toBe(true);
   });
 
+  it("다른 조직의 링크는 찾지 않는다", async () => {
+    const results = await searchLinks(user.client, "nextjs.org", orgId);
+    expect(results.map((l) => l.url)).toEqual(["https://nextjs.org/docs"]);
+    expect(results[0].collection.space).toEqual({ id: spaceId, name: "개인", icon: null });
+  });
+
   it("빈 쿼리는 빈 배열을 반환한다", async () => {
-    expect(await searchCollections(user.client, "  ")).toEqual([]);
-    expect(await searchLinks(user.client, "")).toEqual([]);
+    expect(await searchLinks(user.client, "  ", orgId)).toEqual([]);
   });
 });
 
