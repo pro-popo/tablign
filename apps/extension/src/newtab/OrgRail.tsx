@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { Organization, OrganizationMember } from "@tablign/core";
-import { LogoMark, Plus, LogOut, theme } from "@tablign/ui";
+import { LogoMark, Plus, LogOut, Mail, theme } from "@tablign/ui";
 import { OrgIconBox } from "./OrgIconBox";
 
 export interface OrgRailProps {
@@ -13,13 +14,41 @@ export interface OrgRailProps {
   onSelectOrg: (id: string) => void;
   onCreateOrg: () => void;
   onSignOut: () => void;
+  /** 받은 초대(스페이스·조직) 개수 — 0보다 크면 받은 초대함에 배지를 단다 */
+  invitationCount: number;
+  /** 받은 초대함을 눌렀을 때 뜨는 목록 */
+  invitations: ReactNode;
 }
 
 const RAIL_REST = 54;
 const RAIL_HOVER = 196;
 
-export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, avatarUrl, onSelectOrg, onCreateOrg, onSignOut }: OrgRailProps) {
+export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, avatarUrl, onSelectOrg, onCreateOrg, onSignOut, invitationCount, invitations }: OrgRailProps) {
   const [expanded, setExpanded] = useState(false);
+  // 받은 초대함 팝오버 — 레일이 overflow:hidden이라 body에 띄우고, 위치는 열 때 받은 초대함 줄에 맞춘다
+  const [inbox, setInbox] = useState<{ left: number; bottom: number } | null>(null);
+  const inboxRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!inbox) return;
+    function onDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (!popRef.current?.contains(t) && !inboxRef.current?.contains(t)) setInbox(null);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setInbox(null); }
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); window.removeEventListener("keydown", onKey); };
+  }, [inbox]);
+
+  function toggleInbox() {
+    if (inbox) { setInbox(null); return; }
+    const r = inboxRef.current!.getBoundingClientRect();
+    setInbox({ left: r.left + RAIL_REST + 8, bottom: window.innerHeight - r.bottom });
+    // 펼쳐진 레일(196px)이 팝오버를 가리지 않게 접는다
+    setExpanded(false);
+  }
   const personal = organizations.find((o) => o.is_personal) ?? null;
   const teams = organizations.filter((o) => !o.is_personal);
 
@@ -96,6 +125,26 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
 
       <div style={{ flex: 1 }} />
       <div style={{ height: 1, background: "#e2e5ea", margin: "0 12px 4px" }} />
+      {/* 받은 초대함 — 스페이스·조직 초대를 모아 둔다 */}
+      <button ref={inboxRef} type="button" onClick={toggleInbox}
+        aria-label={invitationCount > 0 ? `받은 초대 ${invitationCount}개` : "받은 초대"} aria-expanded={!!inbox}
+        style={{ ...row(false), width: "100%", border: "none", background: "none", textAlign: "left", fontFamily: "inherit" }}>
+        <span style={{ position: "relative", width: 32, height: 32, borderRadius: 9, flex: "none", display: "flex", alignItems: "center", justifyContent: "center",
+          background: inbox ? "#e2e6ec" : invitationCount > 0 ? "#e9ecf0" : "#eef0f3",
+          color: inbox ? theme.text : invitationCount > 0 ? "#6b7280" : "#b4bac3" }}>
+          <Mail size={17} />
+          {/* 접혀 있을 땐 상자 모서리 배지, 펼치면 줄 오른쪽 끝 개수로 옮긴다 */}
+          {invitationCount > 0 && !expanded && (
+            <span style={{ position: "absolute", top: -5, right: -6, minWidth: 15, height: 15, padding: "0 4px", borderRadius: 8, background: theme.accent, color: "#fff",
+              fontSize: 9.5, fontWeight: 800, lineHeight: "15px", textAlign: "center", border: "2px solid #f5f6f8", boxSizing: "content-box" }}>{invitationCount}</span>
+          )}
+        </span>
+        <span style={label(false)}>받은 초대</span>
+        {invitationCount > 0 && expanded && (
+          <span style={{ marginLeft: "auto", minWidth: 20, height: 18, padding: "0 6px", borderRadius: 9, background: theme.accent, color: "#fff",
+            fontSize: 11, fontWeight: 700, lineHeight: "18px", textAlign: "center", boxSizing: "border-box" }}>{invitationCount}</span>
+        )}
+      </button>
       {/* 계정 */}
       <div style={row(false)} title={userEmail}>
         <span style={{ width: 32, height: 32, borderRadius: "50%", background: avatarUrl ? `center/cover url(${avatarUrl})` : "#dfe2ea", flex: "none", border: "2px solid #fff", boxShadow: "0 0 0 1px #e2e5ea", boxSizing: "border-box" }} />
@@ -112,6 +161,15 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
           </button>
         )}
       </div>
+      {inbox && createPortal(
+        <div ref={popRef} role="dialog" aria-label="받은 초대"
+          style={{ position: "fixed", left: inbox.left, bottom: inbox.bottom, zIndex: 1000, width: 300, maxHeight: "calc(100vh - 16px)", overflow: "auto",
+            background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 12, boxShadow: "0 12px 32px rgba(20,30,60,.18)", padding: "12px 0 0" }}>
+          <div style={{ padding: "0 14px", fontSize: 12, fontWeight: 700, color: theme.textMuted }}>받은 초대</div>
+          {invitations}
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

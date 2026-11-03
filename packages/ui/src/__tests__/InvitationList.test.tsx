@@ -16,6 +16,12 @@ describe("InvitationList", () => {
     expect(onDecline).toHaveBeenCalledWith("i1");
   });
 
+  it("항목에 kind가 있으면 권한 앞에 초대 종류를 붙인다", () => {
+    render(<InvitationList invitations={[{ id: "i1", space_name: "스터디", inviter_name: null, role: "editor", kind: "스페이스" }]} roles={roles}
+      onAccept={() => {}} onDecline={() => {}} />);
+    expect(screen.getByText("스페이스 · 편집자 권한")).toBeInTheDocument();
+  });
+
   it("초대가 없으면 안내 문구를 보여준다", () => {
     render(<InvitationList invitations={[]} roles={roles} onAccept={() => {}} onDecline={() => {}} />);
     expect(screen.getByText(/받은 초대가 없어요/)).toBeInTheDocument();
