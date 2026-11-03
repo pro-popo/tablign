@@ -151,20 +151,13 @@ export interface OpenTabsPanelProps {
 }
 
 export function OpenTabsPanel({ groups, selfTabId = null, savingWindowId = null, readOnly = false, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab, onCollapse }: OpenTabsPanelProps) {
-  // 보이는 개수와 담기는 개수가 다르면 안 된다 — 헤더에 실제 담을 수 있는 수를 둔다.
-  const saveable = groups.reduce((n, g) => n + saveableTabs(g.tabs).length, 0);
   return (
     <>
       <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, borderBottom: `1px solid ${theme.border}` }}>
         <strong style={{ letterSpacing: ".4px" }}>열린 탭</strong>
-        <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <span style={{ fontSize: 11.5, fontWeight: 600, color: theme.textFaint, whiteSpace: "nowrap" }}>
-            담을 수 있는 탭 {saveable}개
-          </span>
-          <button type="button" title="패널 접기" aria-label="패널 접기" onClick={onCollapse} style={{ border: "none", background: "none", cursor: "pointer", display: "flex", flexShrink: 0 }}>
-            <PanelRightClose size={16} color={theme.textFaint} />
-          </button>
-        </span>
+        <button type="button" title="패널 접기" aria-label="패널 접기" onClick={onCollapse} style={{ border: "none", background: "none", cursor: "pointer", display: "flex", flexShrink: 0 }}>
+          <PanelRightClose size={16} color={theme.textFaint} />
+        </button>
       </div>
       <div style={{ padding: "11px 13px", overflow: "auto" }}>
         {groups.map((g, i) => (
