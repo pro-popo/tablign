@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tabsToLinkInputs, tabDropToLinkInput, moveTab, parseTabDragId, resolveTabDropTarget } from "./tabs";
+import { tabsToLinkInputs, tabDropToLinkInput, moveTab, parseTabDragId, resolveTabDropTarget, windowDropIndex } from "./tabs";
 import { isSaveableTab, saveableTabs, unsaveableReason } from "./tabs";
 import { groupTabsByWindow, type WindowTab, type WindowGroup } from "./tabs";
 
@@ -207,5 +207,42 @@ describe("담을 수 있는 탭 판정", () => {
     expect(unsaveableReason({ url: "file:///x.pdf" })).toBe("내 컴퓨터의 파일은 담을 수 없어요");
     expect(unsaveableReason({ url: "chrome://settings" })).toBe("브라우저 내부 페이지는 담을 수 없어요");
     expect(unsaveableReason({ url: "chrome-extension://abc/newtab.html" })).toBe("브라우저 내부 페이지는 담을 수 없어요");
+  });
+});
+
+describe("windowDropIndex — 창을 끌 때 새 컬렉션 자리", () => {
+  const ids = ["a", "b", "c"];
+
+  it("처음 컬렉션 위에 올라가면 그 컬렉션 앞에 자리를 낸다", () => {
+    expect(windowDropIndex(ids, null, "col:b")).toBe(1);
+  });
+
+  it("자리 바로 아래 컬렉션 위로 내려가면 그 컬렉션 뒤로 자리가 옮겨진다", () => {
+    // [a, 자리, b, c] 에서 b 위 → [a, b, 자리, c]
+    expect(windowDropIndex(ids, 1, "col:b")).toBe(2);
+  });
+
+  it("자리 위쪽 컬렉션 위로 올라가면 그 컬렉션 앞으로 옮겨진다", () => {
+    // [a, b, 자리, c] 에서 a 위 → [자리, a, b, c]
+    expect(windowDropIndex(ids, 2, "col:a")).toBe(0);
+  });
+
+  it("마지막 컬렉션 위를 지나면 맨 끝으로 갈 수 있다", () => {
+    // [a, b, 자리, c] 에서 c 위 → [a, b, c, 자리]
+    expect(windowDropIndex(ids, 2, "col:c")).toBe(3);
+  });
+
+  it("컬렉션 사이 빈틈(보드)에서는 자리가 그대로 머문다", () => {
+    expect(windowDropIndex(ids, 1, "board")).toBe(1);
+  });
+
+  it("자리가 없는 상태로 보드에 들어오면 맨 끝에 자리를 낸다 — 컬렉션 0개면 첫 자리", () => {
+    expect(windowDropIndex(ids, null, "board")).toBe(3);
+    expect(windowDropIndex([], null, "board")).toBe(0);
+  });
+
+  it("컬렉션·보드가 아닌 대상이면 현재 자리를 유지한다", () => {
+    expect(windowDropIndex(ids, 1, "container:b")).toBe(1);
+    expect(windowDropIndex(ids, null, "space:x")).toBeNull();
   });
 });

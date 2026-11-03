@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useDroppable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, ChevronRight, Download, X, PanelRightClose, Lock, Favicon, theme } from "@tablign/ui";
@@ -66,13 +66,14 @@ function TabRow({
 }
 
 function WindowGroupView({
-  group, index, selfTabId, saving, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab,
+  group, index, selfTabId, saving, readOnly, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab,
 }: {
   group: WindowGroup;
   index: number;
   selfTabId: number | null;
   /** 이 창을 저장하는 중 — 두 번 눌러 컬렉션이 두 벌 생기는 것을 막는다 */
   saving: boolean;
+  readOnly: boolean;
   onSaveWindow: (windowId: number) => void;
   onCloseWindow: (windowId: number) => void;
   onCloseTab: (tabId: number) => void;
@@ -83,11 +84,19 @@ function WindowGroupView({
   const { setNodeRef } = useDroppable({ id: `window:${group.windowId}`, data: { kind: "window", windowId: group.windowId } });
   // 담을 수 있는 탭이 0인 창에서 저장을 누르면 링크 0개짜리 컬렉션이 만들어진다 — 버튼을 막는다.
   const saveable = saveableTabs(group.tabs).length;
+  // 헤더를 보드로 끌면 놓은 자리에 이 창의 컬렉션을 만든다. 저장 버튼이 막히는 조건이면 끌기도 막는다.
+  // 5px 미만 움직임은 클릭이라 접기/펼치기는 그대로 동작한다.
+  const draggable = saveable > 0 && !saving && !readOnly;
+  const { setNodeRef: setDragRef, listeners } = useDraggable({
+    id: `winhead:${group.windowId}`,
+    data: { kind: "window", windowId: group.windowId },
+    disabled: !draggable,
+  });
   return (
     <div style={{ marginBottom: 14 }}>
-      {/* 헤더 행 전체 클릭으로 창 접기/펼치기. 저장·닫기 버튼은 stopPropagation으로 토글 방지. */}
-      <div onClick={() => setCollapsed((c) => !c)}
-        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: theme.textMuted, marginBottom: 8, cursor: "pointer", userSelect: "none" }}>
+      {/* 헤더 행 전체 클릭으로 창 접기/펼치기. 저장·닫기 버튼은 stopPropagation으로 토글·끌기 방지. */}
+      <div ref={setDragRef} {...listeners} onClick={() => setCollapsed((c) => !c)}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: theme.textMuted, marginBottom: 8, cursor: draggable ? "grab" : "pointer", userSelect: "none" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <button type="button" aria-expanded={!collapsed} aria-label={`창 ${index + 1} ${collapsed ? "펼치기" : "접기"}`}
             onClick={(e) => { e.stopPropagation(); setCollapsed((c) => !c); }}
@@ -101,11 +110,12 @@ function WindowGroupView({
             aria-busy={saving || undefined}
             title={saving ? "담는 중…" : saveable === 0 ? "담을 수 있는 탭이 없어요" : `담을 수 있는 탭 ${saveable}개 저장`}
             aria-label={saving ? `창 ${index + 1} 담는 중` : saveable === 0 ? `창 ${index + 1} — 담을 수 있는 탭이 없어요` : `창 ${index + 1}의 탭 ${saveable}개 저장`}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onSaveWindow(group.windowId); }}
             style={{ border: "none", background: "none", cursor: saveable === 0 || saving ? "not-allowed" : "pointer", display: "flex", color: theme.accent, opacity: saveable === 0 || saving ? 0.35 : 1 }}>
             <Download size={15} />
           </button>
-          <button type="button" title="이 창의 탭 전체 닫기" aria-label={`창 ${index + 1} 닫기`} onClick={(e) => { e.stopPropagation(); onCloseWindow(group.windowId); }}
+          <button type="button" title="이 창의 탭 전체 닫기" aria-label={`창 ${index + 1} 닫기`} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onCloseWindow(group.windowId); }}
             style={{ border: "none", background: "none", cursor: "pointer", display: "flex", color: theme.textFaint }}>
             <X size={15} />
           </button>
@@ -131,6 +141,8 @@ export interface OpenTabsPanelProps {
   selfTabId?: number | null;
   /** 지금 저장 중인 창. 그 창의 저장 버튼만 잠근다. */
   savingWindowId?: number | null;
+  /** 보드가 읽기 전용(viewer)이면 창을 끌어 컬렉션을 만들 수 없다. */
+  readOnly?: boolean;
   onSaveWindow: (windowId: number) => void;
   onCloseWindow: (windowId: number) => void;
   onCloseTab: (tabId: number) => void;
@@ -138,7 +150,7 @@ export interface OpenTabsPanelProps {
   onCollapse: () => void;
 }
 
-export function OpenTabsPanel({ groups, selfTabId = null, savingWindowId = null, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab, onCollapse }: OpenTabsPanelProps) {
+export function OpenTabsPanel({ groups, selfTabId = null, savingWindowId = null, readOnly = false, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab, onCollapse }: OpenTabsPanelProps) {
   // 보이는 개수와 담기는 개수가 다르면 안 된다 — 헤더에 실제 담을 수 있는 수를 둔다.
   const saveable = groups.reduce((n, g) => n + saveableTabs(g.tabs).length, 0);
   return (
@@ -157,7 +169,7 @@ export function OpenTabsPanel({ groups, selfTabId = null, savingWindowId = null,
       <div style={{ padding: "11px 13px", overflow: "auto" }}>
         {groups.map((g, i) => (
           <WindowGroupView key={g.windowId} group={g} index={i} selfTabId={selfTabId}
-            saving={savingWindowId === g.windowId}
+            saving={savingWindowId === g.windowId} readOnly={readOnly}
             onSaveWindow={onSaveWindow} onCloseWindow={onCloseWindow} onCloseTab={onCloseTab} onActivateTab={onActivateTab} />
         ))}
       </div>

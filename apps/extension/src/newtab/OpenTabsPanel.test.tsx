@@ -147,3 +147,39 @@ describe("OpenTabsPanel — 담을 수 없는 탭", () => {
     expect(onSaveWindow).toHaveBeenCalledWith(10);
   });
 });
+
+describe("OpenTabsPanel — 창 헤더 끌기", () => {
+  const mixed: WindowGroup[] = [
+    groups[0],
+    { windowId: 30, tabs: [{ id: 9, windowId: 30, url: "chrome://history", title: "방문 기록" }] },
+  ];
+  /** 창 헤더("창 N")를 잡고 10px 끈다. 시작된 드래그의 data를 돌려준다(시작 안 되면 undefined). */
+  function dragHeader(label: string, props: Partial<React.ComponentProps<typeof OpenTabsPanel>> = {}) {
+    const onDragStart = vi.fn();
+    render(
+      <DndContext onDragStart={onDragStart}>
+        <OpenTabsPanel groups={mixed} onSaveWindow={() => {}} onCloseWindow={() => {}} onCloseTab={() => {}} onActivateTab={() => {}} onCollapse={() => {}} {...props} />
+      </DndContext>,
+    );
+    // jsdom엔 PointerEvent가 없어 fireEvent.pointerDown은 button·isPrimary를 싣지 못한다 —
+    // dnd-kit PointerSensor가 보는 값을 담은 MouseEvent로 대신 보낸다.
+    const down = new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 0, clientY: 0 });
+    Object.defineProperty(down, "isPrimary", { value: true });
+    fireEvent(screen.getByText(label), down);
+    fireEvent(document, new MouseEvent("pointermove", { bubbles: true, clientX: 10, clientY: 10 }));
+    fireEvent(document, new MouseEvent("pointerup", { bubbles: true }));
+    return onDragStart.mock.calls[0]?.[0]?.active.data.current;
+  }
+
+  it("담을 탭이 있는 창은 헤더를 끌어 컬렉션 만들기를 시작한다", () => {
+    expect(dragHeader("창 1")).toEqual({ kind: "window", windowId: 10 });
+  });
+
+  it("담을 탭이 없는 창은 끌 수 없다", () => {
+    expect(dragHeader("창 2")).toBeUndefined();
+  });
+
+  it("읽기 전용 스페이스에서는 창을 끌 수 없다", () => {
+    expect(dragHeader("창 1", { readOnly: true })).toBeUndefined();
+  });
+});
