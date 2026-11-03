@@ -39,7 +39,7 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, PendingCollection, ShareCodeDialog, ImportCodeDialog, type ImportCodeInfo, ImportBookmarksDialog, ImportSourceDialog, ExportSpacesDialog, JsonStructurePath, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, PendingCollection, ShareCodeDialog, ImportCodeDialog, type ImportCodeInfo, ImportBookmarksDialog, ImportSourceDialog, ExportSpacesDialog, JsonStructurePath, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users, useHoverPeek } from "@tablign/ui";
 import {
   listSpaces, listMyMemberships, leaveSpace, listCollections, listLinks, createLink, createLinks, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions, positionBetween,
@@ -55,6 +55,8 @@ import {
 import { supabase } from "../lib/supabase";
 import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, saveableTabs, windowDropIndex, type WindowGroup, type WindowTab } from "../lib/tabs";
 import { usePanelState } from "../lib/usePanelState";
+import { useNarrow } from "../lib/useNarrow";
+import { OrgSpacePreview } from "./OrgSpacePreview";
 import { useActiveSpace } from "../lib/useActiveSpace";
 import { useActiveOrg } from "../lib/useActiveOrg";
 import { OpenTabsPanel } from "./OpenTabsPanel";
@@ -203,6 +205,18 @@ export function NewTab() {
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const [autoEditId, setAutoEditId] = useState<string | null>(null);
   const { state: panels, toggleLeft, toggleRight, setLeftWidth, setRightWidth } = usePanelState();
+  // 좁은 화면: 사이드바·열린 탭을 접어 두고 올리면 보드 위에 덮는다. 열린 탭 레일을 누르면 붙박이로 편다(이 창 폭에서만).
+  const narrow = useNarrow();
+  const leftPeek = useHoverPeek();
+  const rightPeek = useHoverPeek();
+  const [narrowRightDock, setNarrowRightDock] = useState(false);
+  // 좁은 화면에서 올려 보고 있는 다른 조직 — 덮개에 그 조직의 스페이스를 띄운다
+  const [previewOrgId, setPreviewOrgId] = useState<string | null>(null);
+  useEffect(() => { setNarrowRightDock(false); leftPeek.close(); rightPeek.close(); }, [narrow]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!leftPeek.open) setPreviewOrgId(null); }, [leftPeek.open]);
+  // 덮개로 보이는 중인지 — 좁은 화면이거나 넓은 화면에서 접어 둔 패널. 이때 패널의 접기 버튼은 덮개만 닫는다.
+  const leftOverlay = narrow || !panels.left;
+  const rightOverlay = narrow ? !narrowRightDock : !panels.right;
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   useEffect(() => {
@@ -636,6 +650,7 @@ export function NewTab() {
       dragOriginRef.current = link.collection_id; // 시작 시점의 원래 컬렉션
       setActive({ type: "link", link });
     } else if (d?.kind === "tab") {
+      rightPeek.close();
       dragOriginRef.current = null;
       groupsOriginRef.current = groups;
       setActive({ type: "tab", tab: d.tab as WindowTab });
@@ -646,6 +661,7 @@ export function NewTab() {
       spacesOriginRef.current = spaces;
       setActive({ type: "space", space: d.space as Space });
     } else if (d?.kind === "window") {
+      rightPeek.close();
       placeWindowDrop(null);
       setActive({ type: "window", windowId: d.windowId as number });
     } else {
@@ -1071,6 +1087,7 @@ export function NewTab() {
     : activeSpace ? (myMembership ? myMembership.role === "editor" : true) : true;
 
   const orgSpaces = spaces.filter((s) => s.org_id === activeOrgId);
+  const previewOrg = narrow && previewOrgId && previewOrgId !== activeOrgId ? organizations.find((o) => o.id === previewOrgId) ?? null : null;
   const ownedSpaces = orgSpaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
   const sharedSpaces = orgSpaces.filter((s) => memberships.some((m) => m.space_id === s.id));
 
@@ -1192,6 +1209,10 @@ export function NewTab() {
             onSelectOrg={selectOrg}
             onCreateOrg={openCreateOrg}
             onSignOut={async () => { await supabase.auth.signOut(); }}
+            compact={narrow}
+            onPeekEnter={narrow ? leftPeek.enter : undefined}
+            onPeekLeave={narrow ? leftPeek.leave : undefined}
+            onHoverOrg={setPreviewOrgId}
             invitationCount={myInvitations.length + myOrgInvitations.length}
             invitations={
               <InvitationList
@@ -1208,25 +1229,31 @@ export function NewTab() {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <AppShell
-            leftOpen={panels.left}
-            rightOpen={panels.right}
-            onToggleLeft={toggleLeft}
-            onToggleRight={toggleRight}
+            narrow={narrow}
+            leftPeek={leftPeek}
+            rightPeek={rightPeek}
+            leftOpen={narrow ? false : panels.left}
+            rightOpen={narrow ? narrowRightDock : panels.right}
+            onToggleLeft={() => { leftPeek.close(); toggleLeft(); }}
+            onToggleRight={() => { rightPeek.close(); if (narrow) setNarrowRightDock((v) => !v); else toggleRight(); }}
             leftWidth={panels.leftWidth}
             rightWidth={panels.rightWidth}
             onResizeLeft={setLeftWidth}
             onResizeRight={setRightWidth}
-            left={
+            left={previewOrg ? (
+              <OrgSpacePreview org={previewOrg} spaces={spaces.filter((s) => s.org_id === previewOrg.id)}
+                onSelect={(id) => { persistOrg(previewOrg.id); selectSpace(id); leftPeek.close(); }} />
+            ) : (
               <ExtSidebar
                 spaces={ownedSpaces}
                 sharedSpaces={sharedSpaces}
                 activeSpaceId={activeSpaceId}
-                onSelectSpace={(id) => { selectSpace(id); }}
+                onSelectSpace={(id) => { selectSpace(id); if (leftOverlay) leftPeek.close(); }}
                 onAddSpace={addSpace}
                 onEditSpace={editSpace}
                 onDeleteSpace={deleteSpace}
                 onLeaveSpace={handleLeaveSpace}
-                onCollapse={toggleLeft}
+                onCollapse={leftOverlay ? leftPeek.close : toggleLeft}
                 searchSlot={<ExtSearchBar key={activeOrgId} orgId={activeOrgId} onSelectSpace={selectSpace} />}
                 orgHeaderSlot={activeOrg ? (
                   <OrgHeader
@@ -1240,9 +1267,10 @@ export function NewTab() {
                   />
                 ) : null}
               />
-            }
+            )}
             right={
-              <OpenTabsPanel groups={groups} selfTabId={selfTabId} savingWindowId={savingWindowId} readOnly={!canEdit} onSaveWindow={(id) => saveWindow(id)} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab} onCollapse={toggleRight} />
+              <OpenTabsPanel groups={groups} selfTabId={selfTabId} savingWindowId={savingWindowId} readOnly={!canEdit} onSaveWindow={(id) => saveWindow(id)} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab}
+                onCollapse={rightOverlay ? rightPeek.close : narrow ? () => setNarrowRightDock(false) : toggleRight} />
             }
           >
             <Board>

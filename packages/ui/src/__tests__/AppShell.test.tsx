@@ -140,4 +140,108 @@ describe("AppShell", () => {
     firePointer(handle, "pointermove", { clientX: 170, pointerId: 1 });
     expect(onResizeRight).toHaveBeenCalledWith(302);
   });
+
+  describe("좁은 화면(narrow)", () => {
+    const closed = { open: false, enter: () => {}, leave: () => {} };
+
+    it("사이드바는 붙박이로 두지 않고, 덮개가 열려야 보인다", () => {
+      const { rerender } = render(
+        <AppShell narrow leftOpen={false} rightOpen={false} onToggleLeft={() => {}} onToggleRight={() => {}}
+          leftPeek={closed} rightPeek={closed} left={<div>LEFT</div>} right={<div>RIGHT</div>}>
+          <div>CENTER</div>
+        </AppShell>,
+      );
+      expect(screen.getByText("LEFT")).not.toBeVisible();
+      expect(screen.queryByRole("button", { name: "사이드바 열기" })).not.toBeInTheDocument();
+      rerender(
+        <AppShell narrow leftOpen={false} rightOpen={false} onToggleLeft={() => {}} onToggleRight={() => {}}
+          leftPeek={{ ...closed, open: true }} rightPeek={closed} left={<div>LEFT</div>} right={<div>RIGHT</div>}>
+          <div>CENTER</div>
+        </AppShell>,
+      );
+      expect(screen.getByText("LEFT")).toBeVisible();
+    });
+
+    it("열린 탭은 지금의 접힘 레일로 두고, 레일에 올리면 덮개를 연다", () => {
+      const enter = vi.fn();
+      const { rerender } = render(
+        <AppShell narrow leftOpen={false} rightOpen={false} onToggleLeft={() => {}} onToggleRight={() => {}}
+          leftPeek={closed} rightPeek={{ ...closed, enter }} left={<div>LEFT</div>} right={<div>RIGHT</div>}>
+          <div>CENTER</div>
+        </AppShell>,
+      );
+      const rail = screen.getByRole("button", { name: "열린 탭 열기" });
+      expect(screen.getByText("RIGHT")).not.toBeVisible();
+      fireEvent.mouseEnter(rail);
+      expect(enter).toHaveBeenCalled();
+      rerender(
+        <AppShell narrow leftOpen={false} rightOpen={false} onToggleLeft={() => {}} onToggleRight={() => {}}
+          leftPeek={closed} rightPeek={{ ...closed, open: true }} left={<div>LEFT</div>} right={<div>RIGHT</div>}>
+          <div>CENTER</div>
+        </AppShell>,
+      );
+      expect(screen.getByText("RIGHT")).toBeVisible();
+    });
+
+    it("열린 탭을 고정(rightOpen)하면 지금처럼 붙박이로 펼친다", () => {
+      render(
+        <AppShell narrow leftOpen={false} rightOpen onToggleLeft={() => {}} onToggleRight={() => {}}
+          leftPeek={closed} rightPeek={closed} left={<div>LEFT</div>} right={<div>RIGHT</div>}>
+          <div>CENTER</div>
+        </AppShell>,
+      );
+      expect(screen.getByText("RIGHT")).toBeVisible();
+      expect(screen.queryByRole("button", { name: "열린 탭 열기" })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("넓은 화면에서 접어 둔 패널", () => {
+    const closed = { open: false, enter: () => {}, leave: () => {} };
+
+    it("접힌 사이드바 레일에 올리면 덮개를 열고, 아이콘을 누르면 고정(onToggleLeft)한다", () => {
+      const enter = vi.fn();
+      const onToggleLeft = vi.fn();
+      const { rerender } = render(
+        <AppShell leftOpen={false} rightOpen onToggleLeft={onToggleLeft} onToggleRight={() => {}}
+          leftPeek={{ ...closed, enter }} rightPeek={closed} left={<div>LEFT</div>} right={<div>RIGHT</div>}>
+          <div>CENTER</div>
+        </AppShell>,
+      );
+      const rail = screen.getByRole("button", { name: "사이드바 열기" });
+      fireEvent.mouseEnter(rail);
+      expect(enter).toHaveBeenCalled();
+      fireEvent.click(rail);
+      expect(onToggleLeft).toHaveBeenCalled();
+      rerender(
+        <AppShell leftOpen={false} rightOpen onToggleLeft={onToggleLeft} onToggleRight={() => {}}
+          leftPeek={{ ...closed, open: true }} rightPeek={closed} left={<div>LEFT</div>} right={<div>RIGHT</div>}>
+          <div>CENTER</div>
+        </AppShell>,
+      );
+      expect(screen.getByText("LEFT")).toBeVisible();
+    });
+
+    it("접힌 열린 탭 레일에 올리면 덮개를 연다", () => {
+      const enter = vi.fn();
+      render(
+        <AppShell leftOpen rightOpen={false} onToggleLeft={() => {}} onToggleRight={() => {}}
+          leftPeek={closed} rightPeek={{ ...closed, enter }} left={<div>LEFT</div>} right={<div>RIGHT</div>}>
+          <div>CENTER</div>
+        </AppShell>,
+      );
+      fireEvent.mouseEnter(screen.getByRole("button", { name: "열린 탭 열기" }));
+      expect(enter).toHaveBeenCalled();
+    });
+
+    it("펼쳐 둔 패널은 덮개를 따로 그리지 않는다", () => {
+      render(
+        <AppShell leftOpen rightOpen onToggleLeft={() => {}} onToggleRight={() => {}}
+          leftPeek={closed} rightPeek={closed} left={<div>LEFT</div>} right={<div>RIGHT</div>}>
+          <div>CENTER</div>
+        </AppShell>,
+      );
+      expect(screen.getAllByText("LEFT")).toHaveLength(1);
+      expect(screen.getAllByText("RIGHT")).toHaveLength(1);
+    });
+  });
 });

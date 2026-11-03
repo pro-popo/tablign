@@ -18,12 +18,18 @@ export interface OrgRailProps {
   invitationCount: number;
   /** 받은 초대함을 눌렀을 때 뜨는 목록 */
   invitations: ReactNode;
+  /** 좁은 화면: 올려도 조직 이름으로 넓어지지 않고, 조직 목록에 올리면 옆에 사이드바를 덮어 띄운다 */
+  compact?: boolean;
+  onPeekEnter?: () => void;
+  onPeekLeave?: () => void;
+  /** 좁은 화면에서 조직 아이콘에 올렸을 때 — 그 조직의 스페이스를 미리 보여 준다 */
+  onHoverOrg?: (orgId: string) => void;
 }
 
 const RAIL_REST = 54;
 const RAIL_HOVER = 196;
 
-export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, avatarUrl, onSelectOrg, onCreateOrg, onSignOut, invitationCount, invitations }: OrgRailProps) {
+export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, avatarUrl, onSelectOrg, onCreateOrg, onSignOut, invitationCount, invitations, compact = false, onPeekEnter, onPeekLeave, onHoverOrg }: OrgRailProps) {
   const [expanded, setExpanded] = useState(false);
   // 받은 초대함 팝오버 — 레일이 overflow:hidden이라 body에 띄우고, 위치는 열 때 받은 초대함 줄에 맞춘다
   const [inbox, setInbox] = useState<{ left: number; bottom: number } | null>(null);
@@ -71,7 +77,7 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
 
   return (
     <div
-      onMouseEnter={() => setExpanded(true)}
+      onMouseEnter={() => { if (!compact) setExpanded(true); }}
       onMouseLeave={() => setExpanded(false)}
       style={{
         position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 3,
@@ -82,6 +88,8 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
         overflow: "hidden", boxSizing: "border-box",
       }}
     >
+      <div role="group" aria-label="조직" onMouseEnter={onPeekEnter} onMouseLeave={onPeekLeave}
+        style={{ display: "flex", flexDirection: "column", gap: 5 }}>
       {/* 로고 */}
       <div style={{ display: "flex", alignItems: "center", gap: 11, height: 34, padding: "0 12px", marginBottom: 2 }}>
         {/* flexShrink:0 — 좁은 레일(54px)에서 옆 워드마크(nowrap)에 밀려 SVG가 0폭으로 찌그러지지 않도록 고정 */}
@@ -96,7 +104,7 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
       {personal && (() => {
         const active = personal.id === activeOrgId;
         return (
-          <div style={row(active)} onClick={() => onSelectOrg(personal.id)}>
+          <div style={row(active)} onClick={() => onSelectOrg(personal.id)} onMouseEnter={() => onHoverOrg?.(personal.id)}>
             {active && <span style={activeBar} />}
             <OrgIconBox org={personal} size={32} />
             <span style={label(active)}>개인</span>
@@ -109,7 +117,7 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
       {teams.map((o) => {
         const active = o.id === activeOrgId;
         return (
-          <div key={o.id} style={row(active)} onClick={() => onSelectOrg(o.id)}>
+          <div key={o.id} style={row(active)} onClick={() => onSelectOrg(o.id)} onMouseEnter={() => onHoverOrg?.(o.id)}>
             {active && <span style={activeBar} />}
             <OrgIconBox org={o} size={32} />
             <span style={label(active)}>{o.name}</span>
@@ -121,6 +129,7 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
       <div style={row(false)} onClick={onCreateOrg}>
         <span style={{ ...box("#fff"), border: `1px dashed ${theme.textFaint}`, color: theme.textFaint }}><Plus size={15} /></span>
         <span style={{ ...label(false), color: theme.textFaint }}>조직 만들기</span>
+      </div>
       </div>
 
       <div style={{ flex: 1 }} />
