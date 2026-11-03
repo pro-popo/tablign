@@ -1050,3 +1050,70 @@ describe("NewTab — 창을 끌어 컬렉션 만들기", () => {
     ]);
   });
 });
+
+describe("NewTab — 좁은 화면", () => {
+  // jsdom에는 matchMedia가 없다 — 이 묶음만 좁은 창으로 흉내 낸다
+  beforeEach(() => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true, addEventListener: () => {}, removeEventListener: () => {} });
+    listOrganizations.mockResolvedValue([
+      { id: "org-personal", name: "개인", icon: null, color: null, owner_id: "u1", is_personal: true, created_at: "" },
+      { id: "org-team", name: "우리팀", icon: null, color: null, owner_id: "u1", is_personal: false, created_at: "x" },
+    ]);
+    listMyOrgMemberships.mockResolvedValue([{ org_id: "org-team", user_id: "u1", role: "owner", created_at: "x" }]);
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+      { id: "s2", user_id: "u1", name: "팀 로드맵", icon: null, position: 1000, created_at: "x", org_id: "org-team" },
+    ]);
+  });
+  afterEach(() => {
+    delete (window as { matchMedia?: unknown }).matchMedia;
+  });
+
+  it("사이드바는 숨겨 두고, 조직 레일에 올리면 보드 위에 덮어 펼친다", async () => {
+    renderNewTab();
+    // 닫힌 덮개 안은 접근성 이름이 비어 역할로 못 찾는다 — 글자로 찾고 보이는지 따로 본다
+    const add = (await screen.findByText("스페이스 추가")).closest("button")!;
+    expect(add).not.toBeVisible();
+    fireEvent.mouseEnter(screen.getByRole("group", { name: "조직" }));
+    await waitFor(() => expect(add).toBeVisible());
+  });
+
+  it("다른 조직 아이콘에 올리면 그 조직의 스페이스가 보이고, 누르면 그리로 옮겨 간다", async () => {
+    renderNewTab();
+    await screen.findAllByText("내 스페이스");
+    fireEvent.mouseEnter(screen.getByText("우리팀"));
+    const target = (await screen.findByText("팀 로드맵")).closest("button")!;
+    await waitFor(() => expect(target).toBeVisible());
+    fireEvent.click(target);
+    // 보드 헤더가 그 스페이스로 바뀐다
+    await waitFor(() => expect(screen.getAllByText("팀 로드맵").some((el) => el.tagName === "STRONG")).toBe(true));
+  });
+
+  it("열린 탭은 지금의 접힘 레일로 두고, 레일을 누르면 붙박이로 편다", async () => {
+    renderNewTab();
+    await screen.findAllByText("내 스페이스");
+    const title = screen.getByText("열린 탭");
+    expect(title).not.toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "열린 탭 열기" }));
+    await waitFor(() => expect(screen.getByText("열린 탭")).toBeVisible());
+  });
+});
+
+describe("NewTab — 넓은 화면에서 접어 둔 패널", () => {
+  it("접힌 사이드바 레일에 올리면 덮어 펼치고, 덮개의 접기 버튼은 고정 없이 닫기만 한다", async () => {
+    listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" }]);
+    renderNewTab();
+    await screen.findAllByText("내 스페이스");
+    fireEvent.click(screen.getByRole("button", { name: "사이드바 접기" }));
+    const rail = await screen.findByRole("button", { name: "사이드바 열기" });
+    const add = (await screen.findByText("스페이스 추가")).closest("button")!;
+    expect(add).not.toBeVisible();
+
+    fireEvent.mouseEnter(rail);
+    await waitFor(() => expect(add).toBeVisible());
+
+    fireEvent.click(screen.getByRole("button", { name: "사이드바 접기" }));
+    await waitFor(() => expect(add).not.toBeVisible());
+    expect(screen.getByRole("button", { name: "사이드바 열기" })).toBeInTheDocument();
+  });
+});

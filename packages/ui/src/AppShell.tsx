@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PanelLeftOpen, PanelRightOpen } from "./icons";
 import { theme } from "./theme";
+import type { HoverPeek } from "./useHoverPeek";
 
 export interface AppShellProps {
   left: ReactNode;
@@ -14,6 +15,11 @@ export interface AppShellProps {
   rightWidth?: number;
   onResizeLeft?: (w: number) => void;
   onResizeRight?: (w: number) => void;
+  /** 좁은 화면: 사이드바는 붙박이로 두지 않는다(왼쪽엔 조직 레일만 남는다). */
+  narrow?: boolean;
+  /** 접어 둔 패널(좁은 화면의 사이드바 포함)을 올려 볼 때의 덮개 상태. 열리면 보드를 밀지 않고 위에 덮는다. */
+  leftPeek?: HoverPeek;
+  rightPeek?: HoverPeek;
 }
 
 const RAIL = 44;
@@ -21,6 +27,21 @@ const DEFAULT_LEFT_WIDTH = 212;
 const DEFAULT_RIGHT_WIDTH = 272;
 // 폭 전환 시간(ms). CSS transition과 Rail 교체 지연을 같은 값으로 묶는다.
 const PANEL_ANIM_MS = 200;
+
+// 좁은 화면 덮개: 왼쪽은 조직 레일 뒤에서, 오른쪽은 화면 끝에서 서랍처럼 미끄러져 나온다.
+// 다 나온 뒤엔 transform을 none으로 둬, 안의 확인 창(position: fixed)이 화면 기준으로 뜨게 한다.
+const peekCss = `
+.tbl-peek { box-shadow: none; transition: transform .18s cubic-bezier(.4,0,1,1), box-shadow .18s, visibility .18s }
+.tbl-peek.l { transform: translateX(-100%) }
+.tbl-peek.r { transform: translateX(100%) }
+.tbl-peek[data-open] { transform: none; transition: transform .26s cubic-bezier(.32,.72,0,1), box-shadow .26s, visibility 0s }
+.tbl-peek.l[data-open] { box-shadow: 10px 0 32px rgba(20,30,60,.18) }
+.tbl-peek.r[data-open] { box-shadow: -10px 0 32px rgba(20,30,60,.18) }
+@media (prefers-reduced-motion: reduce) {
+  .tbl-peek, .tbl-peek[data-open] { transform: none; opacity: 0; transition: opacity .12s, visibility .12s }
+  .tbl-peek[data-open] { opacity: 1 }
+}
+`;
 
 function Rail({ onClick, label, icon }: { onClick: () => void; label: string; icon: ReactNode }) {
   return (
@@ -101,6 +122,7 @@ function ResizeHandle({
 export function AppShell({
   left, right, children, leftOpen, rightOpen, onToggleLeft, onToggleRight,
   leftWidth = DEFAULT_LEFT_WIDTH, rightWidth = DEFAULT_RIGHT_WIDTH, onResizeLeft, onResizeRight,
+  narrow = false, leftPeek, rightPeek,
 }: AppShellProps) {
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{ startX: number; startWidth: number; side: "left" | "right" } | null>(null);
@@ -139,25 +161,49 @@ export function AppShell({
     position: "relative",
   });
 
+  // 덮개 — 좁은 화면, 그리고 넓은 화면에서 접어 둔 패널을 올려 볼 때. 끌기 도중 끌던 탭이 사라지지 않게
+  // 접혀 있는 동안은 늘 붙여 두고 보이기만 켜고 끈다(펼쳐 두면 붙박이 쪽만 그려 같은 내용이 둘이 되지 않게 한다).
+  const overlay = (side: "left" | "right", peek: HoverPeek, width: number, content: ReactNode) => (
+    <div ref={peek.ref} onMouseEnter={peek.enter} onMouseLeave={peek.leave} onBlur={peek.blur} aria-hidden={!peek.open}
+      className={`tbl-peek ${side === "left" ? "l" : "r"}`} data-open={peek.open || undefined}
+      style={{
+        position: "absolute", top: 0, bottom: 0, [side]: 0, width, zIndex: 50, display: "flex", flexDirection: "column", overflow: "hidden",
+        background: theme.surface, [side === "left" ? "borderRight" : "borderLeft"]: `1px solid ${theme.border}`,
+        visibility: peek.open ? "visible" : "hidden",
+      }}>
+      <PanelBody width={width} visible>{content}</PanelBody>
+    </div>
+  );
+  // 접힌 레일에 올리면 덮개를 연다. 레일 아이콘을 누르면 지금처럼 붙박이로 고정(onToggle)한다.
+  const railHover = (peek: HoverPeek | undefined, collapsed: boolean) =>
+    peek && collapsed ? { onMouseEnter: peek.enter, onMouseLeave: peek.leave } : {};
+
   return (
-    <div style={{ display: "flex", height: "100vh", background: theme.bg, color: theme.text, fontFamily: "-apple-system, system-ui, sans-serif", fontSize: 13 }}>
-      <aside style={panel("left", leftOpen, leftWidth)}>
-        {leftCollapsed
-          ? <Rail onClick={onToggleLeft} label="사이드바 열기" icon={<PanelLeftOpen size={18} color={theme.textFaint} />} />
-          : <PanelBody width={leftWidth} visible={leftOpen}>{left}</PanelBody>}
-        {leftOpen && <ResizeHandle side="left" width={leftWidth} onStart={startDrag} onMove={moveDrag} onEnd={endDrag} />}
-      </aside>
+    // overflow: hidden — 덮개가 바깥에서 미끄러져 들어오는 동안 레일 뒤·화면 밖으로 삐져나가지 않게
+    <div style={{ position: "relative", display: "flex", height: "100vh", overflow: "hidden", background: theme.bg, color: theme.text, fontFamily: "-apple-system, system-ui, sans-serif", fontSize: 13 }}>
+      {(leftPeek || rightPeek) && <style>{peekCss}</style>}
+      {/* 좁은 화면의 사이드바는 레일 없이 덮개만 — 왼쪽엔 조직 레일만 남는다 */}
+      {narrow ? (leftPeek && overlay("left", leftPeek, leftWidth, left)) : (
+        <aside style={panel("left", leftOpen, leftWidth)} {...railHover(leftPeek, leftCollapsed)}>
+          {leftCollapsed
+            ? <Rail onClick={onToggleLeft} label="사이드바 열기" icon={<PanelLeftOpen size={18} color={theme.textFaint} />} />
+            : <PanelBody width={leftWidth} visible={leftOpen}>{left}</PanelBody>}
+          {leftOpen && <ResizeHandle side="left" width={leftWidth} onStart={startDrag} onMove={moveDrag} onEnd={endDrag} />}
+        </aside>
+      )}
+      {!narrow && leftCollapsed && leftPeek && overlay("left", leftPeek, leftWidth, left)}
       <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }} onPointerMove={moveDrag} onPointerUp={endDrag} onLostPointerCapture={endDrag}>
         {children}
       </main>
       {right && (
-        <aside style={panel("right", rightOpen, rightWidth)}>
+        <aside style={panel("right", rightOpen, rightWidth)} {...railHover(rightPeek, rightCollapsed)}>
           {rightCollapsed
             ? <Rail onClick={onToggleRight} label="열린 탭 열기" icon={<PanelRightOpen size={18} color={theme.textFaint} />} />
             : <PanelBody width={rightWidth} visible={rightOpen}>{right}</PanelBody>}
           {rightOpen && <ResizeHandle side="right" width={rightWidth} onStart={startDrag} onMove={moveDrag} onEnd={endDrag} />}
         </aside>
       )}
+      {right && rightCollapsed && rightPeek && overlay("right", rightPeek, rightWidth, right)}
     </div>
   );
 }
