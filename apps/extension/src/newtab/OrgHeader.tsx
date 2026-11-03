@@ -13,9 +13,11 @@ export interface OrgHeaderProps {
   onDeleteOrg?: () => void;
   /** 주면 메뉴에 '북마크 가져오기'를 노출한다(삭제 바로 위) */
   onImport?: () => void;
+  /** 주면 메뉴에 '스페이스 내보내기'를 노출한다(가져오기 바로 아래) */
+  onExport?: () => void;
 }
 
-export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, onImport }: OrgHeaderProps) {
+export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, onImport, onExport }: OrgHeaderProps) {
   const isPersonal = org.is_personal;
   // 멤버는 조직 관리 권한이 없어 메뉴를 열 수 없으므로 톱니바퀴를 숨긴다.
   // 개인 조직은 프로필 설정(onEditOrg)이 있으면 톱니를 노출한다(멤버 개념이 없어 myRole 판정은 무의미).
@@ -75,6 +77,12 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, 
                   onClick={() => { setMenuOpen(false); onImport(); }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f3f5")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>북마크 가져오기</button>
+              )}
+              {onExport && (
+                <button type="button" role="menuitem" style={menuItem}
+                  onClick={() => { setMenuOpen(false); onExport(); }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f3f5")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>스페이스 내보내기</button>
               )}
               {/* 되돌릴 수 없는 항목은 구분선으로 떼어낸다 — 색만으로는 오조작을 막지 못한다 */}
               {onDeleteOrg && (

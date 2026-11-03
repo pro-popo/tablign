@@ -39,7 +39,7 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, PendingCollection, ShareCodeDialog, ImportCodeDialog, type ImportCodeInfo, ImportBookmarksDialog, ImportSourceDialog, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users } from "@tablign/ui";
+import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, PendingCollection, ShareCodeDialog, ImportCodeDialog, type ImportCodeInfo, ImportBookmarksDialog, ImportSourceDialog, ExportSpacesDialog, JsonStructurePath, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users } from "@tablign/ui";
 import {
   listSpaces, listMyMemberships, leaveSpace, listCollections, listLinks, createLink, createLinks, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions, positionBetween,
@@ -48,7 +48,7 @@ import {
   listMembers, removeMember, updateMemberRole, inviteToSpace, listSpaceInvitations, cancelInvitation, listMyInvitations, acceptInvitation, declineInvitation,
   listOrganizations, createOrganization, updateOrganization, deleteOrganization, listMyOrgMemberships, listOrgMembers, removeOrgMember, updateOrgMemberRole,
   inviteToOrg, listOrgInvitations, cancelOrgInvitation, listMyOrgInvitations, acceptOrgInvitation, declineOrgInvitation,
-  fromChromeTree, fromTobyExport, importBookmarks, linksToText, type SourceNode, type ImportPlan,
+  fromChromeTree, fromTobyExport, toTobyExport, loadSpacesForExport, importBookmarks, linksToText, type SourceNode, type ImportPlan,
   type Collection, type Link, type Space, type ShareCode, type SpaceMember, type MemberWithProfile, type SpaceInvitation, type InvitationWithSpace,
   type Organization, type OrganizationMember, type OrgMemberWithProfile, type OrganizationInvitation, type OrgInvitationWithOrg,
 } from "@tablign/core";
@@ -76,6 +76,12 @@ interface DragPreview { label: string; faviconUrl: string | null; domain: string
 function openUrl(url: string) { chrome.tabs.create({ url }); }
 
 const NEW_TAB_PLACEHOLDER = "__newtab__";
+
+/** 얼럿 문구 속 JSON 키 이름 */
+const inlineCode: React.CSSProperties = {
+  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 11.5, color: theme.text,
+  background: theme.surface2, padding: "0 4px", borderRadius: 4,
+};
 
 function domainOf(url: string): string {
   try {
@@ -475,6 +481,9 @@ export function NewTab() {
   // 북마크·Toby 가져오기 (공유 코드 가져오기 importOpen과 별개)
   const [importSourceOpen, setImportSourceOpen] = useState(false);
   const [bookmarkImportOpen, setBookmarkImportOpen] = useState(false);
+  /** JSON 가져오기에서 고른 파일을 쓸 수 없을 때 띄우는 얼럿 */
+  const [importAlert, setImportAlert] = useState<"invalid" | "empty" | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const [bookmarkRoots, setBookmarkRoots] = useState<SourceNode[]>([]);
   const [importTitle, setImportTitle] = useState("북마크 가져오기");
   // 컬렉션 삭제 확인 다이얼로그 대상 (스페이스 삭제와 동일한 2단계 확인)
@@ -1094,16 +1103,30 @@ export function NewTab() {
     let roots: SourceNode[];
     try {
       roots = fromTobyExport(JSON.parse(text));
-    } catch (e) {
-      console.error(e);
-      toast.show("Toby 내보내기 파일이 아니에요");
+    } catch {
+      // JSON이 아닌 파일과 groups가 없는 파일을 구분하지 않는다 — 고칠 방법(구조)이 같다
+      setImportAlert("invalid");
       return;
     }
-    if (!roots.length) { toast.show("가져올 링크가 없어요"); return; }
+    if (!roots.length) { setImportAlert("empty"); return; }
     setBookmarkRoots(roots);
-    setImportTitle("Toby 가져오기");
+    setImportTitle("JSON 가져오기");
     setImportSourceOpen(false);
     setBookmarkImportOpen(true);
+  }
+
+  // ── 스페이스 내보내기 ── 가져오기가 다시 읽는 형식(groups → lists → cards)으로 저장한다
+  async function exportSpaces(ids: string[]) {
+    const picked = orgSpaces.filter((s) => ids.includes(s.id));
+    const data = toTobyExport(await loadSpacesForExport(supabase, picked));
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    // sv-SE 로캘은 로컬 날짜를 YYYY-MM-DD로 준다
+    a.download = `tablign-${activeOrg?.name ?? "spaces"}-${new Date().toLocaleDateString("sv-SE")}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url));
+    setExportOpen(false);
   }
 
   async function runBookmarkImport(orgId: string, plan: ImportPlan) {
@@ -1190,6 +1213,7 @@ export function NewTab() {
                     onEditOrg={(myOrgRole === "owner" || myOrgRole === "admin") ? openEditOrg : undefined}
                     onDeleteOrg={(!activeOrg?.is_personal && myOrgRole === "owner") ? () => setOrgDeleteOpen(true) : undefined}
                     onImport={openImport}
+                    onExport={() => setExportOpen(true)}
                   />
                 ) : null}
               />
@@ -1416,6 +1440,33 @@ export function NewTab() {
         onBookmarks={pickBookmarkSource}
         onTobyFile={pickTobySource}
         onClose={() => setImportSourceOpen(false)}
+      />
+      {/* 가져오기 창 위에 한 겹 더 뜬다 — 확인하면 가져오기 창으로 돌아와 다시 고른다 */}
+      <ConfirmDialog
+        open={importAlert !== null}
+        title={importAlert === "empty" ? "가져올 링크가 없어요" : "가져올 수 없는 파일이에요"}
+        message={importAlert === "empty" ? (
+          <><code style={inlineCode}>cards</code>에 http·https로 시작하는 <code style={inlineCode}>url</code>이 하나도 없어요.</>
+        ) : (
+          <>
+            이런 구조의 JSON 파일을 골라주세요.
+            <div style={{ marginTop: 12, padding: "10px 12px 9px", background: "#f8f9fa", borderRadius: 9 }}>
+              <JsonStructurePath />
+            </div>
+          </>
+        )}
+        cancelLabel={null}
+        onConfirm={() => setImportAlert(null)}
+        onCancel={() => setImportAlert(null)}
+      />
+      <ExportSpacesDialog
+        open={exportOpen}
+        spaces={[
+          ...ownedSpaces.map((s) => ({ id: s.id, name: s.name, icon: s.icon })),
+          ...sharedSpaces.map((s) => ({ id: s.id, name: s.name, icon: s.icon, shared: true })),
+        ]}
+        onExport={exportSpaces}
+        onClose={() => setExportOpen(false)}
       />
       <ImportBookmarksDialog
         open={bookmarkImportOpen}
