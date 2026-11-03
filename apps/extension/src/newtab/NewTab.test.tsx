@@ -523,14 +523,17 @@ describe("NewTab — 멤버 관리·초대 알림", () => {
     expect(await screen.findByRole("dialog", { name: "멤버 관리" })).toBeInTheDocument();
   });
 
-  it("받은 초대가 있으면 알림 배지가 보이고 수락하면 acceptInvitation을 호출한다", async () => {
+  it("받은 초대는 레일의 받은 초대함에 개수로 보이고, 수락하면 acceptInvitation을 호출한다", async () => {
     listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" }]);
     listMyMemberships.mockResolvedValue([]);
     listCollections.mockResolvedValue([]);
     listMyInvitations.mockResolvedValue([{ id: "inv1", space_id: "s9", inviter_id: "o9", invitee_email: "u1@test.local", role: "viewer", status: "pending", created_at: "x", space_name: "초대된 스페이스", inviter_name: "앨리스" }]);
     acceptInvitation.mockResolvedValue(undefined);
     renderNewTab();
-    fireEvent.click(await screen.findByRole("button", { name: /초대/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "받은 초대 1개" }));
+    // 스페이스 헤더에는 더 이상 초대 버튼이 없다
+    expect(screen.queryByRole("button", { name: /^초대/ })).not.toBeInTheDocument();
+    expect(screen.getByText("스페이스 · 뷰어 권한")).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: "수락" }));
     await waitFor(() => expect(acceptInvitation).toHaveBeenCalledWith(expect.anything(), "inv1"));
   });
@@ -570,7 +573,8 @@ describe("NewTab — 조직(팀) 협업", () => {
     ]);
     acceptOrgInvitation.mockResolvedValue(undefined);
     renderNewTab();
-    fireEvent.click(await screen.findByRole("button", { name: /초대/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "받은 초대 1개" }));
+    expect(screen.getByText("조직 · 멤버 권한")).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: "수락" }));
     await waitFor(() => expect(acceptOrgInvitation).toHaveBeenCalledWith(expect.anything(), "oinv1"));
   });

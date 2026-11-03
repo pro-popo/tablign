@@ -75,6 +75,12 @@ interface DragPreview { label: string; faviconUrl: string | null; domain: string
 
 function openUrl(url: string) { chrome.tabs.create({ url }); }
 
+/** 받은 초대 권한 이름 — 스페이스(편집자·뷰어)와 조직(관리자·멤버) 값이 겹치지 않아 한 목록으로 쓴다 */
+const INVITATION_ROLES = [
+  { value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" },
+  { value: "admin", label: "관리자" }, { value: "member", label: "멤버" },
+];
+
 const NEW_TAB_PLACEHOLDER = "__newtab__";
 
 /** 얼럿 문구 속 JSON 키 이름 */
@@ -353,6 +359,22 @@ export function NewTab() {
     toast.show("조직에 참여했어요");
   }
 
+  async function acceptAnyInvitation(id: string) {
+    if (myOrgInvitations.some((x) => x.id === id)) { await acceptOrgInv(id); return; }
+    await acceptInvitation(supabase, id);
+    await refreshAll();
+  }
+
+  async function declineAnyInvitation(id: string) {
+    if (myOrgInvitations.some((x) => x.id === id)) {
+      await declineOrgInvitation(supabase, id);
+      setMyOrgInvitations((prev) => prev.filter((x) => x.id !== id));
+      return;
+    }
+    await declineInvitation(supabase, id);
+    setMyInvitations((prev) => prev.filter((x) => x.id !== id));
+  }
+
   async function addSpace(name: string, icon: string | null) {
     if (!session) return;
     // 맨 위에 붙인다 — DB 기본값(1000)으로 두면 기존 스페이스와 position이 같아져 새로고침 시 순서가 뒤바뀐다.
@@ -513,19 +535,8 @@ export function NewTab() {
   // 조직 멤버 관리 다이얼로그의 대기 중 초대 + 받은 조직 초대(알림 팝오버용)
   const [orgPendingInvites, setOrgPendingInvites] = useState<OrganizationInvitation[]>([]);
   const [myOrgInvitations, setMyOrgInvitations] = useState<OrgInvitationWithOrg[]>([]);
-  const [inviteOpen, setInviteOpen] = useState(false);
   // 경합 가드: 사전조회 응답이 도착할 때 현재 대상과 다르면 버린다.
   const shareTargetRef = useRef<string | null>(null);
-  const inviteRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (!inviteOpen) return;
-    function onDown(e: MouseEvent) {
-      if (inviteRef.current && !inviteRef.current.contains(e.target as Node)) setInviteOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [inviteOpen]);
 
   async function openShareDialog(collection: Collection) {
     shareTargetRef.current = collection.id;
@@ -1181,6 +1192,18 @@ export function NewTab() {
             onSelectOrg={selectOrg}
             onCreateOrg={openCreateOrg}
             onSignOut={async () => { await supabase.auth.signOut(); }}
+            invitationCount={myInvitations.length + myOrgInvitations.length}
+            invitations={
+              <InvitationList
+                invitations={[
+                  ...myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role, kind: "스페이스" })),
+                  ...myOrgInvitations.map((i) => ({ id: i.id, space_name: i.org_name, inviter_name: i.inviter_name, role: i.role, kind: "조직" })),
+                ]}
+                roles={INVITATION_ROLES}
+                onAccept={acceptAnyInvitation}
+                onDecline={declineAnyInvitation}
+              />
+            }
           />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1233,42 +1256,6 @@ export function NewTab() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
-                  <span ref={inviteRef} style={{ position: "relative" }}>
-                    <Button variant="outline" onClick={() => setInviteOpen((v) => !v)}>
-                      초대 {(myInvitations.length + myOrgInvitations.length) > 0 ? `(${myInvitations.length + myOrgInvitations.length})` : ""}
-                    </Button>
-                    {inviteOpen && (
-                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 60, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: "0 8px 20px rgba(20,30,60,.14)" }}>
-                        {myInvitations.length === 0 && myOrgInvitations.length === 0 ? (
-                          <InvitationList
-                            invitations={[]}
-                            roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
-                            onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
-                            onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
-                          />
-                        ) : (
-                          <>
-                            {myInvitations.length > 0 && (
-                              <InvitationList
-                                invitations={myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role }))}
-                                roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
-                                onAccept={async (id) => { await acceptInvitation(supabase, id); setInviteOpen(false); await refreshAll(); }}
-                                onDecline={async (id) => { await declineInvitation(supabase, id); setMyInvitations((prev) => prev.filter((x) => x.id !== id)); }}
-                              />
-                            )}
-                            {myOrgInvitations.length > 0 && (
-                              <InvitationList
-                                invitations={myOrgInvitations.map((i) => ({ id: i.id, space_name: i.org_name, inviter_name: i.inviter_name, role: i.role }))}
-                                roles={[{ value: "admin", label: "관리자" }, { value: "member", label: "멤버" }]}
-                                onAccept={async (id) => { await acceptOrgInv(id); setInviteOpen(false); }}
-                                onDecline={async (id) => { await declineOrgInvitation(supabase, id); setMyOrgInvitations((prev) => prev.filter((x) => x.id !== id)); }}
-                              />
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {members.length > 0 && <MemberAvatars people={members} />}

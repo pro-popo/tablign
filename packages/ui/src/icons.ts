@@ -17,6 +17,7 @@ export {
   Trash2,
   Globe,
   LogOut,
+  Mail,
   MoreHorizontal,
   ArrowLeft,
   Users,
