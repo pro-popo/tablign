@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import type { Space } from "@tablign/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus, Pencil, Trash2, PanelLeftClose, LogOut, ConfirmDialog, overlayAnimationCss, popIn, theme } from "@tablign/ui";
+import { Plus, Pencil, Trash2, PanelLeftClose, LogOut, ConfirmDialog, overlayAnimationCss, popIn, theme, SpaceIcon } from "@tablign/ui";
 import { TossEmojiPicker } from "./TossEmojiPicker";
 import { ORG_ICON_FONT } from "./orgIcon";
 
@@ -19,15 +19,6 @@ export interface ExtSidebarProps {
   onCollapse: () => void;
   searchSlot: ReactNode;
   orgHeaderSlot?: ReactNode;
-}
-
-/** 스페이스 아이콘. 고르지 않은 스페이스는 흐린 폴더로 표시한다. */
-function SpaceIcon({ icon }: { icon: string | null }) {
-  return (
-    <span style={{ width: 18, flex: "none", textAlign: "center", fontFamily: ORG_ICON_FONT, fontSize: 15, lineHeight: "18px", opacity: icon ? 1 : 0.45 }}>
-      {icon ?? "📁"}
-    </span>
-  );
 }
 
 /** 토스 이모지 피커 크기(px). 아래 공간이 모자라면 위로 뒤집을 때 쓴다. */

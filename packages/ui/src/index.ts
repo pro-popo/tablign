@@ -22,6 +22,7 @@ export * from "./ImportBookmarksDialog";
 export * from "./ImportSourceDialog";
 export * from "./usePanelState";
 export * from "./CollectionMoreMenu";
+export * from "./SpaceIcon";
 export * from "./AddCollectionButton";
 export * from "./SpaceOnboarding";
 export * from "./CollectionOnboarding";

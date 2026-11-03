@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, ArrowLeft } from "./icons";
 import { theme } from "./theme";
+import { SpaceIcon } from "./SpaceIcon";
 
 export interface SpaceOption { id: string; name: string; icon?: string | null }
 
@@ -57,22 +58,23 @@ export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare, onCopyLink
             boxShadow: "0 8px 20px rgba(20,30,60,.14)", padding: 4,
           }}
         >
+          <style>{menuItemCss}</style>
           {mode === null ? (
             <>
               {spaces.length > 0 && (
                 <>
-                  <button type="button" style={itemStyle} onClick={() => setMode("move")}>다른 스페이스로 이동</button>
-                  <button type="button" style={itemStyle} onClick={() => setMode("copy")}>다른 스페이스에 복사</button>
+                  <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => setMode("move")}>다른 스페이스로 이동</button>
+                  <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => setMode("copy")}>다른 스페이스에 복사</button>
                 </>
               )}
               {onCopyLinks && (
-                <button type="button" style={itemStyle} onClick={() => { onCopyLinks(); close(); }}>링크 전체 복사</button>
+                <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => { onCopyLinks(); close(); }}>링크 전체 복사</button>
               )}
               {onShare && (
-                <button type="button" style={itemStyle} onClick={() => { onShare(); close(); }}>공유 코드</button>
+                <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => { onShare(); close(); }}>공유 코드</button>
               )}
               {onTogglePrivate && (
-                <button type="button" style={itemStyle} onClick={() => { onTogglePrivate(); close(); }}>
+                <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => { onTogglePrivate(); close(); }}>
                   {isPrivate ? "공개로 전환" : "비공개로 전환"}
                 </button>
               )}
@@ -92,8 +94,8 @@ export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare, onCopyLink
                 {mode === "move" ? "이동할 스페이스" : "복사할 스페이스"}
               </div>
               {spaces.map((s) => (
-                <button key={s.id} type="button" style={itemStyle} onClick={() => pick(s.id)}>
-                  {s.icon ? `${s.icon} ` : ""}{s.name}
+                <button key={s.id} type="button" className="tbl-cmenu-item" style={{ ...itemStyle, display: "flex", alignItems: "center", gap: 8 }} onClick={() => pick(s.id)}>
+                  <SpaceIcon icon={s.icon} /> {s.name}
                 </button>
               ))}
             </>
@@ -104,7 +106,10 @@ export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare, onCopyLink
   );
 }
 
+/** 항목 호버 배경. 인라인 background는 :hover를 이길 수 없어 배경은 여기서만 정한다. 조직 메뉴와 같은 색. */
+const menuItemCss = `.tbl-cmenu-item { background: none } .tbl-cmenu-item:hover { background: ${theme.surface2} }`;
+
 const itemStyle: React.CSSProperties = {
-  display: "block", width: "100%", textAlign: "left", border: "none", background: "none",
+  display: "block", width: "100%", textAlign: "left", border: "none",
   cursor: "pointer", padding: "7px 9px", borderRadius: 7, fontSize: 13, color: theme.text,
 };
