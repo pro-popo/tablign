@@ -36,6 +36,22 @@ describe("CollectionMoreMenu", () => {
     expect(onCopy).toHaveBeenCalledWith("s2");
   });
 
+  it("스페이스 아이콘은 사이드바와 같은 토스페이스 폰트로 그린다", () => {
+    render(<CollectionMoreMenu spaces={spaces} onMove={noop} onCopy={noop} />);
+    fireEvent.click(screen.getByRole("button", { name: "컬렉션 메뉴" }));
+    fireEvent.click(screen.getByText("다른 스페이스로 이동"));
+    expect(screen.getByText("💼").style.fontFamily).toContain("Tossface");
+  });
+
+  it("아이콘이 없는 스페이스는 사이드바처럼 흐린 폴더로 표시한다", () => {
+    render(<CollectionMoreMenu spaces={spaces} onMove={noop} onCopy={noop} />);
+    fireEvent.click(screen.getByRole("button", { name: "컬렉션 메뉴" }));
+    fireEvent.click(screen.getByText("다른 스페이스로 이동"));
+    const folder = screen.getByText("📁");
+    expect(folder.style.opacity).toBe("0.45");
+    expect(folder.style.fontFamily).toContain("Tossface");
+  });
+
   it("뒤로 버튼으로 첫 메뉴로 돌아간다", () => {
     render(<CollectionMoreMenu spaces={spaces} onMove={noop} onCopy={noop} />);
     fireEvent.click(screen.getByRole("button", { name: "컬렉션 메뉴" }));

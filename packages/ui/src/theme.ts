@@ -16,4 +16,6 @@ export const theme = {
   radiusCard: 9,
   radiusBtn: 7,
   radiusChip: 8,
+  /** 스페이스·조직 아이콘 이모지 폰트 — 토스페이스 1순위, 없으면 시스템 컬러 이모지로 fallback. */
+  iconFont: '"Tossface", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
 } as const;

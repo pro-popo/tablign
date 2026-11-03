@@ -1,13 +1,13 @@
 import type { CSSProperties } from "react";
+import { theme } from "@tablign/ui";
 
 /** 아이콘 위치·크기 조정값의 기준 박스 크기(px). 저장된 오프셋은 이 크기 기준. */
 export const ICON_REF_BOX = 100;
 /** 박스 크기 대비 이모지 기준 글자 크기 비율(100%일 때). 모든 렌더 지점(레일·헤더·다이얼로그)이
  *  같은 비율을 써야 "설정한 크기"가 동일하게 보인다. 기본 이모지가 박스를 넉넉히 채우도록 잡음. */
 const ICON_EMOJI_RATIO = 0.58;
-/** 이모지 렌더 폰트 스택 — 토스페이스 1순위, 없으면 시스템 컬러 이모지로 fallback. 모든 렌더 지점 공통. */
-export const ORG_ICON_FONT =
-  '"Tossface", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+/** 이모지 렌더 폰트 스택. packages/ui 컴포넌트와 같은 값을 쓰도록 theme에서 가져온다. */
+export const ORG_ICON_FONT = theme.iconFont;
 /** 개인 조직 기본 아이콘 — 커스텀 아이콘을 고르지 않았을 때 표시되는 집 이모지. */
 export const PERSONAL_DEFAULT_ICON = "🏠";
 /** 개인 조직 기본 색 — 커스텀 색을 고르지 않았을 때 아이콘 박스 배경(옐로우 그라데이션). 레일·헤더 공통. */
