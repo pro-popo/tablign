@@ -20,6 +20,7 @@ export * from "./ImportCodeDialog";
 export * from "./TriCheckbox";
 export * from "./ImportBookmarksDialog";
 export * from "./ImportSourceDialog";
+export * from "./ExportSpacesDialog";
 export * from "./usePanelState";
 export * from "./CollectionMoreMenu";
 export * from "./SpaceIcon";

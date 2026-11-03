@@ -61,3 +61,31 @@ export function fromTobyExport(data: unknown): SourceNode[] {
 
   return children.length ? [{ id: "toby", title: "Toby", primary: true, children }] : [];
 }
+
+/** 내보낼 스페이스 — 이름과 컬렉션·링크만 담는다(아이콘·메모·비공개 설정은 담지 않는다). */
+export interface ExportSpace {
+  name: string;
+  collections: {
+    title: string;
+    links: { url: string; title: string | null; custom_title: string | null; favicon_url: string | null }[];
+  }[];
+}
+
+/** 스페이스들 → fromTobyExport가 다시 읽는 형식(groups → lists → cards)의 JSON 객체. */
+export function toTobyExport(spaces: ExportSpace[]) {
+  return {
+    version: 4,
+    groups: spaces.map((s) => ({
+      name: s.name,
+      lists: s.collections.map((c) => ({
+        title: c.title,
+        cards: c.links.map((l) => ({
+          title: l.title ?? "",
+          url: l.url,
+          favIconUrl: l.favicon_url ?? "",
+          customTitle: l.custom_title ?? "",
+        })),
+      })),
+    })),
+  };
+}

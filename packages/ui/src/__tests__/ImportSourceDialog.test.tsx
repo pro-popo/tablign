@@ -12,7 +12,16 @@ describe("ImportSourceDialog", () => {
     expect(onBookmarks).toHaveBeenCalledTimes(1);
   });
 
-  it("Toby 파일을 고르면 파일 텍스트로 onTobyFile을 호출한다", async () => {
+  it("JSON 파일 카드에 Toby 언급 없이 '구조' 말풍선으로 필드 경로를 보여 준다", () => {
+    render(<ImportSourceDialog open onBookmarks={noop} onTobyFile={noop} onClose={noop} />);
+    expect(screen.getByRole("button", { name: /JSON 파일/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Toby/)).not.toBeInTheDocument();
+    const tip = screen.getByTestId("json-structure-tip");
+    expect(tip).toHaveTextContent(/groups.*lists.*cards.*url/);
+    expect(tip).toHaveTextContent(/스페이스.*컬렉션.*링크.*주소/);
+  });
+
+  it("JSON 파일을 고르면 파일 텍스트로 onTobyFile을 호출한다", async () => {
     const onTobyFile = vi.fn();
     render(<ImportSourceDialog open onBookmarks={noop} onTobyFile={onTobyFile} onClose={noop} />);
 

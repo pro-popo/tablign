@@ -56,6 +56,7 @@ const removeOrgMember = vi.fn();
 const updateOrgMemberRole = vi.fn();
 const importBookmarks = vi.fn();
 const updateCollection = vi.fn();
+const loadSpacesForExport = vi.fn();
 vi.mock("@tablign/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tablign/core")>();
   return {
@@ -92,6 +93,7 @@ vi.mock("@tablign/core", async (importOriginal) => {
     updateOrgMemberRole: (...a: unknown[]) => updateOrgMemberRole(...a),
     importBookmarks: (...a: unknown[]) => importBookmarks(...a),
     updateCollection: (...a: unknown[]) => updateCollection(...a),
+    loadSpacesForExport: (...a: unknown[]) => loadSpacesForExport(...a),
   };
 });
 
@@ -172,6 +174,7 @@ beforeEach(() => {
   importBookmarks.mockReset();
   updateCollection.mockReset();
   updateCollection.mockResolvedValue(undefined);
+  loadSpacesForExport.mockReset();
   importBookmarks.mockResolvedValue({ space_ids: ["space-new"], first_space_id: "space-new", links: 2 });
   // jsdom 전역 chrome 스텁(test-setup)에 tabs API를 보강하고,
   // activeSpace와 동일하게 activeOrg도 저장값 없이 {}를 돌려주게 해 컴포넌트의 개인 조직 폴백을 태운다.
@@ -680,7 +683,7 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     );
   });
 
-  it("조직 관리 메뉴는 프로필 설정 → 멤버 관리 → 북마크 가져오기 순이고, 조직 삭제는 구분선 뒤에 온다", async () => {
+  it("조직 관리 메뉴는 프로필 설정 → 멤버 관리 → 북마크 가져오기 → 스페이스 내보내기 순이고, 조직 삭제는 구분선 뒤에 온다", async () => {
     listOrganizations.mockResolvedValue([
       { id: "org-personal", name: "개인", icon: null, color: null, owner_id: "u1", is_personal: true, created_at: "" },
       { id: "org-team", name: "우리팀", icon: null, color: "#20a97e", owner_id: "u1", is_personal: false, created_at: "x" },
@@ -699,7 +702,7 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
     const menu = await screen.findByRole("menu");
 
     expect(screen.getAllByRole("menuitem").map((b) => b.textContent)).toEqual([
-      "프로필 설정", "멤버 관리", "북마크 가져오기", "조직 삭제",
+      "프로필 설정", "멤버 관리", "북마크 가져오기", "스페이스 내보내기", "조직 삭제",
     ]);
     // 되돌릴 수 없는 항목 앞에 구분선 — 색만으로는 오조작을 막지 못한다
     const sep = within(menu).getByRole("separator");
@@ -891,7 +894,7 @@ describe("NewTab — 북마크 가져오기", () => {
     // group이 스페이스, list가 컬렉션
     expect(await screen.findByTestId("rail-toby:0")).toBeInTheDocument();
     expect(screen.getByTestId("col-toby:0:0")).toHaveTextContent("Client");
-    expect(screen.getByRole("dialog", { name: "Toby 가져오기" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "JSON 가져오기" })).toBeInTheDocument();
 
     // 가져오기 실행 — Toby가 준 파비콘이 그대로 페이로드에 실린다
     fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
@@ -904,17 +907,76 @@ describe("NewTab — 북마크 가져오기", () => {
       .toBe("https://github.githubassets.com/favicon.svg");
   });
 
-  it("Toby 파일이 아니면 토스트를 띄우고 미리보기를 열지 않는다", async () => {
+  async function pickJson(text: string) {
     listSpaces.mockResolvedValue([]);
     renderNewTab();
     fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "북마크 가져오기" }));
-
-    const file = new File(["{\"foo\":1}"], "wrong.json", { type: "application/json" });
+    const file = new File([text], "wrong.json", { type: "application/json" });
     fireEvent.change(await screen.findByTestId("toby-file-input"), { target: { files: [file] } });
+  }
 
-    expect(await screen.findByText(/Toby 내보내기 파일이 아니에요/)).toBeInTheDocument();
-    expect(screen.queryByTestId("board-header")).not.toBeInTheDocument();
+  it("구조가 맞지 않는 JSON이면 구조를 담은 얼럿을 띄우고, 확인하면 가져오기 창으로 돌아온다", async () => {
+    await pickJson("{\"foo\":1}");
+
+    const alert = await screen.findByRole("alertdialog", { name: "가져올 수 없는 파일이에요" });
+    expect(alert).toHaveTextContent(/groups.*lists.*cards.*url/);
+    expect(screen.queryByRole("dialog", { name: "JSON 가져오기" })).not.toBeInTheDocument();
+
+    fireEvent.click(within(alert).getByRole("button", { name: "확인" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "가져오기" })).toBeInTheDocument();
+  });
+
+  it("JSON이 아닌 파일도 같은 얼럿을 띄운다", async () => {
+    await pickJson("not json");
+    expect(await screen.findByRole("alertdialog", { name: "가져올 수 없는 파일이에요" })).toBeInTheDocument();
+  });
+
+  it("구조는 맞는데 http·https 링크가 없으면 '가져올 링크가 없어요' 얼럿을 띄운다", async () => {
+    await pickJson(JSON.stringify({ groups: [{ name: "g", lists: [{ title: "l", cards: [{ url: "javascript:0" }] }] }] }));
+    expect(await screen.findByRole("alertdialog", { name: "가져올 링크가 없어요" })).toBeInTheDocument();
+  });
+});
+
+describe("NewTab — 스페이스 내보내기", () => {
+  it("조직 메뉴에서 열어 고른 스페이스를 tablign-<조직명>-날짜.json으로 내려받는다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개발", icon: "💻", position: 1000, created_at: "x", org_id: "org-personal" },
+      { id: "s2", user_id: "u2", name: "디자인 리뷰", icon: null, position: 2000, created_at: "x", org_id: "org-personal" },
+    ]);
+    listMyMemberships.mockResolvedValue([{ space_id: "s2", user_id: "u1", role: "viewer", created_at: "x" }]);
+    loadSpacesForExport.mockResolvedValue([
+      { name: "개발", collections: [{ title: "문서", links: [{ url: "https://a.dev", title: "A", custom_title: null, favicon_url: null }] }] },
+    ]);
+    const createObjectURL = vi.fn((_b: Blob) => "blob:export");
+    // jsdom에는 createObjectURL이 없다
+    Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+    let downloaded = "";
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      downloaded = this.download;
+    });
+
+    renderNewTab();
+    fireEvent.click(await screen.findByRole("button", { name: "조직 관리" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "스페이스 내보내기" }));
+    const dialog = await screen.findByRole("dialog", { name: "스페이스 내보내기" });
+    expect(within(dialog).getByText("공유 스페이스")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByText("디자인 리뷰"));
+    fireEvent.click(within(dialog).getByRole("button", { name: "1개 내보내기" }));
+
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    expect(loadSpacesForExport).toHaveBeenCalledWith(expect.anything(), [expect.objectContaining({ id: "s1", name: "개발" })]);
+    expect(downloaded).toMatch(/^tablign-개인-\d{4}-\d{2}-\d{2}\.json$/);
+    const text = await new Promise<string>((resolve) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.readAsText(createObjectURL.mock.calls[0][0]);
+    });
+    expect(JSON.parse(text).groups[0]).toMatchObject({ name: "개발", lists: [{ title: "문서" }] });
+    expect(screen.queryByRole("dialog", { name: "스페이스 내보내기" })).not.toBeInTheDocument();
+    click.mockRestore();
   });
 });
 

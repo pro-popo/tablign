@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { theme } from "./theme";
 import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
 
@@ -23,16 +23,50 @@ const importSourceCss = `
 }
 /* 카드가 옅은 라벤더로 물들면 아이콘 박스가 배경에 묻히므로 채움으로 바꿔 살린다 */
 .tbl-src-opt:hover:not(:disabled) .tbl-src-ico { background: ${theme.accent}; color: #fff }
+/* 설명 속 "구조" — 올리면 카드 밖에 말풍선이 떠서 카드 크기는 그대로다 */
+.tbl-src-term { position: relative; text-decoration: underline dotted ${theme.textFaint}; text-underline-offset: 3px; cursor: help }
+.tbl-src-term:hover { color: ${theme.accent}; text-decoration-color: ${theme.accent} }
+.tbl-src-tip {
+  position: absolute; top: calc(100% + 9px); left: -14px; z-index: 5; padding: 9px 12px 8px; white-space: nowrap;
+  background: ${theme.surface}; border: 1px solid ${theme.border}; border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(20,30,60,.18);
+  opacity: 0; transform: translateY(-3px); pointer-events: none; transition: opacity .14s ease, transform .14s ease;
+}
+.tbl-src-tip::before {
+  content: ""; position: absolute; top: -5px; left: 20px; width: 8px; height: 8px; background: ${theme.surface};
+  border-left: 1px solid ${theme.border}; border-top: 1px solid ${theme.border}; transform: rotate(45deg);
+}
+.tbl-src-term:hover .tbl-src-tip { opacity: 1; transform: none }
 @media (prefers-reduced-motion: reduce) {
-  .tbl-src-opt, .tbl-src-ico { transition: none }
+  .tbl-src-opt, .tbl-src-ico, .tbl-src-tip { transition: none }
 }
 `;
+
+const JSON_STRUCTURE = [["groups", "스페이스"], ["lists", "컬렉션"], ["cards", "링크"], ["url", "주소"]] as const;
+
+/** 가져올 수 있는 JSON의 경로 한 줄 — 키 이름 아래에 뜻을 작게. 말풍선과 잘못된 파일 얼럿이 같이 쓴다. */
+export function JsonStructurePath() {
+  return (
+    <span style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+      {JSON_STRUCTURE.map(([key, meaning], i) => (
+        <Fragment key={key}>
+          {i > 0 && <span style={{ color: "#ced4da", fontSize: 12, lineHeight: "16px" }}>›</span>}
+          <span style={{ display: "flex", flexDirection: "column" }}>
+            <code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 11,
+              color: theme.accent, lineHeight: "16px" }}>{key}</code>
+            <span style={{ fontSize: 10.5, color: theme.textFaint, lineHeight: "14px" }}>{meaning}</span>
+          </span>
+        </Fragment>
+      ))}
+    </span>
+  );
+}
 
 export interface ImportSourceDialogProps {
   open: boolean;
   /** Chrome 북마크를 골랐을 때. 실패(토스트 후 return)해도 다시 시도할 수 있게 완료를 기다린다. */
   onBookmarks: () => void | Promise<void>;
-  /** Toby 내보내기 파일을 골랐을 때 — 파일의 텍스트를 넘긴다(파싱은 호출자 몫) */
+  /** JSON 파일(Toby 내보내기 형식)을 골랐을 때 — 파일의 텍스트를 넘긴다(파싱은 호출자 몫) */
   onTobyFile: (text: string) => void;
   onClose: () => void;
 }
@@ -130,9 +164,13 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
             onClick={() => fileRef.current?.click()}>
             <span aria-hidden className="tbl-src-ico" style={iconBox}>⬒</span>
             <span style={{ minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: theme.text }}>Toby</span>
+              <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: theme.text }}>JSON 파일</span>
               <span style={{ display: "block", marginTop: 2, fontSize: 12, color: theme.textMuted }}>
-                Toby에서 내보낸 JSON 파일을 골라주세요
+                <span className="tbl-src-term">
+                  구조
+                  <span className="tbl-src-tip" data-testid="json-structure-tip" aria-hidden><JsonStructurePath /></span>
+                </span>
+                에 맞는 JSON 파일을 골라주세요
               </span>
             </span>
           </button>
