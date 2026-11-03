@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { ToastProvider } from "@tablign/ui";
 import { NewTab } from "./NewTab";
@@ -55,6 +55,7 @@ const cancelOrgInvitation = vi.fn();
 const removeOrgMember = vi.fn();
 const updateOrgMemberRole = vi.fn();
 const importBookmarks = vi.fn();
+const updateCollection = vi.fn();
 vi.mock("@tablign/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tablign/core")>();
   return {
@@ -90,6 +91,7 @@ vi.mock("@tablign/core", async (importOriginal) => {
     removeOrgMember: (...a: unknown[]) => removeOrgMember(...a),
     updateOrgMemberRole: (...a: unknown[]) => updateOrgMemberRole(...a),
     importBookmarks: (...a: unknown[]) => importBookmarks(...a),
+    updateCollection: (...a: unknown[]) => updateCollection(...a),
   };
 });
 
@@ -168,6 +170,8 @@ beforeEach(() => {
   removeOrgMember.mockReset();
   updateOrgMemberRole.mockReset();
   importBookmarks.mockReset();
+  updateCollection.mockReset();
+  updateCollection.mockResolvedValue(undefined);
   importBookmarks.mockResolvedValue({ space_ids: ["space-new"], first_space_id: "space-new", links: 2 });
   // jsdom 전역 chrome 스텁(test-setup)에 tabs API를 보강하고,
   // activeSpace와 동일하게 activeOrg도 저장값 없이 {}를 돌려주게 해 컴포넌트의 개인 조직 폴백을 태운다.
@@ -911,5 +915,72 @@ describe("NewTab — 북마크 가져오기", () => {
 
     expect(await screen.findByText(/Toby 내보내기 파일이 아니에요/)).toBeInTheDocument();
     expect(screen.queryByTestId("board-header")).not.toBeInTheDocument();
+  });
+});
+
+describe("NewTab — 창을 끌어 컬렉션 만들기", () => {
+  const onlySpace = [
+    { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+  ];
+  const col = (id: string, position: number) => ({
+    id, space_id: "s1", user_id: "u1", title: id.toUpperCase(), icon: null, note: null, is_private: false, position, created_at: "x",
+  });
+  const TABS = [
+    { id: 1, windowId: 10, url: "https://a.com", title: "탭 A" },
+    { id: 2, windowId: 10, url: "https://b.com", title: "탭 B" },
+  ];
+
+  // jsdom은 레이아웃이 없어 모든 rect가 0이다 — 포인터가 모든 드롭 대상 안에 있도록 넓힌다.
+  // 그러면 창 드래그의 후보(컬렉션 col: > 보드 board) 중 첫 컬렉션이 over가 된다.
+  beforeEach(() => {
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(
+      { x: 0, y: 0, top: 0, left: 0, right: 1000, bottom: 1000, width: 1000, height: 1000, toJSON: () => ({}) } as DOMRect,
+    );
+    vi.stubGlobal("chrome", {
+      ...(globalThis as unknown as { chrome: object }).chrome,
+      tabs: { query: vi.fn().mockResolvedValue(TABS), getCurrent: vi.fn().mockResolvedValue({ id: 99 }) },
+    });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  /** 창 헤더를 잡아 보드 위로 끌어 놓는다. jsdom엔 PointerEvent가 없어 MouseEvent로 보낸다. */
+  function dragWindowHeader(name: string) {
+    const down = new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 0, clientY: 0 });
+    Object.defineProperty(down, "isPrimary", { value: true });
+    fireEvent(screen.getByRole("button", { name }), down);
+    fireEvent(document, new MouseEvent("pointermove", { bubbles: true, clientX: 10, clientY: 10 }));
+    fireEvent(document, new MouseEvent("pointermove", { bubbles: true, clientX: 20, clientY: 20 }));
+    fireEvent(document, new MouseEvent("pointerup", { bubbles: true, clientX: 20, clientY: 20 }));
+  }
+
+  it("컬렉션이 0개인 스페이스에 놓아도 그 창의 컬렉션이 생긴다", async () => {
+    listSpaces.mockResolvedValue(onlySpace);
+    renderNewTab();
+    await screen.findByText("지금 창의 탭 2개 담기", {}, { timeout: 4000 });
+
+    dragWindowHeader("창 1 접기");
+
+    await waitFor(() => expect(createCollection).toHaveBeenCalledTimes(1));
+    expect(createCollection.mock.calls[0][1]).toMatchObject({ space_id: "s1", title: "창 1" });
+    await waitFor(() => expect(createLinks).toHaveBeenCalledTimes(1));
+    expect((createLinks.mock.calls[0][1] as { url: string }[]).map((i) => i.url)).toEqual(["https://a.com", "https://b.com"]);
+  });
+
+  it("컬렉션 위에 놓으면 그 자리에 생기고, 새 순서를 position으로 저장한다", async () => {
+    listSpaces.mockResolvedValue(onlySpace);
+    listCollections.mockResolvedValue([col("a", 1000), col("b", 2000)]);
+    renderNewTab();
+    await screen.findByText("A", {}, { timeout: 4000 });
+    await screen.findByRole("button", { name: "창 1 접기" });
+
+    dragWindowHeader("창 1 접기");
+
+    // 첫 컬렉션(A) 앞에 놓였다 → [창 1, A, B]
+    await waitFor(() => expect(updateCollection).toHaveBeenCalledTimes(3));
+    expect(updateCollection.mock.calls.map((c) => [c[1], c[2]])).toEqual([
+      ["col-창 1", { position: 1000 }],
+      ["a", { position: 2000 }],
+      ["b", { position: 3000 }],
+    ]);
   });
 });

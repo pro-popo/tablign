@@ -163,3 +163,21 @@ export function resolveTabDropTarget(groups: WindowGroup[], overId: string): Tab
   }
   return null;
 }
+
+/**
+ * 창을 보드로 끌 때 새 컬렉션 자리표시의 index(= collectionIds 중 몇 번째 앞에 끼울지)를 계산한다.
+ * current는 지금 자리표시의 index(없으면 null). 자리표시가 낀 목록에서 over 컬렉션의 index로
+ * 옮기므로(arrayMove와 같은 의미) 아래로 지나가면 그 뒤로, 위로 지나가면 그 앞으로 간다.
+ * - `col:{id}` → 그 컬렉션 자리로
+ * - `board`    → 컬렉션 사이 빈틈: 자리 유지(튀지 않게). 처음 들어온 것이면 맨 끝.
+ * - 그 밖     → 자리 유지
+ */
+export function windowDropIndex(collectionIds: string[], current: number | null, overId: string): number | null {
+  if (overId === "board") return current ?? collectionIds.length;
+  if (!overId.startsWith("col:")) return current;
+  const rows: (string | null)[] = current == null
+    ? collectionIds
+    : [...collectionIds.slice(0, current), null, ...collectionIds.slice(current)];
+  const x = rows.indexOf(overId.slice("col:".length));
+  return x >= 0 ? x : current;
+}

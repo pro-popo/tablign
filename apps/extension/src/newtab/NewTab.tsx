@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
-  DndContext, DragOverlay, PointerSensor, pointerWithin, MeasuringStrategy, useSensor, useSensors,
+  DndContext, DragOverlay, PointerSensor, pointerWithin, MeasuringStrategy, useDroppable, useSensor, useSensors,
   type CollisionDetection, type DragStartEvent, type DragOverEvent, type DragEndEvent,
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -21,6 +21,15 @@ const collisionDetection: CollisionDetection = (args) => {
       ...args,
       droppableContainers: args.droppableContainers.filter((c) => String(c.id).startsWith("space:")),
     });
+  }
+  // 창 드래그 중에는 컬렉션 정렬 대상(col:)과 보드(board)만 후보. 컬렉션 위가 보드(빈틈)보다 우선.
+  if (args.active?.data?.current?.kind === "window") {
+    const winHits = pointerWithin({
+      ...args,
+      droppableContainers: args.droppableContainers.filter((c) => String(c.id).startsWith("col:") || c.id === "board"),
+    });
+    const colHit = winHits.find((h) => String(h.id).startsWith("col:"));
+    return colHit ? [colHit] : winHits;
   }
   const hits = pointerWithin(args);
   // 카드(탭/링크) > 컨테이너(컬렉션 container:/창 window:/컬렉션 정렬 col:/스페이스 정렬 space:) 순으로 우선.
@@ -44,7 +53,7 @@ import {
   type Organization, type OrganizationMember, type OrgMemberWithProfile, type OrganizationInvitation, type OrgInvitationWithOrg,
 } from "@tablign/core";
 import { supabase } from "../lib/supabase";
-import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, saveableTabs, type WindowGroup, type WindowTab } from "../lib/tabs";
+import { tabsToLinkInputs, tabDropToLinkInput, groupTabsByWindow, moveTab, resolveTabDropTarget, parseTabDragId, saveableTabs, windowDropIndex, type WindowGroup, type WindowTab } from "../lib/tabs";
 import { usePanelState } from "../lib/usePanelState";
 import { useActiveSpace } from "../lib/useActiveSpace";
 import { useActiveOrg } from "../lib/useActiveOrg";
@@ -81,7 +90,20 @@ type Active =
   | { type: "link"; link: Link }
   | { type: "collection"; collection: Collection }
   | { type: "space"; space: Space }
+  | { type: "window"; windowId: number }
   | null;
+
+/** 창을 끌어 놓을 수 있는 보드 영역. 컬렉션 사이 빈틈이나 컬렉션이 없는 빈 스페이스에서도 드롭을 받는다. */
+function BoardDropArea({ children }: { children: ReactNode }) {
+  const { setNodeRef } = useDroppable({ id: "board" });
+  return (
+    // flex:"1 0 auto" — 내용이 짧으면 남은 공간을 채우고(빈 상태 세로 중앙),
+    // 길면 줄어들지 않고 그대로 늘어난다(컬렉션 목록).
+    <div ref={setNodeRef} style={{ flex: "1 0 auto", display: "flex", flexDirection: "column", minWidth: 0 }}>
+      {children}
+    </div>
+  );
+}
 
 /** 컬렉션 제목을 드래그 핸들로 쓰는 정렬 래퍼. children에 제목에 연결할 ref/props를 넘긴다. */
 function SortableCollection({
@@ -158,6 +180,13 @@ export function NewTab() {
    *  가드를 통과하고 컬렉션이 두 벌 생긴다. ref는 동기적으로 즉시 반영된다. */
   const savingRef = useRef(false);
   useEffect(() => { groupsRef.current = groups; }, [groups]);
+  /** 창을 끌어 놓을 자리(컬렉션 index). 드래그 중엔 미리보기, 놓은 뒤엔 저장 끝날 때까지 골격 자리. */
+  const [windowDrop, setWindowDrop] = useState<{ windowId: number; index: number } | null>(null);
+  const windowDropRef = useRef<{ windowId: number; index: number } | null>(null);
+  function placeWindowDrop(v: { windowId: number; index: number } | null) {
+    windowDropRef.current = v;
+    setWindowDrop(v);
+  }
   const [active, setActive] = useState<Active>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const [autoEditId, setAutoEditId] = useState<string | null>(null);
@@ -596,6 +625,9 @@ export function NewTab() {
     } else if (d?.kind === "space") {
       spacesOriginRef.current = spaces;
       setActive({ type: "space", space: d.space as Space });
+    } else if (d?.kind === "window") {
+      placeWindowDrop(null);
+      setActive({ type: "window", windowId: d.windowId as number });
     } else {
       setActive(null);
     }
@@ -605,6 +637,15 @@ export function NewTab() {
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event;
     if (!session) return;
+    // 창: 보드 위에서는 놓을 자리를 따라 움직이고, 보드 밖(패널 등)으로 나가면 자리를 걷는다.
+    if (active.data.current?.kind === "window") {
+      const windowId = active.data.current.windowId as number;
+      const index = over
+        ? windowDropIndex(collectionsRef.current.map((c) => c.id), windowDropRef.current?.index ?? null, String(over.id))
+        : null;
+      placeWindowDrop(index == null ? null : { windowId, index });
+      return;
+    }
     if (!over) { setDragOverCol(null); return; }
     const activeId = String(active.id);
     const overId = String(over.id);
@@ -744,7 +785,18 @@ export function NewTab() {
     if (!over || !session) {
       if (d?.kind === "tab") { setGroups(groupsOriginRef.current); groupsRef.current = groupsOriginRef.current; }
       if (d?.kind === "space") { setSpaces(spacesOriginRef.current); spacesRef.current = spacesOriginRef.current; }
+      if (d?.kind === "window") placeWindowDrop(null);
       loadCollections();
+      return;
+    }
+
+    if (d?.kind === "window") {
+      const windowId = d.windowId as number;
+      const index = windowDropRef.current?.index
+        ?? windowDropIndex(collectionsRef.current.map((c) => c.id), null, String(over.id));
+      if (index == null) { placeWindowDrop(null); return; }
+      placeWindowDrop({ windowId, index });
+      await saveWindow(windowId, index);
       return;
     }
 
@@ -804,6 +856,7 @@ export function NewTab() {
     if (active?.type === "tab") { setGroups(groupsOriginRef.current); groupsRef.current = groupsOriginRef.current; }
     if (active?.type === "collection") { setCollections(collectionsOriginRef.current); collectionsRef.current = collectionsOriginRef.current; }
     if (active?.type === "space") { setSpaces(spacesOriginRef.current); spacesRef.current = spacesOriginRef.current; }
+    placeWindowDrop(null);
     setActive(null);
     setDragOverCol(null);
     loadCollections();
@@ -846,24 +899,44 @@ export function NewTab() {
     setLinksByCol((prev) => ({ ...prev, [r.collection.id]: r.links }));
   }
 
-  async function saveWindow(windowId: number) {
-    if (savingRef.current) return;
+  /** 창 N 제목과 담을 수 있는 탭 수 — 저장·끌기 자리표시·드래그 미리보기가 같은 값을 쓴다. */
+  function windowSummary(windowId: number) {
+    const idx = groups.findIndex((g) => g.windowId === windowId);
+    return { idx, title: `창 ${idx + 1}`, count: saveableTabs(groups[idx]?.tabs ?? []).length };
+  }
+
+  /**
+   * at이 없으면(저장 버튼) 맨 위 골격을 띄우고 뒤에 붙인다.
+   * at이 있으면(창 끌어 놓기) 그 컬렉션 index에 만든다 — 끌 때의 자리표시가 그대로 골격 역할을 한다.
+   */
+  async function saveWindow(windowId: number, at?: number) {
+    if (savingRef.current) { placeWindowDrop(null); return; }
     savingRef.current = true;
     setSavingWindowId(windowId);
     const key = `pending-window-${windowId}`;
     try {
       const spaceId = await ensureSpaceId();
       if (!spaceId) return;
-      const idx = groups.findIndex((g) => g.windowId === windowId);
+      const { idx, title, count } = windowSummary(windowId);
       const group = groups[idx];
       if (!group) return;
-      const count = saveableTabs(group.tabs).length;
       if (count === 0) { toast.show("담을 수 있는 탭이 없어요"); return; }
 
-      setPending((prev) => [...prev, { key, title: `창 ${idx + 1}`, count }]);
-      const r = await saveWindowInto(spaceId, group, `창 ${idx + 1}`);
+      if (at === undefined) setPending((prev) => [...prev, { key, title, count }]);
+      const r = await saveWindowInto(spaceId, group, title);
       if (!r) return;
-      materialize(key, r);
+      if (at === undefined) {
+        materialize(key, r);
+      } else {
+        const ordered = [...collectionsRef.current];
+        ordered.splice(at, 0, r.collection);
+        placeWindowDrop(null);
+        setCollections(ordered);
+        setLinksByCol((prev) => ({ ...prev, [r.collection.id]: r.links }));
+        // 놓은 자리가 새로고침 후에도 유지되도록 순서 전체를 position으로 저장한다.
+        // 앞뒤 position의 중간값은 동률(position 기본값 1000)이 있으면 자리를 보장하지 못한다.
+        await Promise.all(sequentialPositions(ordered.map((c) => c.id)).map((p) => updateCollection(supabase, p.id, { position: p.position })));
+      }
       loadCollections();
       toast.show(`탭 ${r.links.length}개를 담았어요`);
     } catch (e) {
@@ -872,6 +945,7 @@ export function NewTab() {
       loadCollections();
     } finally {
       setPending((prev) => prev.filter((p) => p.key !== key));
+      placeWindowDrop(null);
       setSavingWindowId(null);
       savingRef.current = false;
     }
@@ -1121,7 +1195,7 @@ export function NewTab() {
               />
             }
             right={
-              <OpenTabsPanel groups={groups} selfTabId={selfTabId} savingWindowId={savingWindowId} onSaveWindow={saveWindow} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab} onCollapse={toggleRight} />
+              <OpenTabsPanel groups={groups} selfTabId={selfTabId} savingWindowId={savingWindowId} readOnly={!canEdit} onSaveWindow={(id) => saveWindow(id)} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab} onCollapse={toggleRight} />
             }
           >
             <Board>
@@ -1183,18 +1257,24 @@ export function NewTab() {
                   {canEdit && <AddCollectionButton onCreate={addCollection} onImportCode={() => setImportOpen(true)} />}
                 </div>
               </div>
-              {/* flex:"1 0 auto" — 내용이 짧으면 남은 공간을 채우고(빈 상태 세로 중앙),
-                  길면 줄어들지 않고 그대로 늘어난다(컬렉션 목록). */}
-              <div style={{ flex: "1 0 auto", display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <BoardDropArea>
               {/* 저장 중인 컬렉션의 골격은 실제 목록 위에 놓는다 — 방금 시작한 것이 맨 위에 보여야 한다 */}
               {collectionsLoaded && pending.map((p) => (
                 <PendingCollection key={p.key} title={p.title} count={p.count} />
               ))}
               {(() => {
                 const visibleCollections = collections;
+                // 창을 끌어 놓을 자리 — 컬렉션 목록의 그 index에 골격을 끼운다.
+                const withWindowSlot = (nodes: ReactNode[]) => {
+                  if (!windowDrop) return nodes;
+                  const w = windowSummary(windowDrop.windowId);
+                  const next = [...nodes];
+                  next.splice(windowDrop.index, 0, <PendingCollection key="window-drop" title={w.title} count={w.count} />);
+                  return next;
+                };
                 return !collectionsLoaded ? (
                   <CollectionSkeleton />
-                ) : visibleCollections.length === 0 ? (
+                ) : visibleCollections.length === 0 && !windowDrop ? (
                   // 골격이 떠 있으면 빈 상태 카드를 함께 보여주지 않는다 — 이미 담고 있는 중이다.
                   pending.length > 0 ? null
                   // viewer는 컬렉션을 만들 수 없으니 행동 카드를 주지 않는다.
@@ -1211,7 +1291,7 @@ export function NewTab() {
                   )
                 ) : (
                   <SortableContext items={visibleCollections.map((c) => `col:${c.id}`)} strategy={verticalListSortingStrategy}>
-                    {visibleCollections.map((c) => (
+                    {withWindowSlot(visibleCollections.map((c) => (
                     <SortableCollection key={c.id} collection={c}>
                       {(drag) => {
                         const links = linksByCol[c.id] ?? [];
@@ -1261,11 +1341,11 @@ export function NewTab() {
                         );
                       }}
                     </SortableCollection>
-                    ))}
+                    )))}
                   </SortableContext>
                 );
               })()}
-              </div>
+              </BoardDropArea>
                 </div>
               )}
             </Board>
@@ -1280,6 +1360,14 @@ export function NewTab() {
             fontWeight: 600, color: theme.text,
           }}>
             {active.collection.icon ? `${active.collection.icon} ` : ""}{active.collection.title}
+          </div>
+        ) : active?.type === "window" ? (
+          <div style={{
+            border: `1px solid ${theme.border}`, borderRadius: theme.radiusCard, padding: "8px 12px",
+            background: "#fff", boxShadow: "0 8px 20px rgba(20,30,60,.22)", cursor: "grabbing",
+            fontWeight: 600, color: theme.text,
+          }}>
+            {windowSummary(active.windowId).title} · 탭 {windowSummary(active.windowId).count}개
           </div>
         ) : active?.type === "space" ? (
           <div style={{
