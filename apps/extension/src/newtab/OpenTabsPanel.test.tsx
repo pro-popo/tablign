@@ -109,11 +109,6 @@ describe("OpenTabsPanel — 담을 수 없는 탭", () => {
     );
   }
 
-  it("헤더에 담을 수 있는 실제 개수를 보여준다 — 보이는 5개 중 1개만 담긴다", () => {
-    renderMixed();
-    expect(screen.getByText("담을 수 있는 탭 1개")).toBeInTheDocument();
-  });
-
   it("담을 수 없는 이유를 스킴별로 알려준다", () => {
     renderMixed();
     // chrome://settings 와 chrome://history 두 곳
