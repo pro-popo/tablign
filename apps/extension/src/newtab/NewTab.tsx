@@ -1216,6 +1216,7 @@ export function NewTab() {
             onPeekEnter={railPeeks ? leftPeek.enter : undefined}
             onPeekLeave={railPeeks ? leftPeek.leave : undefined}
             onHoverOrg={railPeeks ? setPreviewOrgId : undefined}
+            peekOrgId={railPeeks && leftPeek.open ? (previewOrgId ?? activeOrgId) : null}
             invitationCount={myInvitations.length + myOrgInvitations.length}
             invitations={
               <InvitationList
