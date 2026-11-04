@@ -31,7 +31,8 @@ const collisionDetection: CollisionDetection = (args) => {
     const colHit = winHits.find((h) => String(h.id).startsWith("col:"));
     return colHit ? [colHit] : winHits;
   }
-  const hits = pointerWithin(args);
+  // 보드(board)는 창 드래그 전용 — 탭·링크 드래그에서 카드로 잡히면 빈 컬렉션에 놓을 수 없다.
+  const hits = pointerWithin({ ...args, droppableContainers: args.droppableContainers.filter((c) => c.id !== "board") });
   // 카드(탭/링크) > 컨테이너(컬렉션 container:/창 window:/컬렉션 정렬 col:/스페이스 정렬 space:) 순으로 우선.
   const cardHit = hits.find((h) => {
     const id = String(h.id);
