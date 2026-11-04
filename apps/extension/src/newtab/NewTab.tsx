@@ -208,13 +208,14 @@ export function NewTab() {
   const { state: panels, toggleLeft, toggleRight, setLeftWidth, setRightWidth } = usePanelState();
   // 좁은 화면: 사이드바·열린 탭을 접어 두고 올리면 보드 위에 덮는다. 열린 탭 레일을 누르면 붙박이로 편다(이 창 폭에서만).
   const narrow = useNarrow();
-  const leftPeek = useHoverPeek();
+  const leftPeekBase = useHoverPeek();
   const rightPeek = useHoverPeek();
   const [narrowRightDock, setNarrowRightDock] = useState(false);
   // 좁은 화면에서 올려 보고 있는 다른 조직 — 덮개에 그 조직의 스페이스를 띄운다
   const [previewOrgId, setPreviewOrgId] = useState<string | null>(null);
+  // 덮개를 새로 열 때 지난번에 올려 본 조직을 지운다. 닫을 때 지우면 닫히며 미끄러지는 동안 지금 조직 사이드바로 바뀌어 보인다.
+  const leftPeek = { ...leftPeekBase, enter: () => { if (!leftPeekBase.open) setPreviewOrgId(null); leftPeekBase.enter(); } };
   useEffect(() => { setNarrowRightDock(false); leftPeek.close(); rightPeek.close(); }, [narrow]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!leftPeek.open) setPreviewOrgId(null); }, [leftPeek.open]);
   // 덮개로 보이는 중인지 — 좁은 화면이거나 넓은 화면에서 접어 둔 패널. 이때 패널의 접기 버튼은 덮개만 닫는다.
   const leftOverlay = narrow || !panels.left;
   // 조직 레일이 이름으로 넓어지지 않고 스페이스 덮개를 띄우는 상태 — 좁은 화면, 또는 큰 화면에서 덮개가 열려 있을 때.
