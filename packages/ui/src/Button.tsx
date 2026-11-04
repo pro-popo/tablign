@@ -9,9 +9,9 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const styles: Record<Variant, React.CSSProperties> = {
-  primary: { background: theme.accent, color: "#fff", border: "none" },
+  primary: { background: theme.accent, color: theme.onAccent, border: "none" },
   ghost: { background: "transparent", color: theme.textMuted, border: "none" },
-  outline: { background: "#fff", color: "#5c636b", border: `1px solid ${theme.border}` },
+  outline: { background: theme.surface, color: theme.textSub, border: `1px solid ${theme.border}` },
 };
 
 export function Button({ variant = "primary", children, style, disabled, ...rest }: ButtonProps) {

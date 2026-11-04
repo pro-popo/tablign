@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { buildTossCategories } from "./tossEmoji";
 import { ORG_ICON_FONT } from "./orgIcon";
+import { theme } from "@tablign/ui";
 
 export interface TossEmojiPickerProps {
   onSelect: (native: string) => void;
@@ -44,7 +45,7 @@ export function TossEmojiPicker({ onSelect, onClear }: TossEmojiPickerProps) {
 
       <div style={searchWrap}>
         <div style={searchBox}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#adb5bd" strokeWidth={2} strokeLinecap="round" style={{ flex: "none" }} aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.textFaint} strokeWidth={2} strokeLinecap="round" style={{ flex: "none" }} aria-hidden="true">
             <circle cx="11" cy="11" r="7" />
             <path d="m21 21-4.3-4.3" />
           </svg>
@@ -98,26 +99,26 @@ export function TossEmojiPicker({ onSelect, onClear }: TossEmojiPickerProps) {
 
 // 얇은 스크롤바 — inline 스타일로는 ::-webkit-scrollbar를 지정할 수 없어 클래스 스코프 CSS로 주입.
 const scrollCss = `
-  .toss-picker-body { scrollbar-width: thin; scrollbar-color: #d0d4da transparent; }
+  .toss-picker-body { scrollbar-width: thin; scrollbar-color: ${theme.borderStrong} transparent; }
   .toss-picker-body::-webkit-scrollbar { width: 8px; }
-  .toss-picker-body::-webkit-scrollbar-thumb { background: #d0d4da; border-radius: 8px; border: 2px solid #fff; }
+  .toss-picker-body::-webkit-scrollbar-thumb { background: ${theme.borderStrong}; border-radius: 8px; border: 2px solid ${theme.surface}; }
   .toss-picker-body::-webkit-scrollbar-track { background: transparent; }
 `;
 
-const wrap: CSSProperties = { width: 376, maxWidth: "calc(100vw - 48px)", background: "#fff", borderRadius: 14, overflow: "hidden", boxSizing: "border-box" };
-const tabsBar: CSSProperties = { display: "flex", gap: 2, padding: "6px 10px", borderBottom: "1px solid #f1f3f5" };
-const tabBtn: CSSProperties = { flex: 1, border: "none", background: "none", fontSize: 18, lineHeight: 1, padding: "6px 0", borderRadius: 8, cursor: "pointer", color: "#868e96" };
+const wrap: CSSProperties = { width: 376, maxWidth: "calc(100vw - 48px)", background: theme.surface, borderRadius: 14, overflow: "hidden", boxSizing: "border-box" };
+const tabsBar: CSSProperties = { display: "flex", gap: 2, padding: "6px 10px", borderBottom: `1px solid ${theme.surface2}` };
+const tabBtn: CSSProperties = { flex: 1, border: "none", background: "none", fontSize: 18, lineHeight: 1, padding: "6px 0", borderRadius: 8, cursor: "pointer", color: theme.textMuted };
 const searchWrap: CSSProperties = { padding: "10px 12px" };
 // emoji-mart 스타일: 회색 필드 + 좌측 돋보기 아이콘, 테두리 없음.
-const searchBox: CSSProperties = { display: "flex", alignItems: "center", gap: 8, background: "#f1f3f5", borderRadius: 10, padding: "9px 12px" };
-const searchInput: CSSProperties = { flex: 1, border: "none", background: "none", outline: "none", fontSize: 13.5, color: "#343a40", minWidth: 0 };
+const searchBox: CSSProperties = { display: "flex", alignItems: "center", gap: 8, background: theme.surface2, borderRadius: 10, padding: "9px 12px" };
+const searchInput: CSSProperties = { flex: 1, border: "none", background: "none", outline: "none", fontSize: 13.5, color: theme.text, minWidth: 0 };
 const bodyBox: CSSProperties = { height: 280, overflowY: "auto", padding: "0 10px 10px" };
-const catLabel: CSSProperties = { fontSize: 12, fontWeight: 600, color: "#868e96", padding: "10px 2px 6px", position: "sticky", top: 0, background: "#fff" };
+const catLabel: CSSProperties = { fontSize: 12, fontWeight: 600, color: theme.textMuted, padding: "10px 2px 6px", position: "sticky", top: 0, background: theme.surface };
 const grid: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: 2 };
 const cell: CSSProperties = { border: "none", background: "none", fontSize: 22, lineHeight: 1, padding: "5px 0", borderRadius: 7, cursor: "pointer" };
-const emptyBox: CSSProperties = { padding: "24px 8px", textAlign: "center", color: "#adb5bd", fontSize: 12.5 };
-const footBox: CSSProperties = { borderTop: "1px solid #f1f3f5", padding: "8px 12px", display: "flex", alignItems: "center", gap: 10, minHeight: 44 };
+const emptyBox: CSSProperties = { padding: "24px 8px", textAlign: "center", color: theme.textFaint, fontSize: 12.5 };
+const footBox: CSSProperties = { borderTop: `1px solid ${theme.surface2}`, padding: "8px 12px", display: "flex", alignItems: "center", gap: 10, minHeight: 44 };
 const footBig: CSSProperties = { fontSize: 26 };
-const footName: CSSProperties = { fontSize: 12.5, color: "#868e96" };
-const attrText: CSSProperties = { marginLeft: "auto", fontSize: 10.5, color: "#ced4da" };
-const clearBtn: CSSProperties = { border: "none", background: "none", padding: "4px 0", cursor: "pointer", fontSize: 11.5, fontWeight: 600, color: "#3b5bdb", whiteSpace: "nowrap" };
+const footName: CSSProperties = { fontSize: 12.5, color: theme.textMuted };
+const attrText: CSSProperties = { marginLeft: "auto", fontSize: 10.5, color: theme.textFaint };
+const clearBtn: CSSProperties = { border: "none", background: "none", padding: "4px 0", cursor: "pointer", fontSize: 11.5, fontWeight: 600, color: theme.accentInk, whiteSpace: "nowrap" };

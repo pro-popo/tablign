@@ -1,7 +1,8 @@
 import { theme } from "./theme";
 
-const INK = "#1f2430";
-const NEUTRAL = "#c9d4ff";
+// 밝은 바탕용 — 다크 모드에선 토큰을 따라 같이 바뀐다
+const INK = theme.text;
+const NEUTRAL = theme.accentTint;
 
 export interface LogoMarkProps {
   /** Mark size in px (square). */

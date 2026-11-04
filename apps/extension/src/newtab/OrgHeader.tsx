@@ -49,7 +49,7 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, 
         <div ref={menuWrapRef} style={{ position: "relative", marginLeft: "auto", flexShrink: 0 }}>
           <button type="button" title="조직 관리" aria-label="조직 관리" aria-haspopup="menu" aria-expanded={menuOpen}
             onClick={() => setMenuOpen((o) => !o)}
-            style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3, color: menuOpen ? "#868e96" : theme.textFaint }}>
+            style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3, color: menuOpen ? theme.textMuted : theme.textFaint }}>
             {/* lucide settings(톱니) */}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
@@ -63,25 +63,25 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, 
               {onEditOrg && (
                 <button type="button" role="menuitem" style={menuItem}
                   onClick={() => { setMenuOpen(false); onEditOrg(); }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f3f5")}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = theme.surface2)}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>프로필 설정</button>
               )}
               {!isPersonal && (
                 <button type="button" role="menuitem" style={menuItem}
                   onClick={() => { setMenuOpen(false); onOpenMembers(); }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f3f5")}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = theme.surface2)}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>멤버 관리</button>
               )}
               {onImport && (
                 <button type="button" role="menuitem" style={menuItem}
                   onClick={() => { setMenuOpen(false); onImport(); }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f3f5")}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = theme.surface2)}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>북마크 가져오기</button>
               )}
               {onExport && (
                 <button type="button" role="menuitem" style={menuItem}
                   onClick={() => { setMenuOpen(false); onExport(); }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f3f5")}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = theme.surface2)}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>스페이스 내보내기</button>
               )}
               {/* 되돌릴 수 없는 항목은 구분선으로 떼어낸다 — 색만으로는 오조작을 막지 못한다 */}
@@ -89,9 +89,9 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, 
                 <div role="separator" style={{ height: 1, margin: "4px 0", background: theme.border }} />
               )}
               {onDeleteOrg && (
-                <button type="button" role="menuitem" style={{ ...menuItem, color: "#e03131" }}
+                <button type="button" role="menuitem" style={{ ...menuItem, color: theme.danger }}
                   onClick={() => { setMenuOpen(false); onDeleteOrg(); }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#fff5f5")}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = theme.dangerWeak)}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>조직 삭제</button>
               )}
             </div>

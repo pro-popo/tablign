@@ -175,12 +175,12 @@ function SortableSpace({ space, active, onSelect, onChangeIcon, onStartEdit, onD
       <button type="button" ref={iconRef} title="아이콘 변경" aria-label="아이콘 변경" onClick={() => setPicking((p) => !p)}
         onMouseEnter={() => setIconHover(true)} onMouseLeave={() => setIconHover(false)}
         style={{ marginLeft: 6, width: 26, height: 26, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
-          border: "none", borderRadius: 6, cursor: "pointer", background: picking || iconHover ? "rgba(31,36,48,.07)" : "transparent" }}>
+          border: "none", borderRadius: 6, cursor: "pointer", background: picking || iconHover ? `color-mix(in srgb, ${theme.text} 7%, transparent)` : "transparent" }}>
         <SpaceIcon icon={space.icon} />
       </button>
       <button type="button" ref={setActivatorNodeRef} {...attributes} {...listeners} onClick={onSelect}
         style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", padding: "7px 10px 7px 4px", border: "none", cursor: "pointer", textAlign: "left",
-          background: "transparent", color: active ? theme.accent : "#495057", fontWeight: active ? 600 : 400 }}>
+          background: "transparent", color: active ? theme.accentInk : theme.textSub, fontWeight: active ? 600 : 400 }}>
         {space.name}
       </button>
       {picking && iconRef.current && (
@@ -264,7 +264,7 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace,
               <div key={s.id} style={{ display: "flex", alignItems: "center" }}>
                 <button type="button" onClick={() => onSelectSpace(s.id)}
                   style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 8, border: "none", cursor: "pointer", textAlign: "left",
-                    background: s.id === activeSpaceId ? theme.accentWeak : "transparent", color: s.id === activeSpaceId ? theme.accent : "#495057", fontWeight: s.id === activeSpaceId ? 600 : 400 }}>
+                    background: s.id === activeSpaceId ? theme.accentWeak : "transparent", color: s.id === activeSpaceId ? theme.accentInk : theme.textSub, fontWeight: s.id === activeSpaceId ? 600 : 400 }}>
                   <SpaceIcon icon={s.icon} /> {s.name}
                 </button>
                 <button type="button" title="나가기" aria-label="스페이스 나가기" onClick={() => onLeaveSpace(s.id)}

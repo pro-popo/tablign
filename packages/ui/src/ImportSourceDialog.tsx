@@ -13,19 +13,19 @@ const importSourceCss = `
   cursor: pointer; -webkit-user-select: none; user-select: none;
   transition: background .14s ease, border-color .14s ease;
 }
-.tbl-src-opt:hover:not(:disabled) { background: ${theme.accentWeak}; border-color: #c9d4ff }
-.tbl-src-opt:active:not(:disabled) { background: #e4e9fd }
+.tbl-src-opt:hover:not(:disabled) { background: ${theme.accentWeak}; border-color: ${theme.accentTint} }
+.tbl-src-opt:active:not(:disabled) { background: ${theme.accentSoft} }
 .tbl-src-opt:disabled { cursor: default; opacity: .6 }
 .tbl-src-opt:focus-visible { outline: 2px solid ${theme.accent}; outline-offset: 2px }
 .tbl-src-ico {
-  background: ${theme.accentWeak}; color: ${theme.accent};
+  background: ${theme.accentWeak}; color: ${theme.accentInk};
   transition: background .14s ease, color .14s ease;
 }
 /* 카드가 옅은 라벤더로 물들면 아이콘 박스가 배경에 묻히므로 채움으로 바꿔 살린다 */
-.tbl-src-opt:hover:not(:disabled) .tbl-src-ico { background: ${theme.accent}; color: #fff }
+.tbl-src-opt:hover:not(:disabled) .tbl-src-ico { background: ${theme.accent}; color: ${theme.onAccent} }
 /* 설명 속 "구조" — 올리면 카드 밖에 말풍선이 떠서 카드 크기는 그대로다 */
 .tbl-src-term { position: relative; text-decoration: underline dotted ${theme.textFaint}; text-underline-offset: 3px; cursor: help }
-.tbl-src-term:hover { color: ${theme.accent}; text-decoration-color: ${theme.accent} }
+.tbl-src-term:hover { color: ${theme.accentInk}; text-decoration-color: ${theme.accentInk} }
 .tbl-src-tip {
   position: absolute; top: calc(100% + 9px); left: -14px; z-index: 5; padding: 9px 12px 8px; white-space: nowrap;
   background: ${theme.surface}; border: 1px solid ${theme.border}; border-radius: 10px;
@@ -50,10 +50,10 @@ export function JsonStructurePath() {
     <span style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
       {JSON_STRUCTURE.map(([key, meaning], i) => (
         <Fragment key={key}>
-          {i > 0 && <span style={{ color: "#ced4da", fontSize: 12, lineHeight: "16px" }}>›</span>}
+          {i > 0 && <span style={{ color: theme.textFaint, fontSize: 12, lineHeight: "16px" }}>›</span>}
           <span style={{ display: "flex", flexDirection: "column" }}>
             <code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 11,
-              color: theme.accent, lineHeight: "16px" }}>{key}</code>
+              color: theme.accentInk, lineHeight: "16px" }}>{key}</code>
             <span style={{ fontSize: 10.5, color: theme.textFaint, lineHeight: "14px" }}>{meaning}</span>
           </span>
         </Fragment>

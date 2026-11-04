@@ -81,7 +81,7 @@ export function ExportSpacesDialog({ open, spaces, onExport, onClose }: ExportSp
     return (
       <div key={s.id} className="tbl-exp-row" onClick={() => toggle(s.id)}
         style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 10px", borderRadius: 8,
-          cursor: "pointer", userSelect: "none", color: "#495057" }}>
+          cursor: "pointer", userSelect: "none", color: theme.textSub }}>
         <TriCheckbox state={on ? "on" : "none"} label={s.name} onToggle={() => toggle(s.id)} />
         <SpaceIcon icon={s.icon} />
         <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",

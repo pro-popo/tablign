@@ -113,7 +113,7 @@ export function LinkCard({ link, onOpen, onDelete, onUpdate, dragging, readOnly 
         position: "relative", display: "grid", gridTemplateColumns: "38px 1fr", alignItems: "center", gap: 6, padding: "0 14px",
         height: ROW_H, boxSizing: "border-box", borderBottom: `1px solid ${theme.border}`, cursor: "text",
       }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: on ? theme.accent : theme.textFaint, transition: `color ${EASE}` }}>{text}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: on ? theme.accentInk : theme.textFaint, transition: `color ${EASE}` }}>{text}</span>
         <input
           ref={field === "title" ? titleRef : undefined}
           value={value}
@@ -215,7 +215,7 @@ export function LinkCard({ link, onOpen, onDelete, onUpdate, dragging, readOnly 
           </div>
           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", padding: "9px 14px", background: theme.bg, borderRadius: "0 0 12px 12px" }}>
             <button type="button" onClick={() => setEditing(false)} style={{ ...actionBtn, padding: "5px 10px", color: theme.textMuted }}>취소</button>
-            <button type="button" onClick={save} style={{ border: "none", background: theme.accent, color: "#fff", borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>저장</button>
+            <button type="button" onClick={save} style={{ border: "none", background: theme.accent, color: theme.onAccent, borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>저장</button>
           </div>
         </div>
       )}

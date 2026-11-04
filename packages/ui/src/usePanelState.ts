@@ -5,15 +5,19 @@ export interface PanelState {
   right: boolean;
   leftWidth: number;
   rightWidth: number;
+  /** 테마 서랍 — 열린 탭 패널과 따로 */
+  themeWidth: number;
 }
 
 export const PANEL_STATE_KEY = "tablign.panels";
 export const MIN_PANEL_WIDTH = 180;
 export const MAX_PANEL_WIDTH = 400;
-const DEFAULT: PanelState = { left: true, right: true, leftWidth: 212, rightWidth: 272 };
+/** 테마 서랍은 그라데이션 편집 칸·배경 종류 버튼이 들어가야 해 더 좁아지지 않는다 */
+export const MIN_THEME_WIDTH = 260;
+const DEFAULT: PanelState = { left: true, right: true, leftWidth: 212, rightWidth: 272, themeWidth: 300 };
 
-function clampWidth(w: number): number {
-  return Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, w));
+function clampWidth(w: number, min = MIN_PANEL_WIDTH): number {
+  return Math.min(MAX_PANEL_WIDTH, Math.max(min, w));
 }
 
 // 하위호환: 폭 개념이 없던 기존 저장값도 유효로 본다(left/right만 필수).
@@ -33,6 +37,7 @@ function normalize(v: PanelState): PanelState {
     right: v.right,
     leftWidth: typeof v.leftWidth === "number" ? clampWidth(v.leftWidth) : DEFAULT.leftWidth,
     rightWidth: typeof v.rightWidth === "number" ? clampWidth(v.rightWidth) : DEFAULT.rightWidth,
+    themeWidth: typeof v.themeWidth === "number" ? clampWidth(v.themeWidth, MIN_THEME_WIDTH) : DEFAULT.themeWidth,
   };
 }
 
@@ -58,9 +63,9 @@ export function usePanelState(storage: PanelStateStorage) {
     });
   }
 
-  function setWidth(key: "leftWidth" | "rightWidth", value: number) {
+  function setWidth(key: "leftWidth" | "rightWidth" | "themeWidth", value: number) {
     setState((prev) => {
-      const next = { ...prev, [key]: clampWidth(value) };
+      const next = { ...prev, [key]: clampWidth(value, key === "themeWidth" ? MIN_THEME_WIDTH : MIN_PANEL_WIDTH) };
       storage.write(next);
       return next;
     });
@@ -72,5 +77,6 @@ export function usePanelState(storage: PanelStateStorage) {
     toggleRight: () => toggle("right"),
     setLeftWidth: (w: number) => setWidth("leftWidth", w),
     setRightWidth: (w: number) => setWidth("rightWidth", w),
+    setThemeWidth: (w: number) => setWidth("themeWidth", w),
   };
 }

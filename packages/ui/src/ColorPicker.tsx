@@ -1,10 +1,16 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, type ReactNode } from "react";
 import { theme } from "./theme";
 import { hexToHsv, hsvToHex, normalizeHex } from "./color";
 
-export interface ColorPickerProps { value: string; onChange: (hex: string) => void; hideHex?: boolean }
+export interface ColorPickerProps {
+  value: string;
+  onChange: (hex: string) => void;
+  hideHex?: boolean;
+  /** 색 코드 줄 오른쪽 끝에 더 둘 것(스포이드 등) */
+  extra?: ReactNode;
+}
 
-export function ColorPicker({ value, onChange, hideHex = false }: ColorPickerProps) {
+export function ColorPicker({ value, onChange, hideHex = false, extra }: ColorPickerProps) {
   const init = hexToHsv(value) ?? { h: 222, s: 0.8, v: 0.9 };
   const [h, setH] = useState(init.h);
   const [s, setS] = useState(init.s);
@@ -73,7 +79,8 @@ export function ColorPicker({ value, onChange, hideHex = false }: ColorPickerPro
               const n = normalizeHex(e.target.value);
               if (n) { const c = hexToHsv(n)!; setH(c.h); setS(c.s); setV(c.v); onChange(n); }
             }}
-            style={{ flex: 1, border: `1px solid ${theme.border}`, borderRadius: 8, padding: "6px 9px", fontSize: 12, fontFamily: "monospace", boxSizing: "border-box" }} />
+            aria-label="색 코드" style={{ flex: 1, minWidth: 0, border: `1px solid ${theme.border}`, borderRadius: 8, padding: "6px 9px", fontSize: 12, fontFamily: "monospace", boxSizing: "border-box", background: theme.surface, color: theme.text }} />
+          {extra}
         </div>
       )}
     </div>

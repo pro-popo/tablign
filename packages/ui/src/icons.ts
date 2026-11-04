@@ -27,4 +27,13 @@ export {
   Ticket,
   SquareStack,
   AppWindow,
+  // 테마
+  Sun,
+  Moon,
+  Monitor,
+  Palette,
+  Pipette,
+  ArrowLeftRight,
+  RotateCcw,
+  Upload,
 } from "lucide-react";

@@ -25,7 +25,7 @@ function Spinner() {
       <style>{spinCss}</style>
       <span aria-hidden="true" style={{
         boxSizing: "border-box", width: 13, height: 13, borderRadius: "50%", flex: "none",
-        border: "2px solid rgba(255,255,255,.4)", borderTopColor: "#fff",
+        border: `2px solid color-mix(in srgb, ${theme.onAccent} 40%, transparent)`, borderTopColor: theme.onAccent,
         animation: "tablign-import-spin .7s linear infinite",
       }} />
     </>
@@ -124,7 +124,7 @@ export function ImportCodeDialog({ open, spaces, defaultSpaceId = null, onLookup
                     opacity: busy ? 0.5 : 1,
                     border: `1px solid ${spaceId === s.id ? theme.accent : theme.border}`,
                     background: spaceId === s.id ? theme.accentWeak : theme.surface,
-                    color: spaceId === s.id ? theme.accent : theme.text,
+                    color: spaceId === s.id ? theme.accentInk : theme.text,
                     borderRadius: 8, padding: "5px 11px", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
                   }}>
                   {s.icon ? `${s.icon} ` : ""}{s.name}
