@@ -56,6 +56,7 @@ const removeOrgMember = vi.fn();
 const updateOrgMemberRole = vi.fn();
 const importBookmarks = vi.fn();
 const updateCollection = vi.fn();
+const updateLink = vi.fn();
 const loadSpacesForExport = vi.fn();
 vi.mock("@tablign/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tablign/core")>();
@@ -93,6 +94,7 @@ vi.mock("@tablign/core", async (importOriginal) => {
     updateOrgMemberRole: (...a: unknown[]) => updateOrgMemberRole(...a),
     importBookmarks: (...a: unknown[]) => importBookmarks(...a),
     updateCollection: (...a: unknown[]) => updateCollection(...a),
+    updateLink: (...a: unknown[]) => updateLink(...a),
     loadSpacesForExport: (...a: unknown[]) => loadSpacesForExport(...a),
   };
 });
@@ -1048,6 +1050,45 @@ describe("NewTab — 창을 끌어 컬렉션 만들기", () => {
       ["a", { position: 2000 }],
       ["b", { position: 3000 }],
     ]);
+  });
+});
+
+describe("NewTab — 탭을 끌어 컬렉션에 담기", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("빈 컬렉션에 열린 탭을 놓으면 링크로 담긴다", async () => {
+    listSpaces.mockResolvedValue([
+      { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+    ]);
+    listCollections.mockResolvedValue([
+      { id: "a", space_id: "s1", user_id: "u1", title: "새 컬렉션", icon: null, note: null, is_private: false, position: 1000, created_at: "x" },
+    ]);
+    vi.stubGlobal("chrome", {
+      ...(globalThis as unknown as { chrome: object }).chrome,
+      tabs: { query: vi.fn().mockResolvedValue([{ id: 1, windowId: 10, url: "https://a.com", title: "탭 A" }]), getCurrent: vi.fn().mockResolvedValue({ id: 99 }) },
+    });
+    renderNewTab();
+    const empty = await screen.findByText("여기로 탭을 드래그해 추가하세요", {}, { timeout: 4000 });
+    const tab = await screen.findByText("탭 A");
+
+    // jsdom엔 레이아웃이 없다 — 열린 탭 패널은 포인터 밖에, 빈 링크 목록은 컬렉션·보드보다 작게
+    // 포인터 아래에 둔다(실제 화면처럼 보드 ⊃ 컬렉션 ⊃ 링크 목록).
+    const panel = screen.getByText("열린 탭").parentElement!.parentElement!;
+    const grid = empty.parentElement!;
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      const [x, w, h] = panel.contains(this) ? [5000, 1000, 1000] : grid.contains(this) ? [0, 500, 100] : [0, 1000, 1000];
+      return { x, y: 0, top: 0, left: x, right: x + w, bottom: h, width: w, height: h, toJSON: () => ({}) } as DOMRect;
+    });
+
+    const down = new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 5010, clientY: 10 });
+    Object.defineProperty(down, "isPrimary", { value: true });
+    fireEvent(tab, down);
+    fireEvent(document, new MouseEvent("pointermove", { bubbles: true, clientX: 30, clientY: 10 }));
+    fireEvent(document, new MouseEvent("pointermove", { bubbles: true, clientX: 20, clientY: 20 }));
+    fireEvent(document, new MouseEvent("pointerup", { bubbles: true, clientX: 20, clientY: 20 }));
+
+    await waitFor(() => expect(createLink).toHaveBeenCalledTimes(1));
+    expect(createLink.mock.calls[0][1]).toMatchObject({ collection_id: "a", url: "https://a.com" });
   });
 });
 
