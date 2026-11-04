@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { Organization, OrganizationMember } from "@tablign/core";
-import { LogoMark, Plus, LogOut, Mail, theme } from "@tablign/ui";
+import { LogoMark, Plus, LogOut, Mail, Palette, theme } from "@tablign/ui";
 import { OrgIconBox } from "./OrgIconBox";
 
 export interface OrgRailProps {
@@ -24,14 +24,18 @@ export interface OrgRailProps {
   onPeekLeave?: () => void;
   /** 좁은 화면에서 조직 아이콘에 올렸을 때 — 그 조직의 스페이스를 미리 보여 준다 */
   onHoverOrg?: (orgId: string) => void;
-  /** 스페이스 덮개가 보여 주는 조직 — 그 줄을 흰 탭으로 덮개와 잇는다 */
+  /** 스페이스 덮개가 보여 주는 조직 — 그 줄을 흰 탭으로 덮개와 잇는다. 덮개가 닫혀 있으면 null */
   peekOrgId?: string | null;
+  /** 테마 패널이 열려 있나 — 팔레트 버튼을 누른 상태로 보인다 */
+  themeOpen?: boolean;
+  /** 팔레트 버튼 — 오른쪽 패널을 테마 패널로 바꾸거나 되돌린다 */
+  onToggleTheme?: () => void;
 }
 
 const RAIL_REST = 54;
 const RAIL_HOVER = 196;
 
-export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, avatarUrl, onSelectOrg, onCreateOrg, onSignOut, invitationCount, invitations, compact = false, onPeekEnter, onPeekLeave, onHoverOrg, peekOrgId }: OrgRailProps) {
+export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, avatarUrl, onSelectOrg, onCreateOrg, onSignOut, invitationCount, invitations, compact = false, onPeekEnter, onPeekLeave, onHoverOrg, peekOrgId, themeOpen = false, onToggleTheme }: OrgRailProps) {
   const [expanded, setExpanded] = useState(false);
   // 받은 초대함 팝오버 — 레일이 overflow:hidden이라 body에 띄우고, 위치는 열 때 받은 초대함 줄에 맞춘다
   const [inbox, setInbox] = useState<{ left: number; bottom: number } | null>(null);
@@ -70,7 +74,7 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
   });
   const label = (active: boolean): React.CSSProperties => ({
     opacity: expanded ? 1 : 0, transition: "opacity .13s ease", whiteSpace: "nowrap",
-    fontSize: 12.5, color: active ? theme.accent : "#495057", fontWeight: active ? 600 : 400,
+    fontSize: 12.5, color: active ? theme.accentInk : theme.textSub, fontWeight: active ? 600 : 400,
   });
   const activeBar: React.CSSProperties = {
     content: '""', position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)",
@@ -80,42 +84,46 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
   // zIndex -1: 레일 바탕 위, 아이콘 아래에 깔린다.
   const corner = (at: "top" | "bottom"): React.CSSProperties => ({
     position: "absolute", right: 0, [at]: -11, width: 11, height: 12,
-    background: `radial-gradient(circle at 0 ${at === "top" ? 0 : "100%"}, transparent 10px, ${theme.border} 10.5px, ${theme.border} 11px, ${theme.surface} 11.5px)`,
+    background: `radial-gradient(circle at 0 ${at === "top" ? 0 : "100%"}, transparent 10px, ${theme.border} 10.5px, ${theme.border} 11px, ${theme.pane} 11.5px)`,
   });
   // 탭은 조직 줄 묶음에 하나만 두고 top을 옮겨, 다른 조직에 올리면 그 줄로 미끄러진다(줄 높이 40 + 간격 5).
   const peekIndex = (personal ? [personal, ...teams] : teams).findIndex((o) => o.id === peekOrgId);
+  const peekOpen = peekOrgId != null;
 
   return (
     <div
-      onMouseEnter={() => { if (!compact) setExpanded(true); }}
-      onMouseLeave={() => setExpanded(false)}
+      // 덮개는 조직 묶음에 올려야 열리고, 열린 뒤엔 레일 어디(테마·초대·계정)로 옮겨도 이어지다 레일을 벗어나면 닫힌다
+      onMouseEnter={() => { if (!compact) setExpanded(true); if (peekOpen) onPeekEnter?.(); }}
+      onMouseLeave={() => { setExpanded(false); onPeekLeave?.(); }}
       style={{
         position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 3,
         width: expanded ? RAIL_HOVER : RAIL_REST, transition: "width .18s ease, box-shadow .18s",
         // 경계선은 border 대신 inset 그림자 — overflow:hidden은 border 안쪽에서 자르므로, border면 이음 탭이 경계선을 덮지 못한다
-        background: "#f5f6f8",
+        background: theme.paneRail,
+        backdropFilter: theme.paneBlur,
         boxShadow: `inset -1px 0 0 ${theme.border}, 8px 0 26px rgba(0,0,0,${expanded ? .13 : 0})`,
         padding: "10px 0", display: "flex", flexDirection: "column", gap: 5,
         overflow: "hidden", boxSizing: "border-box",
       }}
     >
-      <div role="group" aria-label="조직" onMouseEnter={onPeekEnter} onMouseLeave={onPeekLeave}
+      <div role="group" aria-label="조직" onMouseEnter={onPeekEnter} onMouseLeave={peekOpen ? undefined : onPeekLeave}
         style={{ display: "flex", flexDirection: "column", gap: 5 }}>
       {/* 로고 */}
       <div style={{ display: "flex", alignItems: "center", gap: 11, height: 34, padding: "0 12px", marginBottom: 2 }}>
         {/* flexShrink:0 — 좁은 레일(54px)에서 옆 워드마크(nowrap)에 밀려 SVG가 0폭으로 찌그러지지 않도록 고정 */}
         <span style={{ display: "flex", flexShrink: 0 }}><LogoMark size={26} /></span>
         <span style={{ opacity: expanded ? 1 : 0, transition: "opacity .13s", fontWeight: 740, letterSpacing: "-0.03em", fontSize: 16, color: theme.text, whiteSpace: "nowrap", minWidth: 0, overflow: "hidden" }}>
-          tab<span style={{ color: theme.accent }}>lign</span>
+          tab<span style={{ color: theme.accentInk }}>lign</span>
         </span>
       </div>
-      <div style={{ height: 1, background: "#e2e5ea", margin: "2px 12px 4px" }} />
+      <div style={{ height: 1, background: theme.divider, margin: "2px 12px 4px" }} />
 
       <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 5 }}>
       {peekIndex >= 0 && (
         <span data-testid="peek-tab" style={{ position: "absolute", left: 6, right: 0, top: peekIndex * 45 - 2, height: 44, zIndex: -1, boxSizing: "border-box",
           transition: "top .16s ease",
-          background: theme.surface, border: `1px solid ${theme.border}`, borderRight: "none", borderRadius: "12px 0 0 12px" }}>
+          // 덮개(사이드바)와 같은 바탕 — 배경이 있으면 같이 비친다
+          background: theme.pane, border: `1px solid ${theme.border}`, borderRight: "none", borderRadius: "12px 0 0 12px" }}>
           <span style={corner("top")} />
           <span style={corner("bottom")} />
         </span>
@@ -149,36 +157,50 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
 
       {/* 조직 만들기 */}
       <div style={row(false)} onClick={onCreateOrg}>
-        <span style={{ ...box("#fff"), border: `1px dashed ${theme.textFaint}`, color: theme.textFaint }}><Plus size={15} /></span>
+        <span style={{ ...box(theme.surface), border: `1px dashed ${theme.textFaint}`, color: theme.textFaint }}><Plus size={15} /></span>
         <span style={{ ...label(false), color: theme.textFaint }}>조직 만들기</span>
       </div>
       </div>
 
       <div style={{ flex: 1 }} />
-      <div style={{ height: 1, background: "#e2e5ea", margin: "0 12px 4px" }} />
+      <div style={{ height: 1, background: theme.divider, margin: "0 12px 4px" }} />
       {/* 받은 초대함 — 스페이스·조직 초대를 모아 둔다 */}
+      {onToggleTheme && (
+        <button type="button" onClick={() => { setExpanded(false); onToggleTheme(); }} aria-label="테마" aria-pressed={themeOpen}
+          style={{ ...row(themeOpen), width: "100%", border: "none", background: "none", textAlign: "left", fontFamily: "inherit" }}>
+          {/* 열려 있으면 조직처럼 막대 + 옅은 강조색 상자 */}
+          {themeOpen && <span style={activeBar} />}
+          <span style={{ width: 32, height: 32, borderRadius: 9, flex: "none", display: "flex", alignItems: "center", justifyContent: "center",
+            background: themeOpen ? theme.accentWeak : theme.surface2, color: themeOpen ? theme.accentInk : theme.textMuted }}>
+            <Palette size={17} />
+          </span>
+          <span style={label(themeOpen)}>테마</span>
+        </button>
+      )}
       <button ref={inboxRef} type="button" onClick={toggleInbox}
         aria-label={invitationCount > 0 ? `받은 초대 ${invitationCount}개` : "받은 초대"} aria-expanded={!!inbox}
-        style={{ ...row(false), width: "100%", border: "none", background: "none", textAlign: "left", fontFamily: "inherit" }}>
+        style={{ ...row(!!inbox), width: "100%", border: "none", background: "none", textAlign: "left", fontFamily: "inherit" }}>
+        {inbox && <span style={activeBar} />}
         <span style={{ position: "relative", width: 32, height: 32, borderRadius: 9, flex: "none", display: "flex", alignItems: "center", justifyContent: "center",
-          background: inbox ? "#e2e6ec" : invitationCount > 0 ? "#e9ecf0" : "#eef0f3",
-          color: inbox ? theme.text : invitationCount > 0 ? "#6b7280" : "#b4bac3" }}>
+          // 테마 버튼과 같은 색 — 초대가 있는지는 배지로만 보인다
+          background: inbox ? theme.accentWeak : theme.surface2,
+          color: inbox ? theme.accentInk : theme.textMuted }}>
           <Mail size={17} />
           {/* 접혀 있을 땐 상자 모서리 배지, 펼치면 줄 오른쪽 끝 개수로 옮긴다 */}
           {invitationCount > 0 && !expanded && (
-            <span style={{ position: "absolute", top: -5, right: -6, minWidth: 15, height: 15, padding: "0 4px", borderRadius: 8, background: theme.accent, color: "#fff",
-              fontSize: 9.5, fontWeight: 800, lineHeight: "15px", textAlign: "center", border: "2px solid #f5f6f8", boxSizing: "content-box" }}>{invitationCount}</span>
+            <span style={{ position: "absolute", top: -5, right: -6, minWidth: 15, height: 15, padding: "0 4px", borderRadius: 8, background: theme.accent, color: theme.onAccent,
+              fontSize: 9.5, fontWeight: 800, lineHeight: "15px", textAlign: "center", border: `2px solid ${theme.rail}`, boxSizing: "content-box" }}>{invitationCount}</span>
           )}
         </span>
-        <span style={label(false)}>받은 초대</span>
+        <span style={label(!!inbox)}>받은 초대</span>
         {invitationCount > 0 && expanded && (
-          <span style={{ marginLeft: "auto", minWidth: 20, height: 18, padding: "0 6px", borderRadius: 9, background: theme.accent, color: "#fff",
+          <span style={{ marginLeft: "auto", minWidth: 20, height: 18, padding: "0 6px", borderRadius: 9, background: theme.accent, color: theme.onAccent,
             fontSize: 11, fontWeight: 700, lineHeight: "18px", textAlign: "center", boxSizing: "border-box" }}>{invitationCount}</span>
         )}
       </button>
       {/* 계정 */}
       <div style={row(false)} title={userEmail}>
-        <span style={{ width: 32, height: 32, borderRadius: "50%", background: avatarUrl ? `center/cover url(${avatarUrl})` : "#dfe2ea", flex: "none", border: "2px solid #fff", boxShadow: "0 0 0 1px #e2e5ea", boxSizing: "border-box" }} />
+        <span style={{ width: 32, height: 32, borderRadius: "50%", background: avatarUrl ? `center/cover url(${avatarUrl})` : theme.surface3, flex: "none", border: `2px solid ${theme.surface}`, boxShadow: `0 0 0 1px ${theme.divider}`, boxSizing: "border-box" }} />
         <span style={{ ...label(false), overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>{userEmail}</span>
         {expanded && (
           <button

@@ -16,7 +16,7 @@ export const triCheckboxCss = `
 .tbl-cbx {
   position: relative; width: 15px; height: 15px; flex: none; box-sizing: border-box;
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
-  border: 1.5px solid #ccd2da; background: ${theme.surface}; border-radius: 4.5px;
+  border: 1.5px solid ${theme.borderStrong}; background: ${theme.surface}; border-radius: 4.5px;
   transition: background .16s ease, border-color .16s ease;
 }
 .tbl-cbx[data-state="on"], .tbl-cbx[data-state="some"] {
@@ -25,7 +25,7 @@ export const triCheckboxCss = `
 .tbl-cbx:focus-visible { outline: 2px solid ${theme.accent}; outline-offset: 2px }
 .tbl-cbx svg { width: 100%; height: 100%; display: block; overflow: visible }
 .tbl-cbx path {
-  fill: none; stroke: #fff; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round;
+  fill: none; stroke: ${theme.onAccent}; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round;
 }
 /* dasharray는 경로 길이보다 넉넉히 — 부족하면 선이 다 안 그려진다 */
 .tbl-cbx .tbl-cbx-tick {

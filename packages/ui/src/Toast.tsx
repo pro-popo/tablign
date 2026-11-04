@@ -35,7 +35,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             role="status"
             style={{
-              background: theme.text, color: "#fff", borderRadius: 8, padding: "9px 13px", fontSize: 13,
+              background: theme.text, color: theme.surface, borderRadius: 8, padding: "9px 13px", fontSize: 13,
               boxShadow: "0 4px 14px rgba(0,0,0,.18)",
               animation: t.leaving
                 ? "tablign-toast-out .35s ease forwards"

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
 import { ToastProvider } from "@tablign/ui";
 import { NewTab } from "./NewTab";
 
@@ -1160,6 +1160,56 @@ describe("NewTab — 좁은 화면", () => {
   });
 });
 
+describe("NewTab — 테마를 연 채 창 폭 바꾸기", () => {
+  afterEach(() => {
+    delete (window as { matchMedia?: unknown }).matchMedia;
+  });
+
+  it("큰 화면에서 테마를 연 채 좁은 화면이 됐다가 돌아와도 테마 패널이 펼쳐져 있다", async () => {
+    // 창 폭을 바꿀 수 있는 matchMedia — 바뀌면 듣는 쪽에 알린다
+    let matches = false;
+    const listeners = new Set<() => void>();
+    window.matchMedia = vi.fn().mockImplementation(() => ({
+      get matches() { return matches; },
+      addEventListener: (_: string, fn: () => void) => listeners.add(fn),
+      removeEventListener: (_: string, fn: () => void) => listeners.delete(fn),
+    }));
+    const resize = (narrow: boolean) => act(() => { matches = narrow; listeners.forEach((fn) => fn()); });
+    listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" }]);
+    renderNewTab();
+    await screen.findAllByText("내 스페이스");
+    fireEvent.click(screen.getByRole("button", { name: "테마" }));
+    expect(await screen.findByRole("button", { name: "테마 닫기" })).toBeVisible();
+
+    resize(true);
+    // 접히는 패널은 0.2초 뒤 레일로 바뀐다 — 그보다 기다려도 그대로여야 한다
+    await new Promise((r) => setTimeout(r, 300));
+    expect(screen.getByRole("button", { name: "테마 닫기" })).toBeVisible();
+
+    resize(false);
+    await new Promise((r) => setTimeout(r, 300));
+    expect(screen.getByRole("button", { name: "테마 닫기" })).toBeVisible();
+  });
+});
+
+describe("NewTab — 테마 서랍", () => {
+  it("열린 탭 패널은 그대로 두고 오른쪽 끝에 따로 뜨며, 닫기를 누르면 내려간다", async () => {
+    listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" }]);
+    renderNewTab();
+    await screen.findAllByText("내 스페이스");
+    fireEvent.click(screen.getByRole("button", { name: "테마" }));
+    expect(await screen.findByRole("region", { name: "테마" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "테마" })).toHaveAttribute("aria-pressed", "true");
+    // 열린 탭 패널은 접히거나 바뀌지 않는다
+    expect(screen.getByText("열린 탭")).toBeVisible();
+    expect(screen.getByRole("button", { name: "패널 접기" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "테마 닫기" }));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "테마" })).toBeNull());
+    expect(screen.getByRole("button", { name: "테마" })).toHaveAttribute("aria-pressed", "false");
+  });
+});
+
 describe("NewTab — 넓은 화면에서 접어 둔 패널", () => {
   it("접힌 사이드바 레일에 올리면 덮어 펼치고, 벗어나면 고정 없이 닫힌다", async () => {
     listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" }]);
@@ -1236,5 +1286,23 @@ describe("NewTab — 큰 화면, 스페이스 덮개에서 조직 레일로", ()
     // 같은 탭이 둘째 줄로 미끄러진다
     expect(screen.getByTestId("peek-tab")).toBe(tab);
     expect(tab.style.top).toBe("43px");
+  });
+
+  it("덮개를 연 채 레일 아래(테마·초대·계정)로 옮겨도 덮개가 남고, 레일을 벗어나면 닫힌다", async () => {
+    listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" }]);
+    renderNewTab();
+    await screen.findAllByText("내 스페이스");
+    fireEvent.click(screen.getByRole("button", { name: "사이드바 접기" }));
+    fireEvent.mouseEnter(await screen.findByRole("button", { name: "사이드바 열기" }));
+    const add = (await screen.findByText("스페이스 추가")).closest("button")!;
+    await waitFor(() => expect(add).toBeVisible());
+
+    const peek = add.closest(".tbl-peek")!, themeBtn = screen.getByRole("button", { name: "테마" });
+    fireEvent.mouseOut(peek, { relatedTarget: themeBtn });
+    await new Promise((r) => setTimeout(r, 400));
+    expect(add).toBeVisible();
+
+    fireEvent.mouseOut(themeBtn, { relatedTarget: document.body });
+    await waitFor(() => expect(add).not.toBeVisible());
   });
 });

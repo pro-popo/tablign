@@ -29,12 +29,12 @@ export function PendingCollection({ title, count }: PendingCollectionProps) {
         padding: 8,
         border: `1px dashed ${LAVENDER}`,
         borderRadius: 11,
-        background: "rgba(237,240,254,.35)",
+        background: `color-mix(in srgb, ${theme.accentWeak} 35%, transparent)`,
       }}
     >
       <style>{pulseKeyframes}</style>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: theme.accent }}>{title}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: theme.accentInk }}>{title}</span>
         <span style={{ fontSize: 12, color: theme.textFaint }}>링크 {count}개 담는 중</span>
         <Spinner />
       </div>
@@ -102,7 +102,7 @@ function Bar({ width, height, radius }: { width: number | string; height: number
 }
 
 /** 로고 중립 셀 색 — CollectionOnboarding·SpaceOnboarding과 같은 값 */
-const LAVENDER = "#c9d4ff";
+const LAVENDER = theme.accentTint;
 
 const pulseKeyframes = `
 @keyframes tablign-skeleton-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }

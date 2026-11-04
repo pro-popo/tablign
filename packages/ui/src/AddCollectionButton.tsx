@@ -40,7 +40,7 @@ export function AddCollectionButton({ onCreate, onImportCode }: AddCollectionBut
         <button type="button" onClick={onCreate} style={mainStyle}>
           <Plus size={15} /> 컬렉션
         </button>
-        <span style={{ width: 1, background: "rgba(255,255,255,.32)" }} />
+        <span style={{ width: 1, background: `color-mix(in srgb, ${theme.onAccent} 32%, transparent)` }} />
         <button
           type="button"
           title="컬렉션 추가 방법"
@@ -60,7 +60,7 @@ export function AddCollectionButton({ onCreate, onImportCode }: AddCollectionBut
           role="menu"
           style={{
             position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 50, minWidth: 168,
-            background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10,
+            background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10,
             // 그림자는 시안값 대신 CollectionMoreMenu와 같은 값으로 — 같은 종류의 팝오버끼리 어긋나면 안 된다
             boxShadow: "0 8px 20px rgba(20,30,60,.14)", padding: 5, boxSizing: "border-box",
           }}
@@ -83,13 +83,13 @@ const mainStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
   padding: "6px 11px", border: "none", background: "none",
   // fontFamily만 inherit — font 단축 속성을 쓰면 뒤에 오는 fontSize/fontWeight를 되돌린다
-  fontFamily: "inherit", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  fontFamily: "inherit", color: theme.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer",
 };
 
 const caretStyle: React.CSSProperties = {
   boxSizing: "border-box",
   display: "inline-flex", alignItems: "center", justifyContent: "center",
-  padding: "0 7px", border: "none", background: "none", color: "#fff", cursor: "pointer",
+  padding: "0 7px", border: "none", background: "none", color: theme.onAccent, cursor: "pointer",
 };
 
 const itemStyle: React.CSSProperties = {

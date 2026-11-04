@@ -15,34 +15,36 @@ describe("usePanelState (shared)", () => {
   it("저장값이 없으면 기본값(둘 다 열림, 기본 폭)을 반환한다", () => {
     const { adapter } = fakeStorage(null);
     const { result } = renderHook(() => usePanelState(adapter));
-    expect(result.current.state).toEqual({ left: true, right: true, leftWidth: 212, rightWidth: 272 });
+    expect(result.current.state).toEqual({ left: true, right: true, leftWidth: 212, rightWidth: 272, themeWidth: 300 });
   });
 
   it("저장된 상태를 초기에 읽어온다", () => {
-    const { adapter } = fakeStorage({ left: false, right: true, leftWidth: 300, rightWidth: 350 });
+    const { adapter } = fakeStorage({ left: false, right: true, leftWidth: 300, rightWidth: 350, themeWidth: 300 });
     const { result } = renderHook(() => usePanelState(adapter));
-    expect(result.current.state).toEqual({ left: false, right: true, leftWidth: 300, rightWidth: 350 });
+    expect(result.current.state).toEqual({ left: false, right: true, leftWidth: 300, rightWidth: 350, themeWidth: 300 });
   });
 
   it("폭 필드가 없던 기존 저장값은 기본 폭으로 보정한다(하위호환)", () => {
     const { adapter } = fakeStorage({ left: false, right: false } as PanelState);
     const { result } = renderHook(() => usePanelState(adapter));
-    expect(result.current.state).toEqual({ left: false, right: false, leftWidth: 212, rightWidth: 272 });
+    expect(result.current.state).toEqual({ left: false, right: false, leftWidth: 212, rightWidth: 272, themeWidth: 300 });
   });
 
   it("복원 시 범위 밖 폭은 클램프한다", () => {
-    const { adapter } = fakeStorage({ left: true, right: true, leftWidth: 50, rightWidth: 999 });
+    const { adapter } = fakeStorage({ left: true, right: true, leftWidth: 50, rightWidth: 999, themeWidth: 100 });
     const { result } = renderHook(() => usePanelState(adapter));
     expect(result.current.state.leftWidth).toBe(180);
     expect(result.current.state.rightWidth).toBe(400);
+    // 테마 서랍은 더 좁아지지 않는다
+    expect(result.current.state.themeWidth).toBe(260);
   });
 
   it("toggleLeft가 상태를 뒤집고 저장한다", () => {
     const { adapter, box } = fakeStorage(null);
     const { result } = renderHook(() => usePanelState(adapter));
     act(() => result.current.toggleLeft());
-    expect(result.current.state).toEqual({ left: false, right: true, leftWidth: 212, rightWidth: 272 });
-    expect(box.saved).toEqual({ left: false, right: true, leftWidth: 212, rightWidth: 272 });
+    expect(result.current.state).toEqual({ left: false, right: true, leftWidth: 212, rightWidth: 272, themeWidth: 300 });
+    expect(box.saved).toEqual({ left: false, right: true, leftWidth: 212, rightWidth: 272, themeWidth: 300 });
   });
 
   it("setLeftWidth가 폭을 갱신·저장하고 범위를 클램프한다", () => {

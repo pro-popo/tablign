@@ -208,9 +208,9 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
   const rainbowGradient = `conic-gradient(from 0deg, ${[...SWATCHES, SWATCHES[0]].join(", ")})`;
 
   // 패널 행 공용 스타일
-  const rowLabel: CSSProperties = { fontSize: 10, letterSpacing: ".2px", color: "#8a929c", fontWeight: 600, marginBottom: 8 };
-  const divider: CSSProperties = { borderTop: "1px solid #f1f3f5" };
-  const emojiChip: CSSProperties = { width: 24, height: 24, borderRadius: 7, flex: "none", border: "1px solid rgba(0,0,0,.08)", background: "#f7f8fa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontFamily: ORG_ICON_FONT, cursor: "pointer", padding: 0, boxSizing: "border-box" };
+  const rowLabel: CSSProperties = { fontSize: 10, letterSpacing: ".2px", color: theme.textMuted, fontWeight: 600, marginBottom: 8 };
+  const divider: CSSProperties = { borderTop: `1px solid ${theme.surface2}` };
+  const emojiChip: CSSProperties = { width: 24, height: 24, borderRadius: 7, flex: "none", border: "1px solid rgba(0,0,0,.08)", background: theme.surface2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontFamily: ORG_ICON_FONT, cursor: "pointer", padding: 0, boxSizing: "border-box" };
   // 선택: 회색 보더 유지 + 흰 간격 1.5 + 파스텔 인디고 링(3px 지점까지). 색상 스와치 링과 같은 굵기.
   const emojiChipSel: CSSProperties = { boxShadow: `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${EMOJI_RING}` };
   const plusChip: CSSProperties = { width: 24, height: 24, borderRadius: 7, flex: "none", border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, cursor: "pointer", boxSizing: "border-box", padding: 0 };
@@ -231,7 +231,7 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
         style={{ width: 340, maxWidth: "calc(100vw - 32px)", animation: panelIn, background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{title}</div>
         {/* 크기·위치 행의 고스트 −/+ : 평소 숨김, 행 호버 시 옅게 노출. */}
-        <style>{".tbl-srow .tbl-b{border:none;background:none;color:#c2c8d2;width:15px;height:22px;font-size:14px;line-height:1;cursor:pointer;padding:0;opacity:0;transition:opacity .12s}.tbl-srow:hover .tbl-b{opacity:1}.tbl-srow .tbl-b:hover{color:#495057}"}</style>
+        <style>{`.tbl-srow .tbl-b{border:none;background:none;color:${theme.textFaint};width:15px;height:22px;font-size:14px;line-height:1;cursor:pointer;padding:0;opacity:0;transition:opacity .12s}.tbl-srow:hover .tbl-b{opacity:1}.tbl-srow .tbl-b:hover{color:${theme.textSub}}`}</style>
 
         {/* 아바타(미리보기) + 이름 */}
         <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>

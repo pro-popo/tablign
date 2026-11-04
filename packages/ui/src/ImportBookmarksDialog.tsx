@@ -72,17 +72,17 @@ const importPreviewCss = `
 }
 .tbl-imp-row:hover { background: ${theme.surface2} }
 .tbl-imp-row[data-cur="true"] { background: ${theme.accentWeak} }
-.tbl-imp-row[data-cur="true"]:hover { background: #e4e9fd }
+.tbl-imp-row[data-cur="true"]:hover { background: ${theme.accentSoft} }
 .tbl-imp-name {
   flex: 1; min-width: 0; border: none; background: none; padding: 0; margin: 0;
   text-align: left; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600;
-  line-height: 15px; color: #495057; -webkit-user-select: none; user-select: none;
+  line-height: 15px; color: ${theme.textSub}; -webkit-user-select: none; user-select: none;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   transition: color .14s ease;
 }
 /* 제외한 스페이스도 이름 색은 그대로 둔다 — 포함/제외는 체크박스만으로 읽는다.
    여기서 색까지 흐려지면 "보고 있는 스페이스"(data-cur)와 신호가 섞인다. */
-.tbl-imp-row[data-cur="true"] .tbl-imp-name { color: ${theme.accent}; font-weight: 700 }
+.tbl-imp-row[data-cur="true"] .tbl-imp-name { color: ${theme.accentInk}; font-weight: 700 }
 .tbl-imp-name:focus-visible { outline: 2px solid ${theme.accent}; outline-offset: 2px; border-radius: 4px }
 
 /* 컬렉션 카드 — 줄 전체가 누를 수 있다는 걸 호버로 알린다.
@@ -92,7 +92,7 @@ const importPreviewCss = `
   background: ${theme.surface}; border: 1px solid ${theme.borderCard};
   transition: background .14s ease, border-color .14s ease;
 }
-.tbl-imp-col:hover { background: #f7f9ff; border-color: #dde4fb }
+.tbl-imp-col:hover { background: ${theme.accentWeak}; border-color: ${theme.accentSoft} }
 .tbl-imp-coltitle {
   display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;
   border: none; background: none; padding: 0; margin: 0; text-align: left;
@@ -272,9 +272,9 @@ export function ImportBookmarksDialog({
               })}
               {hasLargeFolder && (
                 <div data-testid="large-folder-note"
-                  style={{ margin: "8px 2px 0", padding: "8px 10px", background: "#fff8ea",
-                    border: "1px solid #f2e0b8", borderRadius: 9, fontSize: 11,
-                    color: "#7a5a15", lineHeight: 1.5 }}>
+                  style={{ margin: "8px 2px 0", padding: "8px 10px", background: theme.warnBg,
+                    border: `1px solid ${theme.warnLine}`, borderRadius: 9, fontSize: 11,
+                    color: theme.warnInk, lineHeight: 1.5 }}>
                   링크 {LARGE_FOLDER_THRESHOLD}개가 넘는 폴더는 기본으로 빼뒀어요.
                 </div>
               )}
@@ -324,7 +324,7 @@ export function ImportBookmarksDialog({
                               <span style={{ display: "flex", flex: "none" }}>
                                 <Favicon url={l.favicon_url} />
                               </span>
-                              <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: "#5c636b",
+                              <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: theme.textSub,
                                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {l.title ?? l.url}
                               </span>
@@ -346,13 +346,13 @@ export function ImportBookmarksDialog({
         {/* 상한 초과는 버튼만 비활성하면 이유를 알 수 없다 — 빈 선택과 달리 자명하지 않다 */}
         {overLimit && (
           <div data-testid="over-limit-note"
-            style={{ padding: "8px 18px", background: "#fff5f5", borderTop: `1px solid #f5d0d0`,
+            style={{ padding: "8px 18px", background: theme.dangerWeak, borderTop: `1px solid ${theme.dangerLine}`,
               fontSize: 12, color: theme.danger }}>
             한 번에 {MAX_IMPORT_LINKS}개까지 가져올 수 있어요. 스페이스나 컬렉션을 줄여주세요.
           </div>
         )}
         {error && (
-          <div style={{ padding: "8px 18px", background: "#fff5f5", borderTop: `1px solid #f5d0d0`,
+          <div style={{ padding: "8px 18px", background: theme.dangerWeak, borderTop: `1px solid ${theme.dangerLine}`,
             fontSize: 12, color: theme.danger }}>{error}</div>
         )}
 

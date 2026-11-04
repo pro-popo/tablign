@@ -31,7 +31,7 @@ function TabRow({
     border: `1px solid ${theme.border}`, borderRadius: 9, padding: "8px 9px",
     // 담을 수 없는 탭: 점선 + 회색 배경으로 "담기지 않는다"만 말한다.
     // 글자 대비는 그대로 둔다 — 흐리게 하면 클릭(=전환)도 안 되는 것처럼 읽힌다.
-    background: saveable ? "#fff" : theme.surface2,
+    background: saveable ? theme.surface : theme.surface2,
     borderStyle: saveable ? "solid" : "dashed",
     transform: isDragging ? undefined : CSS.Translate.toString(transform),
     transition,
@@ -49,7 +49,7 @@ function TabRow({
         {tab.title ?? tab.url}
       </span>
       {isSelf ? (
-        <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: theme.textMuted, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 5, padding: "1px 5px", whiteSpace: "nowrap", boxSizing: "border-box" }}>
+        <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: theme.textMuted, background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 5, padding: "1px 5px", whiteSpace: "nowrap", boxSizing: "border-box" }}>
           현재 탭
         </span>
       ) : reason ? (
@@ -112,7 +112,7 @@ function WindowGroupView({
             aria-label={saving ? `창 ${index + 1} 담는 중` : saveable === 0 ? `창 ${index + 1} — 담을 수 있는 탭이 없어요` : `창 ${index + 1}의 탭 ${saveable}개 저장`}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onSaveWindow(group.windowId); }}
-            style={{ border: "none", background: "none", cursor: saveable === 0 || saving ? "not-allowed" : "pointer", display: "flex", color: theme.accent, opacity: saveable === 0 || saving ? 0.35 : 1 }}>
+            style={{ border: "none", background: "none", cursor: saveable === 0 || saving ? "not-allowed" : "pointer", display: "flex", color: theme.accentInk, opacity: saveable === 0 || saving ? 0.35 : 1 }}>
             <Download size={15} />
           </button>
           <button type="button" title="이 창의 탭 전체 닫기" aria-label={`창 ${index + 1} 닫기`} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onCloseWindow(group.windowId); }}

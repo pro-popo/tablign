@@ -54,7 +54,7 @@ export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare, onCopyLink
         <div
           style={{
             position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 50, minWidth: 168,
-            background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 10,
+            background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10,
             boxShadow: "0 8px 20px rgba(20,30,60,.14)", padding: 4,
           }}
         >

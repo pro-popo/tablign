@@ -109,7 +109,7 @@ export function ColorGradientPicker({ value, onChange }: ColorGradientPickerProp
   const stopLeft = (pos: number) => `calc(${HANDLE_INSET}px + (100% - ${HANDLE_INSET * 2}px) * ${pos / 100})`;
   const chipStyle = (isActive: boolean): CSSProperties => ({
     flex: 1, display: "flex", alignItems: "center", gap: 7, padding: "6px 9px", borderRadius: 8, cursor: "pointer",
-    border: `1px solid ${isActive ? theme.accent : theme.border}`, background: isActive ? "#f5f7ff" : "#fff", boxSizing: "border-box",
+    border: `1px solid ${isActive ? theme.accent : theme.border}`, background: isActive ? theme.accentWeak : theme.surface, boxSizing: "border-box",
   });
 
   const chip = (stop: ActiveStop, label: string, hex: string) => (

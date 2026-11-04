@@ -40,7 +40,7 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, PendingCollection, ShareCodeDialog, ImportCodeDialog, type ImportCodeInfo, ImportBookmarksDialog, ImportSourceDialog, ExportSpacesDialog, JsonStructurePath, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users, useHoverPeek } from "@tablign/ui";
+import { AppShell, RightDrawer, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, PendingCollection, ShareCodeDialog, ImportCodeDialog, type ImportCodeInfo, ImportBookmarksDialog, ImportSourceDialog, ExportSpacesDialog, JsonStructurePath, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users, useHoverPeek } from "@tablign/ui";
 import {
   listSpaces, listMyMemberships, leaveSpace, listCollections, listLinks, createLink, createLinks, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions, positionBetween,
@@ -61,6 +61,8 @@ import { OrgSpacePreview } from "./OrgSpacePreview";
 import { useActiveSpace } from "../lib/useActiveSpace";
 import { useActiveOrg } from "../lib/useActiveOrg";
 import { OpenTabsPanel } from "./OpenTabsPanel";
+import { ThemePanel } from "./ThemePanel";
+import { useThemeSettings } from "../lib/useThemeSettings";
 import { ExtSidebar } from "./ExtSidebar";
 import { OrgRail } from "./OrgRail";
 import { ExtSearchBar } from "./ExtSearchBar";
@@ -205,7 +207,7 @@ export function NewTab() {
   const [active, setActive] = useState<Active>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const [autoEditId, setAutoEditId] = useState<string | null>(null);
-  const { state: panels, toggleLeft, toggleRight, setLeftWidth, setRightWidth } = usePanelState();
+  const { state: panels, toggleLeft, toggleRight, setLeftWidth, setRightWidth, setThemeWidth } = usePanelState();
   // 좁은 화면: 사이드바·열린 탭을 접어 두고 올리면 보드 위에 덮는다. 열린 탭 레일을 누르면 붙박이로 편다(이 창 폭에서만).
   const narrow = useNarrow();
   const leftPeekBase = useHoverPeek();
@@ -222,6 +224,10 @@ export function NewTab() {
   // 덮개를 연 채 조직 레일로 옮겨도 두 패널이 동시에 움직이지 않고 덮개가 이어진다.
   const railPeeks = narrow || (leftOverlay && leftPeek.open);
   const rightOverlay = narrow ? !narrowRightDock : !panels.right;
+  // 테마 — 기기 캐시로 바로 그리고, 로그인하면 서버와 맞춘다(로그인 화면도 따른다)
+  const themeState = useThemeSettings(supabase, session?.user.id ?? null);
+  // 테마 서랍 — 레일의 팔레트 버튼으로 연다. 열린 탭 패널과 따로 오른쪽 끝에 떠서, 창 폭이 바뀌어도 그대로다.
+  const [themeOpen, setThemeOpen] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   useEffect(() => {
@@ -1219,6 +1225,8 @@ export function NewTab() {
             onPeekLeave={railPeeks ? leftPeek.leave : undefined}
             onHoverOrg={railPeeks ? setPreviewOrgId : undefined}
             peekOrgId={railPeeks && leftPeek.open ? (previewOrgId ?? activeOrgId) : null}
+            themeOpen={themeOpen}
+            onToggleTheme={() => setThemeOpen((v) => !v)}
             invitationCount={myInvitations.length + myOrgInvitations.length}
             invitations={
               <InvitationList
@@ -1280,6 +1288,12 @@ export function NewTab() {
                 onCollapse={rightOverlay ? rightPeek.close : narrow ? () => setNarrowRightDock(false) : toggleRight}
                 onPin={rightOverlay ? () => { rightPeek.close(); if (narrow) setNarrowRightDock(true); else toggleRight(); } : undefined} />
             }
+            overlay={(
+              <RightDrawer open={themeOpen} width={panels.themeWidth} onResize={setThemeWidth} label="테마">
+                <ThemePanel settings={themeState.settings} onChange={themeState.update} onPreview={themeState.preview} onClose={() => setThemeOpen(false)}
+                  viewport={themeState.viewport} uploadUrl={themeState.uploadUrl} uploadState={themeState.uploadState} onUpload={themeState.uploadPhoto} />
+              </RightDrawer>
+            )}
           >
             <Board>
               {spacesLoaded && orgSpaces.length === 0 ? (
@@ -1291,7 +1305,7 @@ export function NewTab() {
                 <div style={{ boxSizing: "border-box", minHeight: "100%", display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <strong style={{ fontSize: 15 }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
+                  <strong style={{ fontSize: 15, color: theme.boardInk }}>{spaces.find((s) => s.id === activeSpaceId)?.name ?? "—"}</strong>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {members.length > 0 && <MemberAvatars people={members} />}
@@ -1400,7 +1414,7 @@ export function NewTab() {
         {active?.type === "collection" ? (
           <div style={{
             border: `1px solid ${theme.border}`, borderRadius: theme.radiusCard, padding: "8px 12px",
-            background: "#fff", boxShadow: "0 8px 20px rgba(20,30,60,.22)", cursor: "grabbing",
+            background: theme.surface, boxShadow: "0 8px 20px rgba(20,30,60,.22)", cursor: "grabbing",
             fontWeight: 600, color: theme.text,
           }}>
             {active.collection.icon ? `${active.collection.icon} ` : ""}{active.collection.title}
@@ -1408,7 +1422,7 @@ export function NewTab() {
         ) : active?.type === "window" ? (
           <div style={{
             border: `1px solid ${theme.border}`, borderRadius: theme.radiusCard, padding: "8px 12px",
-            background: "#fff", boxShadow: "0 8px 20px rgba(20,30,60,.22)", cursor: "grabbing",
+            background: theme.surface, boxShadow: "0 8px 20px rgba(20,30,60,.22)", cursor: "grabbing",
             fontWeight: 600, color: theme.text,
           }}>
             {windowSummary(active.windowId).title} · 탭 {windowSummary(active.windowId).count}개
@@ -1416,7 +1430,7 @@ export function NewTab() {
         ) : active?.type === "space" ? (
           <div style={{
             border: `1px solid ${theme.border}`, borderRadius: theme.radiusCard, padding: "7px 12px",
-            background: "#fff", boxShadow: "0 8px 20px rgba(20,30,60,.22)", cursor: "grabbing",
+            background: theme.surface, boxShadow: "0 8px 20px rgba(20,30,60,.22)", cursor: "grabbing",
             fontWeight: 600, color: theme.text, fontSize: 12.5,
           }}>
             {active.space.icon && <span style={{ fontFamily: ORG_ICON_FONT }}>{active.space.icon} </span>}{active.space.name}
@@ -1424,7 +1438,7 @@ export function NewTab() {
         ) : preview ? (
           <div style={{
             border: `1px solid ${theme.border}`, borderRadius: theme.radiusCard, padding: "10px 11px",
-            background: "#fff", boxShadow: "0 8px 20px rgba(20,30,60,.22)", width: 240, boxSizing: "border-box", cursor: "grabbing",
+            background: theme.surface, boxShadow: "0 8px 20px rgba(20,30,60,.22)", width: 240, boxSizing: "border-box", cursor: "grabbing",
           }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <Favicon url={preview.faviconUrl} />
@@ -1470,7 +1484,7 @@ export function NewTab() {
         ) : (
           <>
             이런 구조의 JSON 파일을 골라주세요.
-            <div style={{ marginTop: 12, padding: "10px 12px 9px", background: "#f8f9fa", borderRadius: 9 }}>
+            <div style={{ marginTop: 12, padding: "10px 12px 9px", background: theme.surface2, borderRadius: 9 }}>
               <JsonStructurePath />
             </div>
           </>

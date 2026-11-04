@@ -15,6 +15,7 @@ export * from "./data/org-members";
 export * from "./data/org-invitations";
 export * from "./data/import";
 export * from "./data/export";
+export * from "./data/settings";
 export * from "./import/types";
 export * from "./import/url";
 export * from "./import/plan";

@@ -3,7 +3,7 @@ import { Plus } from "./icons";
 import { theme } from "./theme";
 
 /** 로고(Bento 마크)의 중립 셀 색과 동일 (Logo.tsx NEUTRAL) */
-const LAVENDER = "#c9d4ff";
+const LAVENDER = theme.accentTint;
 const AMBER = "#f4c66a";
 const GREEN = "#7bc47f";
 
@@ -43,7 +43,7 @@ export function SpaceOnboarding({ onCreate }: SpaceOnboardingProps) {
             fontSize: 13.5,
             fontWeight: 700,
             borderRadius: 9,
-            boxShadow: "0 4px 14px rgba(59,91,219,.28)",
+            boxShadow: `0 4px 14px color-mix(in srgb, ${theme.accent} 28%, transparent)`,
           }}
         >
           <Plus size={15} /> 첫 스페이스 만들기
@@ -85,7 +85,7 @@ function Pantomime() {
         fill="none"
         style={{ position: "absolute", left: 0, top: 0, width: 14, height: 14, zIndex: 10, animation: "tablign-onb-curx 18s ease-in-out infinite" }}
       >
-        <path d="M5 3l14 8-6.5 1.5L9 19 5 3z" fill={theme.text} stroke="#fff" strokeWidth={1.4} />
+        <path d="M5 3l14 8-6.5 1.5L9 19 5 3z" fill={theme.text} stroke={theme.surface} strokeWidth={1.4} />
       </svg>
     </div>
   );
@@ -109,7 +109,7 @@ function GhostWindow({ style }: { style: React.CSSProperties }) {
     >
       <div style={{ height: 14, background: theme.surface2, borderRadius: "9px 9px 0 0", display: "flex", alignItems: "center", gap: 3, padding: "0 6px" }}>
         {[0, 1, 2].map((i) => (
-          <span key={i} style={{ width: 4.5, height: 4.5, borderRadius: "50%", background: "#d6dae0" }} />
+          <span key={i} style={{ width: 4.5, height: 4.5, borderRadius: "50%", background: theme.borderStrong }} />
         ))}
       </div>
     </div>
@@ -123,7 +123,7 @@ function MiniBrowser() {
     <div style={{ boxSizing: "border-box", position: "absolute", left: 0, top: 0, width: 250, height: 132, border: `1px solid ${theme.border}`, borderRadius: 11, background: theme.surface, boxShadow: "0 10px 26px rgba(20,30,60,.11)", overflow: "hidden" }}>
       <div style={{ height: 22, background: theme.surface2, display: "flex", alignItems: "center", gap: 4, padding: "0 9px" }}>
         {[0, 1, 2].map((i) => (
-          <span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: "#d6dae0" }} />
+          <span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: theme.borderStrong }} />
         ))}
       </div>
       <div style={{ display: "flex", padding: "7px 8px 0" }}>
@@ -190,7 +190,7 @@ const bodyLine: React.CSSProperties = { height: 8, borderRadius: 4, background: 
 const qBubble: React.CSSProperties = {
   // 복귀한 커서 팁(106,36) 바로 위에 붙는 ? 말풍선(간격 3px), 꼬리(좌하단)가 커서를 가리킨다
   position: "absolute", left: 110, top: 13, width: 20, height: 20, borderRadius: "10px 10px 10px 3px",
-  background: theme.text, color: "#fff", fontSize: 12, fontWeight: 800,
+  background: theme.text, color: theme.surface, fontSize: 12, fontWeight: 800,
   display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, zIndex: 4,
   animation: "tablign-onb-q 18s ease infinite",
 };
@@ -260,14 +260,14 @@ const keyframes = `
 @keyframes tablign-onb-slot {
   0%, 52%, 99%, 100% { border: 1.5px dashed ${theme.textFaint}; background: ${theme.surface} }
   54.5%, 57% { border: 1.5px dashed ${theme.accent}; background: ${theme.accentWeak} }
-  58.2% { border: 1.5px solid ${theme.accent}; background: #d9e2fc }
-  60%, 66.8% { border: 1.5px solid #aebdf0; background: ${theme.accentWeak} }
-  68.2% { border: 1.5px solid ${theme.accent}; background: #d9e2fc }
-  70%, 74.6% { border: 1.5px solid #aebdf0; background: ${theme.accentWeak} }
-  76% { border: 1.5px solid ${theme.accent}; background: #d9e2fc }
-  77.5%, 96% { border: 1.5px solid #aebdf0; background: ${theme.accentWeak} }
+  58.2% { border: 1.5px solid ${theme.accent}; background: ${theme.accentSoft} }
+  60%, 66.8% { border: 1.5px solid ${theme.accentTint}; background: ${theme.accentWeak} }
+  68.2% { border: 1.5px solid ${theme.accent}; background: ${theme.accentSoft} }
+  70%, 74.6% { border: 1.5px solid ${theme.accentTint}; background: ${theme.accentWeak} }
+  76% { border: 1.5px solid ${theme.accent}; background: ${theme.accentSoft} }
+  77.5%, 96% { border: 1.5px solid ${theme.accentTint}; background: ${theme.accentWeak} }
 }
-@keyframes tablign-onb-st { 0%, 52%, 99%, 100% { background: ${theme.surface2} } 54.5%, 96% { background: #ccd6f4 } }
+@keyframes tablign-onb-st { 0%, 52%, 99%, 100% { background: ${theme.surface2} } 54.5%, 96% { background: ${theme.accentTint} } }
 /* 1번(파랑): (0,16,-4°) → 슬롯 1칸 = translate(97,12). 집기 → 운반(하나의 곡선) → 사뿐한 착지 */
 @keyframes tablign-onb-ca {
   0%, 51% { transform: rotate(-4deg); box-shadow: 0 4px 12px rgba(20,30,60,.1); animation-timing-function: ease-out }

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { CollectionOnboarding } from "../CollectionOnboarding";
+import { theme } from "../theme";
 
 function setup(over: Partial<React.ComponentProps<typeof CollectionOnboarding>> = {}) {
   const props = {
@@ -66,19 +67,19 @@ describe("CollectionOnboarding", () => {
     setup();
     const iconOf = (name: RegExp) =>
       screen.getByRole("button", { name }).querySelector(".tablign-choice-icon") as HTMLElement;
-    expect(iconOf(/열린 창 2개를 그대로 담기/).style.background).toContain("rgb(59, 91, 219)");
-    expect(iconOf(/공유 코드로 추가/).style.background).toContain("rgb(47, 158, 99)");
+    expect(iconOf(/열린 창 2개를 그대로 담기/).style.background).toContain(theme.accent);
+    expect(iconOf(/공유 코드로 추가/).style.background).toContain(theme.greenDeep);
     // 중립은 surface2 — 흰 글리프가 아니라 회색 글리프
-    expect(iconOf(/빈 컬렉션 만들기/).style.background).toContain("rgb(241, 243, 245)");
-    expect(iconOf(/빈 컬렉션 만들기/).style.color).toContain("rgb(92, 99, 107)");
+    expect(iconOf(/빈 컬렉션 만들기/).style.background).toContain(theme.surface2);
+    expect(iconOf(/빈 컬렉션 만들기/).style.color).toContain(theme.textSub);
   });
 
   it("비활성 카드는 accent를 쓰지 않는다 — 못 누르는 것에 주 색을 주지 않는다", () => {
     setup({ windowCount: 0, tabCount: 0 });
     const icon = screen.getByRole("button", { name: /열린 창 담기/ })
       .querySelector(".tablign-choice-icon") as HTMLElement;
-    expect(icon.style.background).not.toContain("rgb(59, 91, 219)");
-    expect(icon.style.background).toContain("rgb(241, 243, 245)");
+    expect(icon.style.background).not.toContain(theme.accent);
+    expect(icon.style.background).toContain(theme.surface2);
   });
 
   it("담을 탭이 0개여도 나머지 두 경로는 그대로 눌린다 — 레이아웃이 흔들리지 않는다", () => {

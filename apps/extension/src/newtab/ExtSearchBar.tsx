@@ -9,9 +9,9 @@ function openUrl(url: string) { chrome.tabs.create({ url }); }
 const searchCss = `
 .tbl-sr-box { background: ${theme.surface2}; border: 1px solid transparent; color: ${theme.textMuted};
   transition: background .14s ease, border-color .14s ease, box-shadow .14s ease, color .14s ease }
-.tbl-sr-box:focus-within { background: ${theme.surface}; border-color: ${theme.accent}; box-shadow: 0 0 0 3px ${theme.accentWeak}; color: ${theme.accent} }
+.tbl-sr-box:focus-within { background: ${theme.surface}; border-color: ${theme.accent}; box-shadow: 0 0 0 3px ${theme.accentWeak}; color: ${theme.accentInk} }
 .tbl-sr-link:hover { background: ${theme.surface2} }
-.tbl-sr-space:hover { background: #e4e8ee }
+.tbl-sr-space:hover { background: ${theme.surface3} }
 `;
 
 /** 보고 있는 조직(orgId) 안의 링크를 찾는다. 조직이 아직 정해지지 않았으면 찾지 않는다. */
@@ -61,7 +61,7 @@ export function ExtSearchBar({ orgId, onSelectSpace }: { orgId: string | null; o
           // 드롭다운 내부를 클릭할 때 인풋이 blur 되어 닫히지 않도록 막는다.
           onMouseDown={(e) => e.preventDefault()}
           onScroll={() => setTip(null)}
-          style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,.12)", padding: 8, zIndex: 30, maxHeight: 320, overflow: "auto" }}
+          style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,.12)", padding: 8, zIndex: 30, maxHeight: 320, overflow: "auto" }}
         >
           {res!.length === 0 && (
             <div style={{ color: theme.textFaint, padding: 6, fontSize: 12 }}>결과 없음</div>
@@ -85,7 +85,7 @@ export function ExtSearchBar({ orgId, onSelectSpace }: { orgId: string | null; o
       )}
       {open && tip && createPortal(
         <div role="tooltip" style={{ position: "fixed", top: tip.top, right: tip.right, zIndex: 1000, padding: "4px 8px", borderRadius: 6,
-          background: theme.text, color: "#fff", fontSize: 11, whiteSpace: "nowrap", pointerEvents: "none" }}>{tip.name}</div>,
+          background: theme.text, color: theme.surface, fontSize: 11, whiteSpace: "nowrap", pointerEvents: "none" }}>{tip.name}</div>,
         document.body,
       )}
     </div>

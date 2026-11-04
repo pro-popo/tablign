@@ -99,9 +99,9 @@ export function CollectionOnboarding({
 type Tone = "accent" | "green" | "neutral";
 
 const TONES: Record<Tone, React.CSSProperties> = {
-  accent: { background: theme.accent, color: "#fff", boxShadow: "0 2px 6px rgba(59,91,219,.26)" },
-  green: { background: theme.greenDeep, color: "#fff", boxShadow: "0 2px 6px rgba(47,158,99,.26)" },
-  neutral: { background: theme.surface2, color: "#5c636b" },
+  accent: { background: theme.accent, color: theme.onAccent, boxShadow: `0 2px 6px color-mix(in srgb, ${theme.accent} 26%, transparent)` },
+  green: { background: theme.greenDeep, color: "#fff", boxShadow: `0 2px 6px color-mix(in srgb, ${theme.greenDeep} 26%, transparent)` },
+  neutral: { background: theme.surface2, color: theme.textSub },
 };
 /** 못 누르는 것에 주 색을 쓰면 "왜 안 눌리지"가 된다 */
 const TONE_DISABLED: React.CSSProperties = { background: theme.surface2, color: theme.textFaint };
@@ -157,8 +157,8 @@ const styles = `
   transition: border-color .15s, box-shadow .15s, transform .15s;
 }
 .tablign-choice:hover:not(:disabled) {
-  border-color: #c9d4ff;
-  box-shadow: 0 7px 20px rgba(59,91,219,.15);
+  border-color: ${theme.accentTint};
+  box-shadow: 0 7px 20px color-mix(in srgb, ${theme.accent} 15%, transparent);
   transform: translateY(-1px);
 }
 .tablign-choice:focus-visible {

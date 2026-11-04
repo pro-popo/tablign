@@ -50,7 +50,9 @@ export function CollectionSection({
         padding: 8,
         borderRadius: 12,
         border: isOver ? `1.5px dashed ${theme.accent}` : "1.5px dashed transparent",
-        background: isOver ? theme.accentWeak : "transparent",
+        background: isOver ? theme.accentWeak : theme.paneCol,
+        // 배경이 있을 때만 판으로 뜬다(없으면 투명·흐림 없음)
+        backdropFilter: isOver ? "none" : theme.paneBlur,
       }}
     >
       <header
@@ -83,7 +85,7 @@ export function CollectionSection({
               ref={titleDragProps ? titleDragRef : undefined}
               // 제목은 드래그 핸들(잡고 움직이면 순서 이동, 5px 활성화). 이름 편집은 호버 시 나오는 연필 버튼으로.
               style={{
-                color: "#3b3f46",
+                color: theme.textStrong,
                 cursor: titleDragProps ? "grab" : "default",
                 userSelect: titleDragProps ? "none" : undefined,
                 touchAction: titleDragProps ? "none" : undefined,

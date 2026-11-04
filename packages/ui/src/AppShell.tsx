@@ -20,6 +20,8 @@ export interface AppShellProps {
   /** 접어 둔 패널(좁은 화면의 사이드바 포함)을 올려 볼 때의 덮개 상태. 열리면 보드를 밀지 않고 위에 덮는다. */
   leftPeek?: HoverPeek;
   rightPeek?: HoverPeek;
+  /** 패널들 위에 따로 덮어 띄우는 것(테마 서랍) — 셸 안에 그려 셸 밖으로 삐져나가지 않는다 */
+  overlay?: ReactNode;
 }
 
 const RAIL = 44;
@@ -122,7 +124,7 @@ function ResizeHandle({
 export function AppShell({
   left, right, children, leftOpen, rightOpen, onToggleLeft, onToggleRight,
   leftWidth = DEFAULT_LEFT_WIDTH, rightWidth = DEFAULT_RIGHT_WIDTH, onResizeLeft, onResizeRight,
-  narrow = false, leftPeek, rightPeek,
+  narrow = false, leftPeek, rightPeek, overlay: drawer,
 }: AppShellProps) {
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{ startX: number; startWidth: number; side: "left" | "right" } | null>(null);
@@ -153,7 +155,9 @@ export function AppShell({
     // 드래그 중에는 폭 애니메이션을 꺼 랙을 없앤다(열기/닫기 때만 부드럽게).
     transition: dragging ? "none" : `width ${PANEL_ANIM_MS}ms ease`,
     overflow: "hidden",
-    background: theme.surface,
+    // 배경이 있으면 판이 투명도만큼 비치고 뒤를 흐린다(없으면 surface 그대로)
+    background: theme.pane,
+    backdropFilter: theme.paneBlur,
     [side === "left" ? "borderRight" : "borderLeft"]: `1px solid ${theme.border}`,
     height: "100%",
     display: "flex",
@@ -168,7 +172,7 @@ export function AppShell({
       className={`tbl-peek ${side === "left" ? "l" : "r"}`} data-open={peek.open || undefined}
       style={{
         position: "absolute", top: 0, bottom: 0, [side]: 0, width, zIndex: 50, display: "flex", flexDirection: "column", overflow: "hidden",
-        background: theme.surface, [side === "left" ? "borderRight" : "borderLeft"]: `1px solid ${theme.border}`,
+        background: theme.pane, backdropFilter: theme.paneBlur, [side === "left" ? "borderRight" : "borderLeft"]: `1px solid ${theme.border}`,
         visibility: peek.open ? "visible" : "hidden",
       }}>
       <PanelBody width={width} visible>{content}</PanelBody>
@@ -180,7 +184,7 @@ export function AppShell({
 
   return (
     // overflow: hidden — 덮개가 바깥에서 미끄러져 들어오는 동안 레일 뒤·화면 밖으로 삐져나가지 않게
-    <div style={{ position: "relative", display: "flex", height: "100vh", overflow: "hidden", background: theme.bg, color: theme.text, fontFamily: "-apple-system, system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ position: "relative", display: "flex", height: "100vh", overflow: "hidden", background: "transparent", color: theme.text, fontFamily: "-apple-system, system-ui, sans-serif", fontSize: 13 }}>
       {(leftPeek || rightPeek) && <style>{peekCss}</style>}
       {/* 좁은 화면의 사이드바는 레일 없이 덮개만 — 왼쪽엔 조직 레일만 남는다 */}
       {narrow ? (leftPeek && overlay("left", leftPeek, leftWidth, left)) : (
@@ -204,6 +208,7 @@ export function AppShell({
         </aside>
       )}
       {right && rightCollapsed && rightPeek && overlay("right", rightPeek, rightWidth, right)}
+      {drawer}
     </div>
   );
 }

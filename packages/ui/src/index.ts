@@ -1,4 +1,9 @@
 export * from "./theme";
+export * from "./themeTokens";
+export * from "./gradient";
+export * from "./SwatchRow";
+export * from "./Segmented";
+export * from "./GradientEditor";
 export * from "./icons";
 export * from "./Logo";
 export * from "./Button";
@@ -13,6 +18,7 @@ export * from "./CollectionSection";
 export * from "./Board";
 export * from "./SidePanel";
 export * from "./AppShell";
+export * from "./RightDrawer";
 export * from "./Toast";
 export * from "./ConfirmDialog";
 export * from "./ShareCodeDialog";

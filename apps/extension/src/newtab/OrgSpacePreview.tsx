@@ -22,7 +22,7 @@ export function OrgSpacePreview({ org, spaces, onSelect }: { org: Organization; 
           <div style={{ padding: "7px 10px", color: theme.textFaint }}>스페이스가 없어요</div>
         ) : spaces.map((s) => (
           <button key={s.id} type="button" className="tbl-orgprev-sp" onClick={() => onSelect(s.id)}
-            style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 8, border: "none", cursor: "pointer", textAlign: "left", color: "#495057" }}>
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 8, border: "none", cursor: "pointer", textAlign: "left", color: theme.textSub }}>
             <SpaceIcon icon={s.icon} />
             <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
           </button>
