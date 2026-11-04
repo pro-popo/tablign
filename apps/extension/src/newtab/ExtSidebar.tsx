@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import type { Space } from "@tablign/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus, Pencil, Trash2, PanelLeftClose, LogOut, ConfirmDialog, overlayAnimationCss, popIn, theme, SpaceIcon } from "@tablign/ui";
+import { Plus, Pencil, Trash2, PanelLeftClose, PanelLeftOpen, LogOut, ConfirmDialog, overlayAnimationCss, popIn, theme, SpaceIcon } from "@tablign/ui";
 import { TossEmojiPicker } from "./TossEmojiPicker";
 import { ORG_ICON_FONT } from "./orgIcon";
 
@@ -17,6 +17,8 @@ export interface ExtSidebarProps {
   onDeleteSpace: (id: string) => void;
   onLeaveSpace: (id: string) => void;
   onCollapse: () => void;
+  /** 덮개로 떠 있을 때 — 머리 버튼이 접기 대신 고정(붙박이로 펼치기)이 된다 */
+  onPin?: () => void;
   searchSlot: ReactNode;
   orgHeaderSlot?: ReactNode;
 }
@@ -200,7 +202,7 @@ function SortableSpace({ space, active, onSelect, onChangeIcon, onStartEdit, onD
   );
 }
 
-export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace, onAddSpace, onEditSpace, onDeleteSpace, onLeaveSpace, onCollapse, searchSlot, orgHeaderSlot }: ExtSidebarProps) {
+export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace, onAddSpace, onEditSpace, onDeleteSpace, onLeaveSpace, onCollapse, onPin, searchSlot, orgHeaderSlot }: ExtSidebarProps) {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Space | null>(null);
@@ -208,8 +210,9 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace,
     <>
       <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 2, borderBottom: `1px solid ${theme.border}`, boxSizing: "border-box" }}>
         <div style={{ flex: 1, minWidth: 0 }}>{orgHeaderSlot}</div>
-        <button type="button" title="사이드바 접기" aria-label="사이드바 접기" onClick={onCollapse} style={{ flexShrink: 0, border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3 }}>
-          <PanelLeftClose size={16} color={theme.textFaint} />
+        <button type="button" title={onPin ? "사이드바 고정" : "사이드바 접기"} aria-label={onPin ? "사이드바 고정" : "사이드바 접기"} onClick={onPin ?? onCollapse}
+          style={{ flexShrink: 0, border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3 }}>
+          {onPin ? <PanelLeftOpen size={16} color={theme.textFaint} /> : <PanelLeftClose size={16} color={theme.textFaint} />}
         </button>
       </div>
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ChevronRight, Download, X, PanelRightClose, Lock, Favicon, theme } from "@tablign/ui";
+import { ChevronDown, ChevronRight, Download, X, PanelRightClose, PanelRightOpen, Lock, Favicon, theme } from "@tablign/ui";
 import { isSaveableTab, saveableTabs, unsaveableReason, type WindowGroup, type WindowTab } from "../lib/tabs";
 
 function TabRow({
@@ -148,15 +148,18 @@ export interface OpenTabsPanelProps {
   onCloseTab: (tabId: number) => void;
   onActivateTab: (tabId: number, windowId: number) => void;
   onCollapse: () => void;
+  /** 덮개로 떠 있을 때 — 머리 버튼이 접기 대신 고정(붙박이로 펼치기)이 된다. 덮개가 레일 자리를 덮으므로 같은 자리에서 누른다. */
+  onPin?: () => void;
 }
 
-export function OpenTabsPanel({ groups, selfTabId = null, savingWindowId = null, readOnly = false, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab, onCollapse }: OpenTabsPanelProps) {
+export function OpenTabsPanel({ groups, selfTabId = null, savingWindowId = null, readOnly = false, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab, onCollapse, onPin }: OpenTabsPanelProps) {
   return (
     <>
       <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, borderBottom: `1px solid ${theme.border}` }}>
         <strong style={{ letterSpacing: ".4px" }}>열린 탭</strong>
-        <button type="button" title="패널 접기" aria-label="패널 접기" onClick={onCollapse} style={{ border: "none", background: "none", cursor: "pointer", display: "flex", flexShrink: 0 }}>
-          <PanelRightClose size={16} color={theme.textFaint} />
+        <button type="button" title={onPin ? "열린 탭 고정" : "패널 접기"} aria-label={onPin ? "열린 탭 고정" : "패널 접기"} onClick={onPin ?? onCollapse}
+          style={{ border: "none", background: "none", cursor: "pointer", display: "flex", flexShrink: 0 }}>
+          {onPin ? <PanelRightOpen size={16} color={theme.textFaint} /> : <PanelRightClose size={16} color={theme.textFaint} />}
         </button>
       </div>
       <div style={{ padding: "11px 13px", overflow: "auto" }}>

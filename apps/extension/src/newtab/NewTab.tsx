@@ -216,6 +216,9 @@ export function NewTab() {
   useEffect(() => { if (!leftPeek.open) setPreviewOrgId(null); }, [leftPeek.open]);
   // 덮개로 보이는 중인지 — 좁은 화면이거나 넓은 화면에서 접어 둔 패널. 이때 패널의 접기 버튼은 덮개만 닫는다.
   const leftOverlay = narrow || !panels.left;
+  // 조직 레일이 이름으로 넓어지지 않고 스페이스 덮개를 띄우는 상태 — 좁은 화면, 또는 큰 화면에서 덮개가 열려 있을 때.
+  // 덮개를 연 채 조직 레일로 옮겨도 두 패널이 동시에 움직이지 않고 덮개가 이어진다.
+  const railPeeks = narrow || (leftOverlay && leftPeek.open);
   const rightOverlay = narrow ? !narrowRightDock : !panels.right;
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -1087,7 +1090,7 @@ export function NewTab() {
     : activeSpace ? (myMembership ? myMembership.role === "editor" : true) : true;
 
   const orgSpaces = spaces.filter((s) => s.org_id === activeOrgId);
-  const previewOrg = narrow && previewOrgId && previewOrgId !== activeOrgId ? organizations.find((o) => o.id === previewOrgId) ?? null : null;
+  const previewOrg = leftOverlay && previewOrgId && previewOrgId !== activeOrgId ? organizations.find((o) => o.id === previewOrgId) ?? null : null;
   const ownedSpaces = orgSpaces.filter((s) => !memberships.some((m) => m.space_id === s.id));
   const sharedSpaces = orgSpaces.filter((s) => memberships.some((m) => m.space_id === s.id));
 
@@ -1209,10 +1212,10 @@ export function NewTab() {
             onSelectOrg={selectOrg}
             onCreateOrg={openCreateOrg}
             onSignOut={async () => { await supabase.auth.signOut(); }}
-            compact={narrow}
-            onPeekEnter={narrow ? leftPeek.enter : undefined}
-            onPeekLeave={narrow ? leftPeek.leave : undefined}
-            onHoverOrg={setPreviewOrgId}
+            compact={railPeeks}
+            onPeekEnter={railPeeks ? leftPeek.enter : undefined}
+            onPeekLeave={railPeeks ? leftPeek.leave : undefined}
+            onHoverOrg={railPeeks ? setPreviewOrgId : undefined}
             invitationCount={myInvitations.length + myOrgInvitations.length}
             invitations={
               <InvitationList
@@ -1254,6 +1257,7 @@ export function NewTab() {
                 onDeleteSpace={deleteSpace}
                 onLeaveSpace={handleLeaveSpace}
                 onCollapse={leftOverlay ? leftPeek.close : toggleLeft}
+                onPin={!narrow && !panels.left ? () => { leftPeek.close(); toggleLeft(); } : undefined}
                 searchSlot={<ExtSearchBar key={activeOrgId} orgId={activeOrgId} onSelectSpace={selectSpace} />}
                 orgHeaderSlot={activeOrg ? (
                   <OrgHeader
@@ -1270,7 +1274,8 @@ export function NewTab() {
             )}
             right={
               <OpenTabsPanel groups={groups} selfTabId={selfTabId} savingWindowId={savingWindowId} readOnly={!canEdit} onSaveWindow={(id) => saveWindow(id)} onCloseWindow={closeWindow} onCloseTab={closeTab} onActivateTab={activateTab}
-                onCollapse={rightOverlay ? rightPeek.close : narrow ? () => setNarrowRightDock(false) : toggleRight} />
+                onCollapse={rightOverlay ? rightPeek.close : narrow ? () => setNarrowRightDock(false) : toggleRight}
+                onPin={rightOverlay ? () => { rightPeek.close(); if (narrow) setNarrowRightDock(true); else toggleRight(); } : undefined} />
             }
           >
             <Board>
