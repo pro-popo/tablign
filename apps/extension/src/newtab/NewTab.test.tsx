@@ -1130,6 +1130,26 @@ describe("NewTab — 좁은 화면", () => {
     await waitFor(() => expect(screen.getAllByText("팀 로드맵").some((el) => el.tagName === "STRONG")).toBe(true));
   });
 
+  it("다른 조직을 보던 덮개는 닫히는 동안 그 조직을 유지하고, 다시 열면 지금 조직으로 돌아온다", async () => {
+    renderNewTab();
+    await screen.findAllByText("내 스페이스");
+    const rail = screen.getByRole("group", { name: "조직" });
+    fireEvent.mouseEnter(rail);
+    fireEvent.mouseEnter(screen.getByText("우리팀"));
+    const overlay = (await screen.findByText("팀 로드맵")).closest("[aria-hidden]")!;
+    await waitFor(() => expect(overlay).toHaveAttribute("aria-hidden", "false"));
+
+    fireEvent.mouseLeave(rail);
+    await waitFor(() => expect(overlay).toHaveAttribute("aria-hidden", "true"));
+    // 닫히는 슬라이드 중 — 지금 조직의 사이드바로 바뀌어 보이면 안 된다
+    expect(within(overlay as HTMLElement).getByText("팀 로드맵")).toBeInTheDocument();
+
+    // 조직에 올리지 않고 다시 열면 지금 조직으로 돌아온다
+    fireEvent.mouseEnter(rail);
+    await waitFor(() => expect(overlay).toHaveAttribute("aria-hidden", "false"));
+    expect(within(overlay as HTMLElement).queryByText("팀 로드맵")).not.toBeInTheDocument();
+  });
+
   it("열린 탭은 지금의 접힘 레일로 두고, 레일을 누르면 붙박이로 편다", async () => {
     renderNewTab();
     await screen.findAllByText("내 스페이스");
