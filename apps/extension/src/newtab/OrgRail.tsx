@@ -24,12 +24,14 @@ export interface OrgRailProps {
   onPeekLeave?: () => void;
   /** 좁은 화면에서 조직 아이콘에 올렸을 때 — 그 조직의 스페이스를 미리 보여 준다 */
   onHoverOrg?: (orgId: string) => void;
+  /** 스페이스 덮개가 보여 주는 조직 — 그 줄을 흰 탭으로 덮개와 잇는다 */
+  peekOrgId?: string | null;
 }
 
 const RAIL_REST = 54;
 const RAIL_HOVER = 196;
 
-export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, avatarUrl, onSelectOrg, onCreateOrg, onSignOut, invitationCount, invitations, compact = false, onPeekEnter, onPeekLeave, onHoverOrg }: OrgRailProps) {
+export function OrgRail({ organizations, memberships, activeOrgId, userEmail, currentUserId, avatarUrl, onSelectOrg, onCreateOrg, onSignOut, invitationCount, invitations, compact = false, onPeekEnter, onPeekLeave, onHoverOrg, peekOrgId }: OrgRailProps) {
   const [expanded, setExpanded] = useState(false);
   // 받은 초대함 팝오버 — 레일이 overflow:hidden이라 body에 띄우고, 위치는 열 때 받은 초대함 줄에 맞춘다
   const [inbox, setInbox] = useState<{ left: number; bottom: number } | null>(null);
@@ -74,6 +76,14 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
     content: '""', position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)",
     width: 4, height: 22, borderRadius: "0 3px 3px 0", background: theme.accent,
   };
+  // 덮개와 이어진 줄의 흰 탭 — 레일 오른쪽 끝까지 뻗어 경계선을 덮고, 위아래 모서리는 안쪽으로 휜다(크롬 탭).
+  // zIndex -1: 레일 바탕 위, 아이콘 아래에 깔린다.
+  const corner = (at: "top" | "bottom"): React.CSSProperties => ({
+    position: "absolute", right: 0, [at]: -11, width: 11, height: 12,
+    background: `radial-gradient(circle at 0 ${at === "top" ? 0 : "100%"}, transparent 10px, ${theme.border} 10.5px, ${theme.border} 11px, ${theme.surface} 11.5px)`,
+  });
+  // 탭은 조직 줄 묶음에 하나만 두고 top을 옮겨, 다른 조직에 올리면 그 줄로 미끄러진다(줄 높이 40 + 간격 5).
+  const peekIndex = (personal ? [personal, ...teams] : teams).findIndex((o) => o.id === peekOrgId);
 
   return (
     <div
@@ -82,8 +92,9 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
       style={{
         position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 3,
         width: expanded ? RAIL_HOVER : RAIL_REST, transition: "width .18s ease, box-shadow .18s",
-        background: "#f5f6f8", borderRight: `1px solid ${theme.border}`,
-        boxShadow: expanded ? "8px 0 26px rgba(0,0,0,.13)" : "none",
+        // 경계선은 border 대신 inset 그림자 — overflow:hidden은 border 안쪽에서 자르므로, border면 이음 탭이 경계선을 덮지 못한다
+        background: "#f5f6f8",
+        boxShadow: `inset -1px 0 0 ${theme.border}, 8px 0 26px rgba(0,0,0,${expanded ? .13 : 0})`,
         padding: "10px 0", display: "flex", flexDirection: "column", gap: 5,
         overflow: "hidden", boxSizing: "border-box",
       }}
@@ -99,6 +110,16 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
         </span>
       </div>
       <div style={{ height: 1, background: "#e2e5ea", margin: "2px 12px 4px" }} />
+
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 5 }}>
+      {peekIndex >= 0 && (
+        <span data-testid="peek-tab" style={{ position: "absolute", left: 6, right: 0, top: peekIndex * 45 - 2, height: 44, zIndex: -1, boxSizing: "border-box",
+          transition: "top .16s ease",
+          background: theme.surface, border: `1px solid ${theme.border}`, borderRight: "none", borderRadius: "12px 0 0 12px" }}>
+          <span style={corner("top")} />
+          <span style={corner("bottom")} />
+        </span>
+      )}
 
       {/* 개인 조직 */}
       {personal && (() => {
@@ -124,6 +145,7 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
           </div>
         );
       })}
+      </div>
 
       {/* 조직 만들기 */}
       <div style={row(false)} onClick={onCreateOrg}>

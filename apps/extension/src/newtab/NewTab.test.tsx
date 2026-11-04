@@ -1146,7 +1146,7 @@ describe("NewTab — 덮개에서 고정", () => {
 });
 
 describe("NewTab — 큰 화면, 스페이스 덮개에서 조직 레일로", () => {
-  it("덮개를 연 채 조직 레일로 옮기면 레일은 넓어지지 않고, 다른 조직 아이콘에 올리면 그 조직 스페이스를 미리 본다", async () => {
+  it("덮개를 연 채 조직 레일로 옮기면 레일은 넓어지지 않고, 다른 조직 아이콘에 올리면 그 조직 스페이스를 미리 보며 그 줄이 덮개와 이어진다", async () => {
     listOrganizations.mockResolvedValue([
       { id: "org-personal", name: "개인", icon: null, color: null, owner_id: "u1", is_personal: true, created_at: "" },
       { id: "org-team", name: "우리팀", icon: null, color: null, owner_id: "u1", is_personal: false, created_at: "x" },
@@ -1164,10 +1164,16 @@ describe("NewTab — 큰 화면, 스페이스 덮개에서 조직 레일로", ()
     await waitFor(() => expect(add).toBeVisible());
 
     const rail = screen.getByRole("group", { name: "조직" }).parentElement!;
+    // 사이드바 레일로 연 덮개는 지금 조직의 것 — 이음 탭도 지금 조직(첫 줄)에 붙는다. 줄마다 40 + 간격 5, 탭은 위아래 2px 더 크다
+    const tab = screen.getByTestId("peek-tab");
+    expect(tab.style.top).toBe("-2px");
     fireEvent.mouseEnter(screen.getByText("우리팀"));
 
     expect(rail.style.width).toBe("54px");
     const target = (await screen.findByText("팀 로드맵")).closest("button")!;
     expect(target).toBeVisible();
+    // 같은 탭이 둘째 줄로 미끄러진다
+    expect(screen.getByTestId("peek-tab")).toBe(tab);
+    expect(tab.style.top).toBe("43px");
   });
 });
