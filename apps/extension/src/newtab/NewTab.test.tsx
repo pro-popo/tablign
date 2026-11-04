@@ -1226,4 +1226,22 @@ describe("NewTab — 큰 화면, 스페이스 덮개에서 조직 레일로", ()
     expect(screen.getByTestId("peek-tab")).toBe(tab);
     expect(tab.style.top).toBe("43px");
   });
+
+  it("덮개를 연 채 레일 아래(테마·초대·계정)로 옮겨도 덮개가 남고, 레일을 벗어나면 닫힌다", async () => {
+    listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" }]);
+    renderNewTab();
+    await screen.findAllByText("내 스페이스");
+    fireEvent.click(screen.getByRole("button", { name: "사이드바 접기" }));
+    fireEvent.mouseEnter(await screen.findByRole("button", { name: "사이드바 열기" }));
+    const add = (await screen.findByText("스페이스 추가")).closest("button")!;
+    await waitFor(() => expect(add).toBeVisible());
+
+    const peek = add.closest(".tbl-peek")!, themeBtn = screen.getByRole("button", { name: "테마" });
+    fireEvent.mouseOut(peek, { relatedTarget: themeBtn });
+    await new Promise((r) => setTimeout(r, 400));
+    expect(add).toBeVisible();
+
+    fireEvent.mouseOut(themeBtn, { relatedTarget: document.body });
+    await waitFor(() => expect(add).not.toBeVisible());
+  });
 });

@@ -24,7 +24,7 @@ export interface OrgRailProps {
   onPeekLeave?: () => void;
   /** 좁은 화면에서 조직 아이콘에 올렸을 때 — 그 조직의 스페이스를 미리 보여 준다 */
   onHoverOrg?: (orgId: string) => void;
-  /** 스페이스 덮개가 보여 주는 조직 — 그 줄을 흰 탭으로 덮개와 잇는다 */
+  /** 스페이스 덮개가 보여 주는 조직 — 그 줄을 흰 탭으로 덮개와 잇는다. 덮개가 닫혀 있으면 null */
   peekOrgId?: string | null;
   /** 테마 패널이 열려 있나 — 팔레트 버튼을 누른 상태로 보인다 */
   themeOpen?: boolean;
@@ -88,11 +88,13 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
   });
   // 탭은 조직 줄 묶음에 하나만 두고 top을 옮겨, 다른 조직에 올리면 그 줄로 미끄러진다(줄 높이 40 + 간격 5).
   const peekIndex = (personal ? [personal, ...teams] : teams).findIndex((o) => o.id === peekOrgId);
+  const peekOpen = peekOrgId != null;
 
   return (
     <div
-      onMouseEnter={() => { if (!compact) setExpanded(true); }}
-      onMouseLeave={() => setExpanded(false)}
+      // 덮개는 조직 묶음에 올려야 열리고, 열린 뒤엔 레일 어디(테마·초대·계정)로 옮겨도 이어지다 레일을 벗어나면 닫힌다
+      onMouseEnter={() => { if (!compact) setExpanded(true); if (peekOpen) onPeekEnter?.(); }}
+      onMouseLeave={() => { setExpanded(false); onPeekLeave?.(); }}
       style={{
         position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 3,
         width: expanded ? RAIL_HOVER : RAIL_REST, transition: "width .18s ease, box-shadow .18s",
@@ -104,7 +106,7 @@ export function OrgRail({ organizations, memberships, activeOrgId, userEmail, cu
         overflow: "hidden", boxSizing: "border-box",
       }}
     >
-      <div role="group" aria-label="조직" onMouseEnter={onPeekEnter} onMouseLeave={onPeekLeave}
+      <div role="group" aria-label="조직" onMouseEnter={onPeekEnter} onMouseLeave={peekOpen ? undefined : onPeekLeave}
         style={{ display: "flex", flexDirection: "column", gap: 5 }}>
       {/* 로고 */}
       <div style={{ display: "flex", alignItems: "center", gap: 11, height: 34, padding: "0 12px", marginBottom: 2 }}>
