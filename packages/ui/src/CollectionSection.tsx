@@ -4,6 +4,7 @@ import { LinkCard } from "./LinkCard";
 import { InlineInput } from "./InlineInput";
 import { ChevronDown, ChevronRight, ExternalLink, Lock, Pencil, Plus, Trash2 } from "./icons";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 
 export interface CollectionSectionProps {
   collection: Collection;
@@ -38,6 +39,7 @@ export function CollectionSection({
   onOpenLink, onDeleteLink, onAddLink, onOpenAll, onDeleteCollection,
   autoEditTitle, onRenameCollection, onUpdateLink,
 }: CollectionSectionProps) {
+  const t = useT();
   const [collapsed, setCollapsed] = useState(!!collapsedProp);
   const [adding, setAdding] = useState(false);
   const [editingTitle, setEditingTitle] = useState(!!autoEditTitle);
@@ -62,8 +64,8 @@ export function CollectionSection({
       >
         <button
           type="button"
-          title={collapsed ? "섹션 펼치기" : "섹션 접기"}
-          aria-label={collapsed ? "섹션 펼치기" : "섹션 접기"}
+          title={collapsed ? t.collectionSection.expand : t.collectionSection.collapse}
+          aria-label={collapsed ? t.collectionSection.expand : t.collectionSection.collapse}
           onClick={() => setCollapsed((c) => !c)}
           style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 2 }}
         >
@@ -73,7 +75,7 @@ export function CollectionSection({
           <div style={{ flex: 1 }}>
             <InlineInput
               variant="line"
-              placeholder="컬렉션 이름"
+              placeholder={t.collectionSection.namePlaceholder}
               defaultValue={collection.title}
               onSubmit={(name) => { onRenameCollection(collection.id, name); setEditingTitle(false); }}
               onCancel={() => setEditingTitle(false)}
@@ -99,15 +101,15 @@ export function CollectionSection({
               {collection.icon ? `${collection.icon} ` : ""}{collection.title}
             </strong>
             {isPrivate && (
-              <span style={{ display: "flex", boxSizing: "border-box" }} title="비공개 컬렉션">
+              <span style={{ display: "flex", boxSizing: "border-box" }} title={t.collectionSection.private}>
                 <Lock size={12} color={theme.textFaint} />
               </span>
             )}
             {!readOnly && onRenameCollection && hover && (
               <button
                 type="button"
-                title="이름 수정"
-                aria-label="컬렉션 이름 수정"
+                title={t.collectionSection.rename}
+                aria-label={t.collectionSection.renameLabel}
                 onClick={() => setEditingTitle(true)}
                 style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3 }}
               >
@@ -119,15 +121,15 @@ export function CollectionSection({
         <span style={{ marginLeft: "auto", display: "flex", gap: 2 }}>
           {!readOnly && moreMenuSlot}
           {!readOnly && (
-            <button type="button" title="링크 추가" aria-label="링크 추가" onClick={() => setAdding(true)} style={iconBtn}>
+            <button type="button" title={t.collectionSection.addLink} aria-label={t.collectionSection.addLink} onClick={() => setAdding(true)} style={iconBtn}>
               <Plus size={15} color={theme.textMuted} />
             </button>
           )}
-          <button type="button" title="모두 열기" aria-label="모두 열기" onClick={() => onOpenAll(collection.id)} style={iconBtn}>
+          <button type="button" title={t.collectionSection.openAll} aria-label={t.collectionSection.openAll} onClick={() => onOpenAll(collection.id)} style={iconBtn}>
             <ExternalLink size={15} color={theme.textMuted} />
           </button>
           {!readOnly && onDeleteCollection && (
-            <button type="button" title="컬렉션 삭제" aria-label="컬렉션 삭제" onClick={() => onDeleteCollection(collection.id)} style={iconBtn}>
+            <button type="button" title={t.collectionSection.delete} aria-label={t.collectionSection.delete} onClick={() => onDeleteCollection(collection.id)} style={iconBtn}>
               <Trash2 size={15} color={theme.danger} />
             </button>
           )}
@@ -139,7 +141,7 @@ export function CollectionSection({
           {!readOnly && adding && (
             <div style={{ marginBottom: 8 }}>
               <InlineInput
-                placeholder="URL 붙여넣기"
+                placeholder={t.collectionSection.urlPlaceholder}
                 onSubmit={(url) => { onAddLink(url); setAdding(false); }}
                 onCancel={() => setAdding(false)}
               />

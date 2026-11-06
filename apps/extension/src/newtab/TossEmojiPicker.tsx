@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { buildTossCategories } from "./tossEmoji";
 import { ORG_ICON_FONT } from "./orgIcon";
-import { theme } from "@tablign/ui";
+import { theme, useT } from "@tablign/ui";
 
 export interface TossEmojiPickerProps {
   onSelect: (native: string) => void;
@@ -10,6 +10,7 @@ export interface TossEmojiPickerProps {
 }
 
 export function TossEmojiPicker({ onSelect, onClear }: TossEmojiPickerProps) {
+  const t = useT();
   const categories = useMemo(() => buildTossCategories(), []);
   const [query, setQuery] = useState("");
   const [preview, setPreview] = useState<{ native: string; name: string } | null>(null);
@@ -28,8 +29,8 @@ export function TossEmojiPicker({ onSelect, onClear }: TossEmojiPickerProps) {
           <button
             key={c.id}
             type="button"
-            title={c.label}
-            aria-label={c.label}
+            title={t.tossEmoji.categories[c.id]}
+            aria-label={t.tossEmoji.categories[c.id]}
             style={{ ...tabBtn, fontFamily: ORG_ICON_FONT }}
             onClick={() => {
               // 탭 이동 시 검색을 초기화한다. setQuery("")의 재렌더가 rAF보다 먼저 커밋되어
@@ -52,8 +53,8 @@ export function TossEmojiPicker({ onSelect, onClear }: TossEmojiPickerProps) {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="검색"
-            aria-label="이모지 검색"
+            placeholder={t.tossEmojiPicker.search}
+            aria-label={t.tossEmojiPicker.searchLabel}
             style={searchInput}
           />
         </div>
@@ -61,11 +62,11 @@ export function TossEmojiPicker({ onSelect, onClear }: TossEmojiPickerProps) {
 
       <div className="toss-picker-body" style={bodyBox}>
         {visible.length === 0 ? (
-          <div style={emptyBox}>검색 결과가 없어요</div>
+          <div style={emptyBox}>{t.tossEmojiPicker.noResults}</div>
         ) : (
           visible.map((c) => (
             <div key={c.id} ref={(el) => { sectionRefs.current[c.id] = el; }}>
-              <div style={catLabel}>{c.label}</div>
+              <div style={catLabel}>{t.tossEmoji.categories[c.id]}</div>
               <div style={grid}>
                 {c.items.map((it) => (
                   <button
@@ -89,9 +90,9 @@ export function TossEmojiPicker({ onSelect, onClear }: TossEmojiPickerProps) {
 
       <div style={footBox}>
         <span style={{ ...footBig, fontFamily: ORG_ICON_FONT }}>{preview?.native ?? "🚀"}</span>
-        <span data-testid="toss-preview-name" style={footName}>{preview?.name ?? "로켓"}</span>
-        <span style={attrText}>토스페이스 · 토스팀 제공</span>
-        {onClear && <button type="button" onClick={onClear} style={clearBtn}>기본 아이콘으로</button>}
+        <span data-testid="toss-preview-name" style={footName}>{preview?.name ?? t.tossEmojiPicker.defaultPreview}</span>
+        <span style={attrText}>{t.tossEmojiPicker.attribution}</span>
+        {onClear && <button type="button" onClick={onClear} style={clearBtn}>{t.tossEmojiPicker.clear}</button>}
       </div>
     </div>
   );

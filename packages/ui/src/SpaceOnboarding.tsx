@@ -1,6 +1,7 @@
 import { Button } from "./Button";
 import { Plus } from "./icons";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 
 /** 로고(Bento 마크)의 중립 셀 색과 동일 (Logo.tsx NEUTRAL) */
 const LAVENDER = theme.accentTint;
@@ -19,6 +20,7 @@ export interface SpaceOnboardingProps {
  * 커서는 무대 레벨 단일 요소라 장면이 전환돼도 끊기지 않고 이어서 움직인다.
  */
 export function SpaceOnboarding({ onCreate }: SpaceOnboardingProps) {
+  const t = useT();
   return (
     // 보드 영역(height 100%) 안에서 수직·수평 가운데 정렬. marginBottom은 광학 보정(정중앙은 살짝 낮아 보임).
     // boxSizing: 앱에 전역 border-box 리셋이 없어, 명시하지 않으면 padding(16)만큼 100%를 넘겨 스크롤이 생긴다.
@@ -28,12 +30,10 @@ export function SpaceOnboarding({ onCreate }: SpaceOnboardingProps) {
         <Pantomime />
         {/* 수직 리듬: 그래픽과 분리(26) → 텍스트 밀착(4) → 행동 구역(18) */}
         <div style={{ fontSize: 19, fontWeight: 740, letterSpacing: "-0.02em", margin: "26px 0 4px", color: theme.text }}>
-          매일 여는 탭, 매번 찾고 있나요?
+          {t.spaceOnboarding.title}
         </div>
-        <p style={{ fontSize: 13.5, color: theme.textMuted, lineHeight: 1.5 }}>
-          자주 쓰는 탭은 스페이스에 담아두세요.
-          <br />
-          필요할 때 한 번에 다시 열 수 있어요.
+        <p style={{ fontSize: 13.5, color: theme.textMuted, lineHeight: 1.5, whiteSpace: "pre-line" }}>
+          {t.spaceOnboarding.body}
         </p>
         <Button
           onClick={onCreate}
@@ -46,7 +46,7 @@ export function SpaceOnboarding({ onCreate }: SpaceOnboardingProps) {
             boxShadow: `0 4px 14px color-mix(in srgb, ${theme.accent} 28%, transparent)`,
           }}
         >
-          <Plus size={15} /> 첫 스페이스 만들기
+          <Plus size={15} /> {t.spaceOnboarding.create}
         </Button>
       </div>
     </div>

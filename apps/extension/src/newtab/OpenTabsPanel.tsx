@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ChevronRight, Download, X, PanelRightClose, PanelRightOpen, Lock, Favicon, theme } from "@tablign/ui";
+import { ChevronDown, ChevronRight, Download, X, PanelRightClose, PanelRightOpen, Lock, Favicon, theme, useT } from "@tablign/ui";
 import { isSaveableTab, saveableTabs, unsaveableReason, type WindowGroup, type WindowTab } from "../lib/tabs";
 
 function TabRow({
@@ -15,6 +15,7 @@ function TabRow({
   onCloseTab: (id: number) => void;
   onActivateTab: (tabId: number, windowId: number) => void;
 }) {
+  const t = useT();
   const [hover, setHover] = useState(false);
   const saveable = isSaveableTab(tab);
   const reason = unsaveableReason(tab);
@@ -50,14 +51,14 @@ function TabRow({
       </span>
       {isSelf ? (
         <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: theme.textMuted, background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 5, padding: "1px 5px", whiteSpace: "nowrap", boxSizing: "border-box" }}>
-          현재 탭
+          {t.openTabsPanel.current}
         </span>
       ) : reason ? (
         <span title={reason} aria-label={reason} style={{ flexShrink: 0, display: "flex" }}>
           <Lock size={13} color={theme.textFaint} />
         </span>
       ) : null}
-      <button type="button" title="탭 닫기" aria-label={`${tab.title ?? tab.url} 닫기`} onPointerDown={(e) => e.stopPropagation()} onClick={() => tab.id != null && onCloseTab(tab.id)}
+      <button type="button" title={t.openTabsPanel.closeTab} aria-label={t.openTabsPanel.closeTabLabel(tab.title ?? tab.url ?? "")} onPointerDown={(e) => e.stopPropagation()} onClick={() => tab.id != null && onCloseTab(tab.id)}
         style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 2, opacity: hover ? 1 : 0, pointerEvents: hover ? "auto" : "none", transition: "opacity .12s" }}>
         <X size={14} color={theme.textFaint} />
       </button>
@@ -79,6 +80,7 @@ function WindowGroupView({
   onCloseTab: (tabId: number) => void;
   onActivateTab: (tabId: number, windowId: number) => void;
 }) {
+  const t = useT();
   const [collapsed, setCollapsed] = useState(false);
   // 빈 창에도 드롭할 수 있도록 탭 목록 컨테이너 자체를 droppable로.
   const { setNodeRef } = useDroppable({ id: `window:${group.windowId}`, data: { kind: "window", windowId: group.windowId } });
@@ -98,24 +100,24 @@ function WindowGroupView({
       <div ref={setDragRef} {...listeners} onClick={() => setCollapsed((c) => !c)}
         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: theme.textMuted, marginBottom: 8, cursor: draggable ? "grab" : "pointer", userSelect: "none" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <button type="button" aria-expanded={!collapsed} aria-label={`창 ${index + 1} ${collapsed ? "펼치기" : "접기"}`}
+          <button type="button" aria-expanded={!collapsed} aria-label={t.openTabsPanel.toggleWindow(index + 1, collapsed)}
             onClick={(e) => { e.stopPropagation(); setCollapsed((c) => !c); }}
             style={{ border: "none", background: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, padding: 0, font: "inherit", color: "inherit" }}>
-            {collapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />} 창 {index + 1}
+            {collapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />} {t.openTabsPanel.window(index + 1)}
           </button>
           {collapsed && <span style={{ color: theme.textFaint, fontSize: 12 }}>· {group.tabs.length}</span>}
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
           <button type="button" disabled={saveable === 0 || saving}
             aria-busy={saving || undefined}
-            title={saving ? "담는 중…" : saveable === 0 ? "담을 수 있는 탭이 없어요" : `담을 수 있는 탭 ${saveable}개 저장`}
-            aria-label={saving ? `창 ${index + 1} 담는 중` : saveable === 0 ? `창 ${index + 1} — 담을 수 있는 탭이 없어요` : `창 ${index + 1}의 탭 ${saveable}개 저장`}
+            title={saving ? t.openTabsPanel.saving : saveable === 0 ? t.openTabsPanel.noneSaveable : t.openTabsPanel.saveCount(saveable)}
+            aria-label={saving ? t.openTabsPanel.savingLabel(index + 1) : saveable === 0 ? t.openTabsPanel.noneSaveableLabel(index + 1) : t.openTabsPanel.saveLabel(index + 1, saveable)}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onSaveWindow(group.windowId); }}
             style={{ border: "none", background: "none", cursor: saveable === 0 || saving ? "not-allowed" : "pointer", display: "flex", color: theme.accentInk, opacity: saveable === 0 || saving ? 0.35 : 1 }}>
             <Download size={15} />
           </button>
-          <button type="button" title="이 창의 탭 전체 닫기" aria-label={`창 ${index + 1} 닫기`} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onCloseWindow(group.windowId); }}
+          <button type="button" title={t.openTabsPanel.closeWindowTitle} aria-label={t.openTabsPanel.closeWindowLabel(index + 1)} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onCloseWindow(group.windowId); }}
             style={{ border: "none", background: "none", cursor: "pointer", display: "flex", color: theme.textFaint }}>
             <X size={15} />
           </button>
@@ -153,11 +155,12 @@ export interface OpenTabsPanelProps {
 }
 
 export function OpenTabsPanel({ groups, selfTabId = null, savingWindowId = null, readOnly = false, onSaveWindow, onCloseWindow, onCloseTab, onActivateTab, onCollapse, onPin }: OpenTabsPanelProps) {
+  const t = useT();
   return (
     <>
       <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, borderBottom: `1px solid ${theme.border}` }}>
-        <strong style={{ letterSpacing: ".4px" }}>열린 탭</strong>
-        <button type="button" title={onPin ? "열린 탭 고정" : "패널 접기"} aria-label={onPin ? "열린 탭 고정" : "패널 접기"} onClick={onPin ?? onCollapse}
+        <strong style={{ letterSpacing: ".4px" }}>{t.openTabsPanel.title}</strong>
+        <button type="button" title={onPin ? t.openTabsPanel.pin : t.openTabsPanel.collapse} aria-label={onPin ? t.openTabsPanel.pin : t.openTabsPanel.collapse} onClick={onPin ?? onCollapse}
           style={{ border: "none", background: "none", cursor: "pointer", display: "flex", flexShrink: 0 }}>
           {onPin ? <PanelRightOpen size={16} color={theme.textFaint} /> : <PanelRightClose size={16} color={theme.textFaint} />}
         </button>

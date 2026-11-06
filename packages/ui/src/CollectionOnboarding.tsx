@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AppWindow, ChevronRight, Plus, SquareStack, Ticket } from "./icons";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 
 export interface CollectionOnboardingProps {
   /** 담을 수 있는 탭이 하나라도 있는 창의 수. 0이면 첫 카드가 비활성된다. */
@@ -30,6 +31,7 @@ export function CollectionOnboarding({
   onCreateEmpty,
   onImportCode,
 }: CollectionOnboardingProps) {
+  const t = useT();
   const canSave = tabCount > 0;
   // 창이 1개일 때 "열린 창 1개를 창별 컬렉션으로"는 어색하다. 문구를 갈라준다.
   const single = windowCount === 1;
@@ -43,10 +45,10 @@ export function CollectionOnboarding({
       <div style={{ width: "100%", maxWidth: 400 }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 17, fontWeight: 740, letterSpacing: "-0.02em", color: theme.text }}>
-            탭을 담을 첫 컬렉션을 만들어요
+            {t.collectionOnboarding.title}
           </div>
           <p style={{ margin: "6px auto 0", maxWidth: 360, fontSize: 13, lineHeight: 1.55, color: theme.textMuted }}>
-            컬렉션은 탭을 모아두는 서랍이에요
+            {t.collectionOnboarding.subtitle}
           </p>
         </div>
 
@@ -58,32 +60,32 @@ export function CollectionOnboarding({
             <Choice
               tone="accent"
               icon={single ? <AppWindow size={19} /> : <SquareStack size={19} />}
-              title={single ? `지금 창의 탭 ${tabCount}개 담기` : `열린 창 ${windowCount}개를 그대로 담기`}
-              sub={single ? "창 1을 그대로 컬렉션으로" : `창별로 컬렉션 1개씩 · 탭 ${tabCount}개`}
+              title={single ? t.collectionOnboarding.saveWindow(tabCount) : t.collectionOnboarding.saveWindows(windowCount)}
+              sub={single ? t.collectionOnboarding.saveWindowSub : t.collectionOnboarding.saveWindowsSub(tabCount)}
               onClick={onSaveOpenWindows}
             />
           ) : (
             <Choice
               tone="accent"
               icon={<SquareStack size={19} />}
-              title="열린 창 담기"
-              badge="담을 탭 0개"
-              sub="브라우저 내부 페이지만 열려 있어요"
+              title={t.collectionOnboarding.saveDisabled}
+              badge={t.collectionOnboarding.noTabs}
+              sub={t.collectionOnboarding.internalOnly}
               disabled
             />
           )}
           <Choice
             tone="green"
             icon={<Ticket size={19} />}
-            title="공유 코드로 추가"
-            sub="코드 8자리로 컬렉션 복사"
+            title={t.collectionOnboarding.fromCode}
+            sub={t.collectionOnboarding.fromCodeSub}
             onClick={onImportCode}
           />
           <Choice
             tone="neutral"
             icon={<Plus size={19} />}
-            title="빈 컬렉션 만들기"
-            sub="이름부터 정하고 하나씩 담기"
+            title={t.collectionOnboarding.empty}
+            sub={t.collectionOnboarding.emptySub}
             onClick={onCreateEmpty}
           />
         </div>

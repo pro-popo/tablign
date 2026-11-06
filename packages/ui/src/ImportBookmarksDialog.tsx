@@ -5,6 +5,7 @@ import {
   type ImportPlan, type PlannedSpace, type SourceNode,
 } from "@tablign/core";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 import { Button } from "./Button";
 import { Favicon } from "./Favicon";
 import { ChevronDown } from "./icons";
@@ -124,27 +125,29 @@ const importPreviewCss = `
  * 레일에 체크가 없으면 빼려는 스페이스마다 일일이 방문해야 한다.
  */
 export function ImportBookmarksDialog({
-  open, title = "북마크 가져오기", roots, orgs, defaultOrgId, onImport, onClose,
+  open, title, roots, orgs, defaultOrgId, onImport, onClose,
 }: ImportBookmarksDialogProps) {
+  const t = useT();
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
   const [orgId, setOrgId] = useState(defaultOrgId);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
 
   // 선택 상태와 무관한 전체 윤곽. 꺼진 스페이스도 목록에 남아야 다시 켤 수 있다.
-  const outline = useMemo(() => outlineSpaces(roots), [roots]);
-  const plan = useMemo(() => planImport(roots, { enabled }), [roots, enabled]);
+  const sharedTitle = t.importBookmarksDialog.sharedCollection;
+  const outline = useMemo(() => outlineSpaces(roots, sharedTitle), [roots, sharedTitle]);
+  const plan = useMemo(() => planImport(roots, { enabled, sharedTitle }), [roots, enabled, sharedTitle]);
 
   // 열릴 때마다 기본 선택값으로 되돌린다
   useEffect(() => {
     if (!open) return;
     setEnabled(defaultEnabled(roots));
     setOrgId(defaultOrgId);
-    setActiveId(outlineSpaces(roots)[0]?.sourceId ?? null);
+    setActiveId(outlineSpaces(roots, "")[0]?.sourceId ?? null);
     setBusy(false);
-    setError(null);
+    setError(false);
   }, [open, roots, defaultOrgId]);
 
   useEffect(() => {
@@ -196,11 +199,11 @@ export function ImportBookmarksDialog({
 
   async function submit() {
     setBusy(true);
-    setError(null);
+    setError(false);
     try {
       await onImport(orgId, plan);
     } catch {
-      setError("가져오지 못했어요. 다시 시도해 주세요.");
+      setError(true);
       setBusy(false);
     }
   }
@@ -214,17 +217,17 @@ export function ImportBookmarksDialog({
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn,
         display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
       <style>{overlayAnimationCss + triCheckboxCss + importPreviewCss}</style>
-      <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
+      <div role="dialog" aria-modal="true" aria-label={title ?? t.importBookmarksDialog.title} onClick={(e) => e.stopPropagation()}
         style={{ boxSizing: "border-box", width: 770, maxWidth: "calc(100vw - 32px)", animation: panelIn,
           background: theme.surface, borderRadius: 14, boxShadow: "0 18px 50px rgba(0,0,0,.26)",
           overflow: "hidden" }}>
 
         <div style={{ padding: "16px 18px 0" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>{title}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>{title ?? t.importBookmarksDialog.title}</div>
           <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8 }}>
             {orgs.length > 1 ? (
               <>
-                <label htmlFor="import-org" style={{ fontSize: 12, color: theme.textFaint }}>가져올 조직</label>
+                <label htmlFor="import-org" style={{ fontSize: 12, color: theme.textFaint }}>{t.importBookmarksDialog.targetOrg}</label>
                 <span className="tbl-imp-selwrap">
                   <select id="import-org" className="tbl-imp-sel" value={orgId} disabled={busy}
                     onChange={(e) => setOrgId(e.target.value)}>
@@ -237,7 +240,7 @@ export function ImportBookmarksDialog({
               </>
             ) : (
               <div data-testid="import-org-fixed" style={{ fontSize: 12.5, color: theme.textMuted }}>
-                가져올 조직 · <strong style={{ color: theme.text }}>{orgs[0]?.name ?? ""}</strong>
+                {t.importBookmarksDialog.targetOrg} · <strong style={{ color: theme.text }}>{orgs[0]?.name ?? ""}</strong>
               </div>
             )}
           </div>
@@ -248,7 +251,7 @@ export function ImportBookmarksDialog({
           <div style={{ width: 212, flex: "none", borderRight: `1px solid ${theme.border}`,
             display: "flex", flexDirection: "column" }}>
             <div style={{ ...eyebrow, display: "flex", alignItems: "baseline", padding: "11px 13px 7px" }}>
-              <span>스페이스</span>
+              <span>{t.importBookmarksDialog.spaces}</span>
               <span data-testid="space-count"
                 style={{ ...count, marginLeft: "auto", letterSpacing: 0, fontWeight: 700 }}>
                 {plan.totals.spaces}/{outline.length}
@@ -261,7 +264,7 @@ export function ImportBookmarksDialog({
                 return (
                   <div key={sp.sourceId} className="tbl-imp-row" data-cur={cur}
                     data-testid={`rail-${sp.sourceId}`}>
-                    <TriCheckbox state={st} label={`${sp.name} 포함`} onToggle={() => toggleSpace(sp)} />
+                    <TriCheckbox state={st} label={t.importBookmarksDialog.include(sp.name)} onToggle={() => toggleSpace(sp)} />
                     <button type="button" className="tbl-imp-name"
                       onClick={() => setActiveId(sp.sourceId)}>{sp.name}</button>
                     <span style={{ ...count, fontSize: 10, color: theme.textFaint, flex: "none" }}>
@@ -275,7 +278,7 @@ export function ImportBookmarksDialog({
                   style={{ margin: "8px 2px 0", padding: "8px 10px", background: theme.warnBg,
                     border: `1px solid ${theme.warnLine}`, borderRadius: 9, fontSize: 11,
                     color: theme.warnInk, lineHeight: 1.5 }}>
-                  링크 {LARGE_FOLDER_THRESHOLD}개가 넘는 폴더는 기본으로 빼뒀어요.
+                  {t.importBookmarksDialog.largeFolderNote(LARGE_FOLDER_THRESHOLD)}
                 </div>
               )}
             </div>
@@ -289,12 +292,12 @@ export function ImportBookmarksDialog({
                 <div data-testid="board-header"
                   style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 16px 10px",
                     borderBottom: `1px solid ${theme.border}`, background: theme.surface }}>
-                  <TriCheckbox state={spaceState(active)} label={`${active.name} 포함`}
+                  <TriCheckbox state={spaceState(active)} label={t.importBookmarksDialog.include(active.name)}
                     onToggle={() => toggleSpace(active)} />
                   <span className="tbl-imp-boardname">{active.name}</span>
                   <span style={{ ...count, marginLeft: "auto", flex: "none", fontSize: 10.5,
                     color: theme.textFaint }}>
-                    컬렉션 {active.collections.length} · 탭 {spaceTabs(active)}
+                    {t.importBookmarksDialog.spaceSummary(active.collections.length, spaceTabs(active))}
                   </span>
                 </div>
 
@@ -305,13 +308,13 @@ export function ImportBookmarksDialog({
                       <div key={c.sourceId} className="tbl-imp-col"
                         data-testid={`col-${c.sourceId}`}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                          <TriCheckbox state={on ? "on" : "none"} label={`${c.title} 포함`}
+                          <TriCheckbox state={on ? "on" : "none"} label={t.importBookmarksDialog.include(c.title)}
                             onToggle={() => toggleCollection(c.sourceId)} />
                           <button type="button" className="tbl-imp-coltitle"
                             onClick={() => toggleCollection(c.sourceId)}>
                             <span className="tbl-imp-colname">{c.title}</span>
                             <span style={{ ...count, marginLeft: "auto", flex: "none", fontSize: 10.5,
-                              color: theme.textFaint }}>탭 {c.links.length}</span>
+                              color: theme.textFaint }}>{t.importBookmarksDialog.tabCount(c.links.length)}</span>
                           </button>
                         </div>
                         {/* 제외해도 탭 목록은 그대로 — 포함/제외는 체크박스만으로 읽는다 */}
@@ -348,19 +351,19 @@ export function ImportBookmarksDialog({
           <div data-testid="over-limit-note"
             style={{ padding: "8px 18px", background: theme.dangerWeak, borderTop: `1px solid ${theme.dangerLine}`,
               fontSize: 12, color: theme.danger }}>
-            한 번에 {MAX_IMPORT_LINKS}개까지 가져올 수 있어요. 스페이스나 컬렉션을 줄여주세요.
+            {t.importBookmarksDialog.overLimit(MAX_IMPORT_LINKS)}
           </div>
         )}
         {error && (
           <div style={{ padding: "8px 18px", background: theme.dangerWeak, borderTop: `1px solid ${theme.dangerLine}`,
-            fontSize: 12, color: theme.danger }}>{error}</div>
+            fontSize: 12, color: theme.danger }}>{t.common.importFailed}</div>
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 18px 14px",
           borderTop: `1px solid ${theme.border}` }}>
           <span style={{ marginRight: "auto" }} />
-          <Button variant="outline" onClick={onClose} disabled={busy}>취소</Button>
-          <Button onClick={submit} disabled={!canImport}>{busy ? "가져오는 중…" : "가져오기"}</Button>
+          <Button variant="outline" onClick={onClose} disabled={busy}>{t.common.cancel}</Button>
+          <Button onClick={submit} disabled={!canImport}>{busy ? t.importBookmarksDialog.importing : t.importBookmarksDialog.import}</Button>
         </div>
       </div>
     </div>

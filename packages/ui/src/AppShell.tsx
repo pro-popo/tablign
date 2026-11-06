@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PanelLeftOpen, PanelRightOpen } from "./icons";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 import type { HoverPeek } from "./useHoverPeek";
 
 export interface AppShellProps {
@@ -98,12 +99,13 @@ function ResizeHandle({
   onMove: (e: React.PointerEvent) => void;
   onEnd: (e: React.PointerEvent) => void;
 }) {
+  const t = useT();
   const [hover, setHover] = useState(false);
   return (
     <div
       role="separator"
       aria-orientation="vertical"
-      aria-label={side === "left" ? "왼쪽 패널 크기 조절" : "오른쪽 패널 크기 조절"}
+      aria-label={side === "left" ? t.appShell.resizeLeft : t.appShell.resizeRight}
       onPointerDown={(e) => onStart(e, width, side)}
       onPointerMove={onMove}
       onPointerUp={onEnd}
@@ -126,6 +128,7 @@ export function AppShell({
   leftWidth = DEFAULT_LEFT_WIDTH, rightWidth = DEFAULT_RIGHT_WIDTH, onResizeLeft, onResizeRight,
   narrow = false, leftPeek, rightPeek, overlay: drawer,
 }: AppShellProps) {
+  const t = useT();
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{ startX: number; startWidth: number; side: "left" | "right" } | null>(null);
   const leftCollapsed = useDeferredCollapse(leftOpen);
@@ -190,7 +193,7 @@ export function AppShell({
       {narrow ? (leftPeek && overlay("left", leftPeek, leftWidth, left)) : (
         <aside style={panel("left", leftOpen, leftWidth)} {...railHover(leftPeek, leftCollapsed)}>
           {leftCollapsed
-            ? <Rail onClick={onToggleLeft} label="사이드바 열기" icon={<PanelLeftOpen size={18} color={theme.textFaint} />} />
+            ? <Rail onClick={onToggleLeft} label={t.appShell.openSidebar} icon={<PanelLeftOpen size={18} color={theme.textFaint} />} />
             : <PanelBody width={leftWidth} visible={leftOpen}>{left}</PanelBody>}
           {leftOpen && <ResizeHandle side="left" width={leftWidth} onStart={startDrag} onMove={moveDrag} onEnd={endDrag} />}
         </aside>
@@ -202,7 +205,7 @@ export function AppShell({
       {right && (
         <aside style={panel("right", rightOpen, rightWidth)} {...railHover(rightPeek, rightCollapsed)}>
           {rightCollapsed
-            ? <Rail onClick={onToggleRight} label="열린 탭 열기" icon={<PanelRightOpen size={18} color={theme.textFaint} />} />
+            ? <Rail onClick={onToggleRight} label={t.appShell.openTabs} icon={<PanelRightOpen size={18} color={theme.textFaint} />} />
             : <PanelBody width={rightWidth} visible={rightOpen}>{right}</PanelBody>}
           {rightOpen && <ResizeHandle side="right" width={rightWidth} onStart={startDrag} onMove={moveDrag} onEnd={endDrag} />}
         </aside>

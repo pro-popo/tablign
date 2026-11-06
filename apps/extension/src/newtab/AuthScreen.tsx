@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { theme, Logo } from "@tablign/ui";
+import { theme, Logo, useT } from "@tablign/ui";
 import { signInWithGoogle } from "../lib/oauth";
 
 /** 구글 공식 4색 G 로고 */
@@ -67,6 +67,7 @@ const css = `
 `;
 
 export function AuthScreen() {
+  const t = useT();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -88,14 +89,14 @@ export function AuthScreen() {
         <aside className="as-side">
           <div className="as-brand"><Logo size={22} /></div>
           <div className="as-lbl">SPACES</div>
-          <div className="as-sp on"><span className="h">#</span> 개인</div>
-          <div className="as-sp"><span className="h">#</span> 업무</div>
-          <div className="as-sp"><span className="h">#</span> 리서치</div>
+          <div className="as-sp on"><span className="h">#</span> {t.authScreen.previewSpaces.personal}</div>
+          <div className="as-sp"><span className="h">#</span> {t.authScreen.previewSpaces.work}</div>
+          <div className="as-sp"><span className="h">#</span> {t.authScreen.previewSpaces.research}</div>
         </aside>
         <div className="as-main">
-          <div className="as-h"><b>개인</b><i>· 4 컬렉션</i></div>
+          <div className="as-h"><b>{t.authScreen.previewSpaces.personal}</b><i>{t.authScreen.previewCollectionCount(4)}</i></div>
           <div className="as-col">
-            <div className="as-colT">읽을거리</div>
+            <div className="as-colT">{t.authScreen.previewCollections.reading}</div>
             <div className="as-row">
               <div className="as-card" style={{ animationDelay: "0.05s" }}><span className="f" style={{ background: "#EA4335" }} /><span className="l1" /><span className="l2" /></div>
               <div className="as-card" style={{ animationDelay: "0.11s" }}><span className="f" style={{ background: "#4285F4" }} /><span className="l1" /><span className="l2" /></div>
@@ -103,7 +104,7 @@ export function AuthScreen() {
             </div>
           </div>
           <div className="as-col">
-            <div className="as-colT">디자인 레퍼런스</div>
+            <div className="as-colT">{t.authScreen.previewCollections.design}</div>
             <div className="as-row">
               <div className="as-card" style={{ animationDelay: "0.23s" }}><span className="f" style={{ background: "#a855f7" }} /><span className="l1" /><span className="l2" /></div>
               <div className="as-card" style={{ animationDelay: "0.29s" }}><span className="f" style={{ background: "#f59e0b" }} /><span className="l1" /><span className="l2" /></div>
@@ -111,7 +112,7 @@ export function AuthScreen() {
             </div>
           </div>
           <div className="as-col">
-            <div className="as-colT">개발 문서</div>
+            <div className="as-colT">{t.authScreen.previewCollections.dev}</div>
             <div className="as-row">
               <div className="as-card" style={{ animationDelay: "0.41s" }}><span className="f" style={{ background: "#6366f1" }} /><span className="l1" /><span className="l2" /></div>
               <div className="as-card" style={{ animationDelay: "0.47s" }}><span className="f" style={{ background: "#14b8a6" }} /><span className="l1" /><span className="l2" /></div>
@@ -119,7 +120,7 @@ export function AuthScreen() {
             </div>
           </div>
           <div className="as-col">
-            <div className="as-colT">참고 자료</div>
+            <div className="as-colT">{t.authScreen.previewCollections.reference}</div>
             <div className="as-row">
               <div className="as-card" style={{ animationDelay: "0.59s" }}><span className="f" style={{ background: "#ec4899" }} /><span className="l1" /><span className="l2" /></div>
               <div className="as-card" style={{ animationDelay: "0.65s" }}><span className="f" style={{ background: "#0ea5e9" }} /><span className="l1" /><span className="l2" /></div>
@@ -133,22 +134,22 @@ export function AuthScreen() {
       <div className="as-panel">
         <div className="as-top">
           <div className="as-mono">t</div>
-          <h1>탭을 정렬하는<br />가장 단정한 방법.</h1>
-          <p className="sub">열린 탭과 북마크를 컬렉션으로 모아 한눈에 관리하세요.</p>
+          <h1 style={{ whiteSpace: "pre-line" }}>{t.authScreen.title}</h1>
+          <p className="sub">{t.authScreen.sub}</p>
           <ul className="as-benefits">
-            <li className="as-benefit"><span className="as-ck">✓</span> 열린 탭을 한 번에 저장</li>
-            <li className="as-benefit"><span className="as-ck">✓</span> 컬렉션·스페이스로 정리</li>
-            <li className="as-benefit"><span className="as-ck">✓</span> 어느 기기에서나 동기화</li>
+            <li className="as-benefit"><span className="as-ck">✓</span> {t.authScreen.benefits.saveAll}</li>
+            <li className="as-benefit"><span className="as-ck">✓</span> {t.authScreen.benefits.organize}</li>
+            <li className="as-benefit"><span className="as-ck">✓</span> {t.authScreen.benefits.sync}</li>
           </ul>
         </div>
         <div className="as-bottom">
           <button className="as-gbtn" type="button" onClick={handleGoogle} disabled={loading}>
             {loading ? (
-              <span className="as-spinner" aria-label="로그인 중" />
+              <span className="as-spinner" aria-label={t.authScreen.signingIn} />
             ) : (
               <>
                 <span className="as-gchip"><GoogleIcon /></span>
-                Google로 계속하기
+                {t.authScreen.google}
               </>
             )}
           </button>

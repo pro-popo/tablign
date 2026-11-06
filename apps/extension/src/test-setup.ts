@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
+import { setLocale } from "@tablign/ui";
 
 // jsdom에는 chrome 전역이 없다. supabase 클라이언트가 모듈 로드 시 chrome.storage를
 // 참조하므로 테스트 환경용 최소 스텁을 제공한다.
@@ -16,3 +17,6 @@ vi.stubGlobal("chrome", {
     getTree: () => Promise.resolve([{ id: "0", title: "", children: [] }]),
   },
 });
+
+// jsdom 브라우저 언어는 en-US — 기존 테스트가 한국어 문구로 요소를 찾으므로 고정한다
+setLocale("ko");

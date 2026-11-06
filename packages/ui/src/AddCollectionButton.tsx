@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Plus, Ticket } from "./icons";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 
 export interface AddCollectionButtonProps {
   /** 본체(＋ 컬렉션) 클릭 — 빈 컬렉션을 바로 만든다 */
@@ -20,6 +21,7 @@ export interface AddCollectionButtonProps {
  * 지점에 두 경로를 나란히 둔다.
  */
 export function AddCollectionButton({ onCreate, onImportCode }: AddCollectionButtonProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLSpanElement>(null);
 
@@ -38,13 +40,13 @@ export function AddCollectionButton({ onCreate, onImportCode }: AddCollectionBut
     <span ref={rootRef} style={{ position: "relative", display: "inline-flex" }}>
       <span style={{ display: "inline-flex", alignItems: "stretch", borderRadius: theme.radiusBtn, overflow: "hidden", background: theme.accent }}>
         <button type="button" onClick={onCreate} style={mainStyle}>
-          <Plus size={15} /> 컬렉션
+          <Plus size={15} /> {t.addCollectionButton.collection}
         </button>
         <span style={{ width: 1, background: `color-mix(in srgb, ${theme.onAccent} 32%, transparent)` }} />
         <button
           type="button"
-          title="컬렉션 추가 방법"
-          aria-label="컬렉션 추가 방법"
+          title={t.addCollectionButton.howToAdd}
+          aria-label={t.addCollectionButton.howToAdd}
           aria-haspopup="menu"
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
@@ -66,11 +68,11 @@ export function AddCollectionButton({ onCreate, onImportCode }: AddCollectionBut
           }}
         >
           <button type="button" role="menuitem" style={itemStyle} onClick={() => { onCreate(); setOpen(false); }}>
-            <Plus size={15} color={theme.textMuted} /> 새 컬렉션
+            <Plus size={15} color={theme.textMuted} /> {t.addCollectionButton.newCollection}
           </button>
           <div style={{ height: 1, background: theme.border, margin: "4px 2px" }} />
           <button type="button" role="menuitem" style={itemStyle} onClick={() => { onImportCode(); setOpen(false); }}>
-            <Ticket size={15} color={theme.textMuted} /> 공유 코드로 추가
+            <Ticket size={15} color={theme.textMuted} /> {t.addCollectionButton.fromCode}
           </button>
         </div>
       )}

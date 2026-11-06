@@ -108,7 +108,7 @@ describe("fromTobyExport", () => {
 
   it("planImport에 그대로 넣으면 group이 스페이스, list가 컬렉션이 된다", () => {
     const roots = fromTobyExport(fixture);
-    const plan = planImport(roots, { enabled: defaultEnabled(roots) });
+    const plan = planImport(roots, { enabled: defaultEnabled(roots), sharedTitle: "공유 폴더" });
     expect(plan.spaces.map((s) => s.name)).toEqual(["KB 검진대행", "배포"]);
     const kb = plan.spaces[0];
     expect(kb.collections.map((c) => c.title)).toEqual(["Client"]);

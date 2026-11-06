@@ -1,4 +1,5 @@
 import type { CreateLinkInput } from "@tablign/core";
+import { getT } from "@tablign/ui";
 
 export interface TabLike {
   url?: string;
@@ -28,8 +29,8 @@ export function saveableTabs<T extends TabLike>(tabs: T[]): T[] {
 /** 담을 수 없는 이유 — 자물쇠 tooltip 문구. 담을 수 있는 탭이면 null. */
 export function unsaveableReason(tab: TabLike): string | null {
   if (isSaveableTab(tab)) return null;
-  if (tab.url?.startsWith("file://")) return "내 컴퓨터의 파일은 담을 수 없어요";
-  return "브라우저 내부 페이지는 담을 수 없어요";
+  if (tab.url?.startsWith("file://")) return getT().tabs.fileTab;
+  return getT().tabs.internalTab;
 }
 
 export function tabsToLinkInputs(

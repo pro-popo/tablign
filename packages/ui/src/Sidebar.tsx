@@ -1,5 +1,6 @@
 import type { Space } from "@tablign/core";
 import { Logo } from "./Logo";
+import { useT } from "./i18n";
 
 export interface SidebarProps {
   spaces: Space[];
@@ -9,6 +10,7 @@ export interface SidebarProps {
 }
 
 export function Sidebar({ spaces, activeSpaceId, onSelectSpace, onAddSpace }: SidebarProps) {
+  const t = useT();
   return (
     <nav
       style={{
@@ -50,7 +52,7 @@ export function Sidebar({ spaces, activeSpaceId, onSelectSpace, onAddSpace }: Si
         onClick={onAddSpace}
         style={{ marginTop: 8, background: "none", border: "none", color: "#8ab4ff", cursor: "pointer" }}
       >
-        + 스페이스 추가
+        {t.sidebar.addSpace}
       </button>
     </nav>
   );

@@ -1,4 +1,5 @@
 import { theme } from "./theme";
+import { useT } from "./i18n";
 
 export interface PendingCollectionProps {
   /** 만들어질 컬렉션 이름. 담기 전에 이미 알고 있다(창 N / 공유 코드의 제목). */
@@ -18,11 +19,12 @@ const MAX_SLOTS = 9;
  * 점선 테두리로 "아직 실체가 아님"을 표시한다.
  */
 export function PendingCollection({ title, count }: PendingCollectionProps) {
+  const t = useT();
   const slots = Math.min(count, MAX_SLOTS);
   return (
     <section
       aria-busy="true"
-      aria-label={`${title} 담는 중`}
+      aria-label={t.pendingCollection.saving(title)}
       style={{
         boxSizing: "border-box",
         marginBottom: 22,
@@ -35,7 +37,7 @@ export function PendingCollection({ title, count }: PendingCollectionProps) {
       <style>{pulseKeyframes}</style>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: theme.accentInk }}>{title}</span>
-        <span style={{ fontSize: 12, color: theme.textFaint }}>링크 {count}개 담는 중</span>
+        <span style={{ fontSize: 12, color: theme.textFaint }}>{t.pendingCollection.savingLinks(count)}</span>
         <Spinner />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 9 }}>
@@ -62,7 +64,7 @@ export function PendingCollection({ title, count }: PendingCollectionProps) {
       </div>
       {count > slots && (
         <div style={{ marginTop: 8, fontSize: 11.5, color: theme.textFaint }}>
-          그 외 {count - slots}개
+          {t.pendingCollection.more(count - slots)}
         </div>
       )}
     </section>

@@ -1,9 +1,11 @@
 import { theme } from "./theme";
+import { useT } from "./i18n";
 
 /** 컬렉션 로딩 중 표시하는 스켈레톤. 실제 데이터가 도착하기 전 EmptyState가 깜빡이는 것을 방지한다. */
 export function CollectionSkeleton({ sections = 3 }: { sections?: number }) {
+  const t = useT();
   return (
-    <div aria-busy="true" aria-label="컬렉션 불러오는 중">
+    <div aria-busy="true" aria-label={t.collectionSkeleton.loading}>
       <style>{pulseKeyframes}</style>
       {Array.from({ length: sections }).map((_, i) => (
         <section key={i} style={{ marginBottom: 22, padding: 8 }}>

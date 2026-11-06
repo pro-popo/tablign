@@ -1,17 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   planImport, outlineSpaces, defaultEnabled, looseSourceId, directSourceId, countLinks,
-  SHARED_COLLECTION_TITLE, LARGE_FOLDER_THRESHOLD,
+  LARGE_FOLDER_THRESHOLD,
 } from "../import/plan";
 import type { SourceNode, ImportConfig } from "../import/types";
+
+const SHARED = "공유 폴더";
 
 /** 윤곽의 모든 컬렉션을 켠 config. 끄고 싶은 키만 덮어쓴다. */
 function allOn(roots: SourceNode[], overrides: Record<string, boolean> = {}): ImportConfig {
   const enabled: Record<string, boolean> = {};
-  for (const sp of outlineSpaces(roots)) {
+  for (const sp of outlineSpaces(roots, SHARED)) {
     for (const c of sp.collections) enabled[c.sourceId] = true;
   }
-  return { enabled: { ...enabled, ...overrides } };
+  return { enabled: { ...enabled, ...overrides }, sharedTitle: SHARED };
 }
 
 const link = (id: string, url: string, title = id): SourceNode => ({ id, title, url });
@@ -46,14 +48,14 @@ function tree(): SourceNode[] {
 
 describe("outlineSpaces", () => {
   it("1단 폴더가 스페이스, 안쪽 폴더가 컬렉션이 된다", () => {
-    const dev = outlineSpaces(tree()).find((s) => s.sourceId === "dev")!;
+    const dev = outlineSpaces(tree(), SHARED).find((s) => s.sourceId === "dev")!;
     expect(dev.name).toBe("개발");
     expect(dev.collections.map((c) => c.title))
-      .toEqual(["React", "React/Hooks", "Node", SHARED_COLLECTION_TITLE]);
+      .toEqual(["React", "React/Hooks", "Node", SHARED]);
   });
 
   it("깊이 3 이상은 부모/자식으로 이름을 합치고 synthetic으로 표시한다", () => {
-    const dev = outlineSpaces(tree()).find((s) => s.sourceId === "dev")!;
+    const dev = outlineSpaces(tree(), SHARED).find((s) => s.sourceId === "dev")!;
     const react = dev.collections.find((c) => c.sourceId === "react")!;
     const hooks = dev.collections.find((c) => c.sourceId === "hooks")!;
     expect(react.title).toBe("React");
@@ -63,9 +65,9 @@ describe("outlineSpaces", () => {
   });
 
   it("폴더 직속 링크는 공유 폴더로 맨 뒤에 모이고 별도 키를 갖는다", () => {
-    const dev = outlineSpaces(tree()).find((s) => s.sourceId === "dev")!;
+    const dev = outlineSpaces(tree(), SHARED).find((s) => s.sourceId === "dev")!;
     const shared = dev.collections.at(-1)!;
-    expect(shared.title).toBe(SHARED_COLLECTION_TITLE);
+    expect(shared.title).toBe(SHARED);
     expect(shared.synthetic).toBe(true);
     // 스페이스 폴더 id와 겹치지 않아야 따로 끄고 켤 수 있다
     expect(shared.sourceId).toBe(directSourceId("dev"));
@@ -77,40 +79,46 @@ describe("outlineSpaces", () => {
     const roots: SourceNode[] = [{ id: "1", title: "북마크바", primary: true, children: [
       { id: "a", title: "A", children: [{ id: "b", title: "B", children: [link("l", "https://a.com/1")] }] },
     ]}];
-    expect(outlineSpaces(roots)[0].collections.map((c) => c.title)).toEqual(["B"]);
+    expect(outlineSpaces(roots, SHARED)[0].collections.map((c) => c.title)).toEqual(["B"]);
   });
 
   it("하위 폴더 없이 링크만 든 1단 폴더도 스페이스가 되고 공유 폴더 하나를 갖는다", () => {
-    const news = outlineSpaces(tree()).find((s) => s.sourceId === "news")!;
+    const news = outlineSpaces(tree(), SHARED).find((s) => s.sourceId === "news")!;
     expect(news.name).toBe("뉴스");
     expect(news.collections).toHaveLength(1);
-    expect(news.collections[0].title).toBe(SHARED_COLLECTION_TITLE);
+    expect(news.collections[0].title).toBe(SHARED);
     expect(news.collections[0].sourceId).toBe(directSourceId("news"));
   });
 
   it("루트 직속 링크는 루트 이름의 스페이스로 들어간다", () => {
-    const loose = outlineSpaces(tree()).find((s) => s.sourceId === looseSourceId("1"))!;
+    const loose = outlineSpaces(tree(), SHARED).find((s) => s.sourceId === looseSourceId("1"))!;
     expect(loose.name).toBe("북마크바");
-    expect(loose.collections[0].title).toBe(SHARED_COLLECTION_TITLE);
+    expect(loose.collections[0].title).toBe(SHARED);
     expect(loose.collections[0].links.map((l) => l.url)).toEqual(["https://loose.local/a"]);
   });
 
   it("링크 0개 컬렉션과 컬렉션 0개 스페이스는 윤곽에 넣지 않는다", () => {
-    expect(outlineSpaces(tree()).map((s) => s.sourceId)).not.toContain("empty");
+    expect(outlineSpaces(tree(), SHARED).map((s) => s.sourceId)).not.toContain("empty");
   });
 
   it("선택 상태와 무관하다 — 전부 꺼도 윤곽은 그대로다", () => {
     const roots = tree();
-    const full = outlineSpaces(roots);
-    expect(planImport(roots, { enabled: {} }).spaces).toHaveLength(0);
-    expect(outlineSpaces(roots)).toEqual(full);
+    const full = outlineSpaces(roots, SHARED);
+    expect(planImport(roots, { enabled: {}, sharedTitle: SHARED }).spaces).toHaveLength(0);
+    expect(outlineSpaces(roots, SHARED)).toEqual(full);
   });
 });
 
 describe("planImport", () => {
+  it("공유 폴더 제목은 넘긴 값을 쓴다", () => {
+    const roots = tree();
+    const plan = planImport(roots, { ...allOn(roots), sharedTitle: "Folder links" });
+    expect(plan.spaces.flatMap((s) => s.collections.map((c) => c.title))).toContain("Folder links");
+  });
+
   it("전부 켜면 윤곽과 같다", () => {
     const roots = tree();
-    expect(planImport(roots, allOn(roots)).spaces).toEqual(outlineSpaces(roots));
+    expect(planImport(roots, allOn(roots)).spaces).toEqual(outlineSpaces(roots, SHARED));
   });
 
   it("꺼진 컬렉션만 빠지고 나머지는 그대로다", () => {
@@ -118,7 +126,7 @@ describe("planImport", () => {
     const plan = planImport(roots, allOn(roots, { node: false }));
     const dev = plan.spaces.find((s) => s.sourceId === "dev")!;
     expect(dev.collections.map((c) => c.title))
-      .toEqual(["React", "React/Hooks", SHARED_COLLECTION_TITLE]);
+      .toEqual(["React", "React/Hooks", SHARED]);
   });
 
   it("공유 폴더만 따로 끌 수 있다", () => {
@@ -254,7 +262,7 @@ describe("defaultEnabled", () => {
 
   it("결과를 planImport에 그대로 넣을 수 있다", () => {
     const roots = tree();
-    const plan = planImport(roots, { enabled: defaultEnabled(roots) });
+    const plan = planImport(roots, { enabled: defaultEnabled(roots), sharedTitle: SHARED });
     expect(plan.spaces.map((s) => s.sourceId)).not.toContain("tmp");
     expect(plan.spaces.map((s) => s.sourceId)).toContain("dev");
   });
@@ -262,7 +270,7 @@ describe("defaultEnabled", () => {
   it("윤곽의 모든 컬렉션 키를 빠짐없이 만든다", () => {
     const roots = tree();
     const e = defaultEnabled(roots);
-    for (const sp of outlineSpaces(roots)) {
+    for (const sp of outlineSpaces(roots, SHARED)) {
       for (const c of sp.collections) {
         expect(e).toHaveProperty(c.sourceId);
       }

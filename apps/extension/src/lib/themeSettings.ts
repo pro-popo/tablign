@@ -2,16 +2,16 @@ import { normalizeHex, computeTokens, withBackground, defaultGradient, MAX_STOPS
 
 export type ThemeMode = "light" | "dark" | "system";
 export type BackgroundKind = "none" | "solid" | "gradient" | "photo";
-/** 확장에 넣어 둔 예시 사진(public/backgrounds) — 이 순서(봄 → 여름 → 가을 → 겨울)로 보인다 */
+/** 확장에 넣어 둔 예시 사진(public/backgrounds) — 이 순서(봄 → 여름 → 가을 → 겨울)로 보인다. 이름은 사전 themeSettings.photos */
 export const SAMPLE_PHOTOS = {
-  blossom: { name: "벚꽃", url: "backgrounds/blossom.svg" },
-  sea: { name: "바다", url: "backgrounds/sea.svg" },
-  mountain: { name: "산", url: "backgrounds/mountain.svg" },
-  sunset: { name: "노을", url: "backgrounds/sunset.svg" },
-  cloudsea: { name: "운해", url: "backgrounds/cloudsea.svg" },
-  snow: { name: "설경", url: "backgrounds/snow.svg" },
-  aurora: { name: "오로라", url: "backgrounds/aurora.svg" },
-  night: { name: "밤하늘", url: "backgrounds/night.svg" },
+  blossom: { url: "backgrounds/blossom.svg" },
+  sea: { url: "backgrounds/sea.svg" },
+  mountain: { url: "backgrounds/mountain.svg" },
+  sunset: { url: "backgrounds/sunset.svg" },
+  cloudsea: { url: "backgrounds/cloudsea.svg" },
+  snow: { url: "backgrounds/snow.svg" },
+  aurora: { url: "backgrounds/aurora.svg" },
+  night: { url: "backgrounds/night.svg" },
 };
 export type PhotoSource = keyof typeof SAMPLE_PHOTOS | "upload";
 const PHOTO_SOURCES = [...Object.keys(SAMPLE_PHOTOS), "upload"] as PhotoSource[];
@@ -31,17 +31,17 @@ export interface ThemeSettings {
   glass: number;
 }
 
-/** 익숙한 앱 색 — 첫 칸은 브랜드 인디고, 빨강은 위험 표시와 헷갈려서 뺐다 */
+/** 익숙한 앱 색 — 첫 칸은 브랜드 인디고, 빨강은 위험 표시와 헷갈려서 뺐다. 이름은 사전 themeSettings.accents(같은 순서) */
 export const ACCENT_PRESETS = [
-  { name: "인디고", hex: "#3B5BDB" },
-  { name: "파랑", hex: "#2563EB" },
-  { name: "하늘", hex: "#0369A1" },
-  { name: "청록", hex: "#0F766E" },
-  { name: "초록", hex: "#15803D" },
-  { name: "주황", hex: "#C2410C" },
-  { name: "분홍", hex: "#DB2777" },
-  { name: "보라", hex: "#7C3AED" },
-  { name: "슬레이트", hex: "#475569" },
+  { hex: "#3B5BDB" },
+  { hex: "#2563EB" },
+  { hex: "#0369A1" },
+  { hex: "#0F766E" },
+  { hex: "#15803D" },
+  { hex: "#C2410C" },
+  { hex: "#DB2777" },
+  { hex: "#7C3AED" },
+  { hex: "#475569" },
 ] as const;
 
 export const SOLID_QUICK = ["#E9E4FE", "#FEDFE2", "#FFE1CF", "#CCF2E6", "#D0EDFE", "#F4E7CC"];

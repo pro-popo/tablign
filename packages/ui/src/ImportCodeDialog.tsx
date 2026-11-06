@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
 import { Button } from "./Button";
 import type { SpaceOption } from "./CollectionMoreMenu";
@@ -34,10 +35,11 @@ function Spinner() {
 
 /** 공유 코드 입력 → 미리보기 → 대상 스페이스 선택 → 가져오기 다이얼로그. */
 export function ImportCodeDialog({ open, spaces, defaultSpaceId = null, onLookup, onImport, onClose }: ImportCodeDialogProps) {
+  const t = useT();
   const [code, setCode] = useState("");
   const [info, setInfo] = useState<ImportCodeInfo | null>(null);
   const [spaceId, setSpaceId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<"notFound" | "failed" | null>(null);
   const [busy, setBusy] = useState(false);
 
   // 열릴 때 목적지를 미리 골라 두고, 닫힐 때 상태 초기화.
@@ -67,7 +69,7 @@ export function ImportCodeDialog({ open, spaces, defaultSpaceId = null, onLookup
       setInfo(await onLookup(normalized));
     } catch {
       setInfo(null);
-      setError("찾을 수 없거나 만료된 코드예요.");
+      setError("notFound");
     } finally {
       setBusy(false);
     }
@@ -81,7 +83,7 @@ export function ImportCodeDialog({ open, spaces, defaultSpaceId = null, onLookup
       await onImport(normalized, spaceId, info);
       onClose();
     } catch {
-      setError("가져오지 못했어요. 다시 시도해 주세요.");
+      setError("failed");
       setBusy(false);
     }
   }
@@ -91,21 +93,21 @@ export function ImportCodeDialog({ open, spaces, defaultSpaceId = null, onLookup
     <div role="presentation" onClick={() => { if (!busy) onClose(); }}
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
       <style>{overlayAnimationCss}</style>
-      <div role="dialog" aria-modal="true" aria-label="공유 코드로 추가" onClick={(e) => e.stopPropagation()}
+      <div role="dialog" aria-modal="true" aria-label={t.importCodeDialog.title} onClick={(e) => e.stopPropagation()}
         style={{ width: 340, maxWidth: "calc(100vw - 32px)", animation: panelIn, background: theme.surface, borderRadius: 12, padding: "20px 20px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.22)" }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>공유 코드로 추가</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{t.importCodeDialog.title}</div>
         <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
           <input
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="공유 코드 8자리"
+            placeholder={t.importCodeDialog.placeholder}
             maxLength={8}
             disabled={busy}
             style={{ flex: 1, padding: "8px 10px", border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, letterSpacing: "0.12em", textTransform: "uppercase", outline: "none", boxSizing: "border-box" }}
           />
-          <Button onClick={lookup} disabled={busy || normalized.length !== 8}>조회</Button>
+          <Button onClick={lookup} disabled={busy || normalized.length !== 8}>{t.importCodeDialog.lookup}</Button>
         </div>
-        {error && <p style={{ marginTop: 8, fontSize: 12.5, color: theme.danger }}>{error}</p>}
+        {error && <p style={{ marginTop: 8, fontSize: 12.5, color: theme.danger }}>{error === "notFound" ? t.importCodeDialog.notFound : t.common.importFailed}</p>}
         {info && (
           <>
             <div style={{ marginTop: 12, padding: "10px 12px", background: theme.surface2, borderRadius: 9 }}>
@@ -113,10 +115,10 @@ export function ImportCodeDialog({ open, spaces, defaultSpaceId = null, onLookup
                 {info.icon ? `${info.icon} ` : ""}{info.title}
               </div>
               <div style={{ marginTop: 3, fontSize: 12, color: theme.textMuted }}>
-                링크 {info.link_count}개{info.shared_by ? ` · ${info.shared_by}님이 공유` : ""}
+                {t.importCodeDialog.linkCount(info.link_count)}{info.shared_by ? t.importCodeDialog.sharedBy(info.shared_by) : ""}
               </div>
             </div>
-            <div style={{ marginTop: 10, fontSize: 12, color: theme.textFaint }}>어디에 추가할까요</div>
+            <div style={{ marginTop: 10, fontSize: 12, color: theme.textFaint }}>{t.importCodeDialog.where}</div>
             <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6 }}>
               {spaces.map((s) => (
                 <button key={s.id} type="button" onClick={() => setSpaceId(s.id)} disabled={busy}
@@ -133,12 +135,12 @@ export function ImportCodeDialog({ open, spaces, defaultSpaceId = null, onLookup
             </div>
             {/* 스냅샷임을 미리 알린다 — 초대(실시간 협업)와 헷갈리면 안 된다 */}
             <p style={{ marginTop: 11, fontSize: 11.5, color: theme.textFaint, lineHeight: 1.5 }}>
-              복사본으로 추가돼요. 원본이 바뀌어도 반영되지 않습니다.
+              {t.importCodeDialog.copyNote}
             </p>
             <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <Button variant="outline" onClick={onClose} disabled={busy}>취소</Button>
+              <Button variant="outline" onClick={onClose} disabled={busy}>{t.common.cancel}</Button>
               <Button onClick={doImport} disabled={busy || !spaceId} aria-busy={busy || undefined}>
-                {busy ? <><Spinner />추가 중…</> : "추가"}
+                {busy ? <><Spinner />{t.importCodeDialog.adding}</> : t.importCodeDialog.add}
               </Button>
             </div>
           </>

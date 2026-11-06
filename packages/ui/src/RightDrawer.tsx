@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 
 // 덮개와 같은 움직임 — 들어올 땐 감속, 나갈 땐 가속. 움직임 줄이기면 바로 바뀐다.
 const OUT_MS = 180;
@@ -28,10 +29,11 @@ export interface RightDrawerProps {
 }
 
 /**
- * 셸 오른쪽 끝에 따로 덮어 띄우는 서랍(테마). 열린 탭 패널과 따로 열리고 너비도 따로다.
+ * 셸 오른쪽 끝에 따로 덮어 띄우는 서랍(설정). 열린 탭 패널과 따로 열리고 너비도 따로다.
  * 경계선 없이 왼쪽 그림자로 보드 위에 떠 보인다. 닫으면 빠져나간 뒤에 내린다 — 숨은 채 남아 키 입력을 받지 않게.
  */
 export function RightDrawer({ open, width, onResize, label, children }: RightDrawerProps) {
+  const t = useT();
   const [mounted, setMounted] = useState(open);
   if (open && !mounted) setMounted(true);
   useEffect(() => {
@@ -46,7 +48,7 @@ export function RightDrawer({ open, width, onResize, label, children }: RightDra
       style={{ position: "absolute", top: 0, right: 0, bottom: 0, width, zIndex: 55, display: "flex", flexDirection: "column",
         background: theme.pane, backdropFilter: theme.paneBlur, boxShadow: SHADOW }}>
       <style>{css}</style>
-      <Grip label={`${label} 크기 조절`} width={width} onResize={onResize} />
+      <Grip label={t.rightDrawer.resize(label)} width={width} onResize={onResize} />
       {children}
     </section>
   );

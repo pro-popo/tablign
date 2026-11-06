@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, type ReactNode } from "react";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 import { hexToHsv, hsvToHex, normalizeHex } from "./color";
 
 export interface ColorPickerProps {
@@ -11,6 +12,7 @@ export interface ColorPickerProps {
 }
 
 export function ColorPicker({ value, onChange, hideHex = false, extra }: ColorPickerProps) {
+  const t = useT();
   const init = hexToHsv(value) ?? { h: 222, s: 0.8, v: 0.9 };
   const [h, setH] = useState(init.h);
   const [s, setS] = useState(init.s);
@@ -79,7 +81,7 @@ export function ColorPicker({ value, onChange, hideHex = false, extra }: ColorPi
               const n = normalizeHex(e.target.value);
               if (n) { const c = hexToHsv(n)!; setH(c.h); setS(c.s); setV(c.v); onChange(n); }
             }}
-            aria-label="색 코드" style={{ flex: 1, minWidth: 0, border: `1px solid ${theme.border}`, borderRadius: 8, padding: "6px 9px", fontSize: 12, fontFamily: "monospace", boxSizing: "border-box", background: theme.surface, color: theme.text }} />
+            aria-label={t.colorPicker.hexCode} style={{ flex: 1, minWidth: 0, border: `1px solid ${theme.border}`, borderRadius: 8, padding: "6px 9px", fontSize: 12, fontFamily: "monospace", boxSizing: "border-box", background: theme.surface, color: theme.text }} />
           {extra}
         </div>
       )}

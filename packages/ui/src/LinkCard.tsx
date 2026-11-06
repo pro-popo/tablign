@@ -3,6 +3,7 @@ import type { Link } from "@tablign/core";
 import { Favicon } from "./Favicon";
 import { Pencil, Trash2 } from "./icons";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 import { overlayAnimationCss, popIn } from "./overlayAnimation";
 
 export interface LinkCardProps {
@@ -40,6 +41,7 @@ const ROW_H = 40;
 const EASE = ".2s cubic-bezier(.2,.8,.3,1)";
 
 export function LinkCard({ link, onOpen, onDelete, onUpdate, dragging, readOnly }: LinkCardProps) {
+  const t = useT();
   const [hover, setHover] = useState(false);
   const [editing, setEditing] = useState(false);
   const showActions = hover && !dragging && !editing;
@@ -164,11 +166,11 @@ export function LinkCard({ link, onOpen, onDelete, onUpdate, dragging, readOnly 
       {!readOnly && (
         <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 2, opacity: showActions ? 1 : 0, pointerEvents: showActions ? "auto" : "none", transition: "opacity .12s" }}>
           {onUpdate && (
-            <button type="button" title="편집" aria-label="편집" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); openEdit(); }} style={actionBtn}>
+            <button type="button" title={t.linkCard.edit} aria-label={t.linkCard.edit} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); openEdit(); }} style={actionBtn}>
               <Pencil size={14} color={theme.textMuted} />
             </button>
           )}
-          <button type="button" title="삭제" aria-label="삭제" onClick={(e) => { e.stopPropagation(); onDelete(link.id); }} style={actionBtn}>
+          <button type="button" title={t.common.delete} aria-label={t.common.delete} onClick={(e) => { e.stopPropagation(); onDelete(link.id); }} style={actionBtn}>
             <Trash2 size={14} color={theme.danger} />
           </button>
         </div>
@@ -176,7 +178,7 @@ export function LinkCard({ link, onOpen, onDelete, onUpdate, dragging, readOnly 
       {editing && (
         <div
           role="dialog"
-          aria-label="링크 편집"
+          aria-label={t.linkCard.editLink}
           // 드래그 시작·키 입력이 카드(정렬 래퍼)로 번지지 않게 막는다.
           onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
@@ -209,13 +211,13 @@ export function LinkCard({ link, onOpen, onDelete, onUpdate, dragging, readOnly 
               position: "absolute", left: 0, right: 0, top: hlRow * ROW_H, height: ROW_H, background: theme.accentWeak,
               opacity: focused ? 1 : 0, transition: `top ${EASE}, opacity ${EASE}`,
             }} />
-            {row("title", "제목", title, setTitle)}
-            {row("note", "메모", note, setNote)}
+            {row("title", t.linkCard.title, title, setTitle)}
+            {row("note", t.linkCard.note, note, setNote)}
             {row("url", "URL", url, setUrl)}
           </div>
           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", padding: "9px 14px", background: theme.bg, borderRadius: "0 0 12px 12px" }}>
-            <button type="button" onClick={() => setEditing(false)} style={{ ...actionBtn, padding: "5px 10px", color: theme.textMuted }}>취소</button>
-            <button type="button" onClick={save} style={{ border: "none", background: theme.accent, color: theme.onAccent, borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>저장</button>
+            <button type="button" onClick={() => setEditing(false)} style={{ ...actionBtn, padding: "5px 10px", color: theme.textMuted }}>{t.common.cancel}</button>
+            <button type="button" onClick={save} style={{ border: "none", background: theme.accent, color: theme.onAccent, borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>{t.common.save}</button>
           </div>
         </div>
       )}

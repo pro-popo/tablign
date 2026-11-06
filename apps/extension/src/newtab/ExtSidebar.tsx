@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import type { Space } from "@tablign/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus, Pencil, Trash2, PanelLeftClose, PanelLeftOpen, LogOut, ConfirmDialog, overlayAnimationCss, popIn, theme, SpaceIcon } from "@tablign/ui";
+import { Plus, Pencil, Trash2, PanelLeftClose, PanelLeftOpen, LogOut, ConfirmDialog, overlayAnimationCss, popIn, theme, SpaceIcon, useT } from "@tablign/ui";
 import { TossEmojiPicker } from "./TossEmojiPicker";
 import { ORG_ICON_FONT } from "./orgIcon";
 
@@ -83,6 +83,7 @@ function SpaceEditor({ defaultName = "", defaultIcon = null, saveOnPick = false,
   onSubmit: (name: string, icon: string | null) => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const [name, setName] = useState(defaultName);
   const [icon, setIcon] = useState<string | null>(defaultIcon);
   const [picking, setPicking] = useState(false);
@@ -117,7 +118,7 @@ function SpaceEditor({ defaultName = "", defaultIcon = null, saveOnPick = false,
 
   return (
     <div ref={rowRef} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 6px" }}>
-      <button type="button" title="아이콘 선택" aria-label="아이콘 선택" onClick={() => setPicking((p) => !p)}
+      <button type="button" title={t.extSidebar.pickIcon} aria-label={t.extSidebar.pickIcon} onClick={() => setPicking((p) => !p)}
         style={{ width: 26, height: 26, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, borderRadius: 7, cursor: "pointer",
           fontFamily: ORG_ICON_FONT, fontSize: 15, boxSizing: "border-box",
           background: picking ? theme.accentWeak : theme.surface2, border: `1px solid ${picking ? theme.accent : "transparent"}` }}>
@@ -127,7 +128,7 @@ function SpaceEditor({ defaultName = "", defaultIcon = null, saveOnPick = false,
         ref={inputRef}
         autoFocus
         value={name}
-        placeholder="스페이스 이름"
+        placeholder={t.extSidebar.namePlaceholder}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") submit();
@@ -151,6 +152,7 @@ function SortableSpace({ space, active, onSelect, onChangeIcon, onStartEdit, onD
   onStartEdit: () => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: `space:${space.id}`,
     data: { kind: "space", space },
@@ -172,7 +174,7 @@ function SortableSpace({ space, active, onSelect, onChangeIcon, onStartEdit, onD
   return (
     <div ref={setNodeRef} style={style} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       {/* 아이콘은 수정 모드 없이 바로 바꾼다 — 선택(드래그) 버튼과 분리된 별도 버튼. 위치는 예전 아이콘 자리 그대로. */}
-      <button type="button" ref={iconRef} title="아이콘 변경" aria-label="아이콘 변경" onClick={() => setPicking((p) => !p)}
+      <button type="button" ref={iconRef} title={t.extSidebar.changeIcon} aria-label={t.extSidebar.changeIcon} onClick={() => setPicking((p) => !p)}
         onMouseEnter={() => setIconHover(true)} onMouseLeave={() => setIconHover(false)}
         style={{ marginLeft: 6, width: 26, height: 26, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
           border: "none", borderRadius: 6, cursor: "pointer", background: picking || iconHover ? `color-mix(in srgb, ${theme.text} 7%, transparent)` : "transparent" }}>
@@ -188,11 +190,11 @@ function SortableSpace({ space, active, onSelect, onChangeIcon, onStartEdit, onD
       )}
       {hover && (
         <div style={{ position: "absolute", right: 6, display: "flex", alignItems: "center", gap: 2 }}>
-          <button type="button" title="이름 수정" aria-label="스페이스 이름 수정" onClick={onStartEdit}
+          <button type="button" title={t.extSidebar.rename} aria-label={t.extSidebar.renameLabel} onClick={onStartEdit}
             style={{ border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 3 }}>
             <Pencil size={13} color={theme.textFaint} />
           </button>
-          <button type="button" title="스페이스 삭제" aria-label="스페이스 삭제" onClick={onDelete}
+          <button type="button" title={t.extSidebar.delete} aria-label={t.extSidebar.delete} onClick={onDelete}
             style={{ border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 3 }}>
             <Trash2 size={13} color={theme.textFaint} />
           </button>
@@ -203,6 +205,7 @@ function SortableSpace({ space, active, onSelect, onChangeIcon, onStartEdit, onD
 }
 
 export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace, onAddSpace, onEditSpace, onDeleteSpace, onLeaveSpace, onCollapse, onPin, searchSlot, orgHeaderSlot }: ExtSidebarProps) {
+  const t = useT();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Space | null>(null);
@@ -210,7 +213,7 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace,
     <>
       <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 2, borderBottom: `1px solid ${theme.border}`, boxSizing: "border-box" }}>
         <div style={{ flex: 1, minWidth: 0 }}>{orgHeaderSlot}</div>
-        <button type="button" title={onPin ? "사이드바 고정" : "사이드바 접기"} aria-label={onPin ? "사이드바 고정" : "사이드바 접기"} onClick={onPin ?? onCollapse}
+        <button type="button" title={onPin ? t.extSidebar.pin : t.extSidebar.collapse} aria-label={onPin ? t.extSidebar.pin : t.extSidebar.collapse} onClick={onPin ?? onCollapse}
           style={{ flexShrink: 0, border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3 }}>
           {onPin ? <PanelLeftOpen size={16} color={theme.textFaint} /> : <PanelLeftClose size={16} color={theme.textFaint} />}
         </button>
@@ -219,7 +222,7 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace,
       <div style={{ padding: "11px 12px" }}>{searchSlot}</div>
 
       {/* 한글은 자간을 벌리면 읽기 나빠진다 — 영문 대문자용 letterSpacing 1을 0으로 */}
-      <div style={{ padding: "4px 14px", fontSize: 10, fontWeight: 700, color: theme.textFaint }}>스페이스</div>
+      <div style={{ padding: "4px 14px", fontSize: 10, fontWeight: 700, color: theme.textFaint }}>{t.extSidebar.spaces}</div>
       <div style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
         <SortableContext items={spaces.map((s) => `space:${s.id}`)} strategy={verticalListSortingStrategy}>
           {spaces.map((s) =>
@@ -250,14 +253,14 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace,
         ) : (
           <button type="button" onClick={() => setAdding(true)}
             style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 8, border: "none", cursor: "pointer", background: "transparent", color: theme.textFaint }}>
-            <Plus size={15} /> 스페이스 추가
+            <Plus size={15} /> {t.extSidebar.addSpace}
           </button>
         )}
       </div>
 
       {sharedSpaces.length > 0 && (
         <>
-          <div style={{ padding: "8px 14px 4px", fontSize: 10, fontWeight: 700, color: theme.textFaint }}>공유 스페이스</div>
+          <div style={{ padding: "8px 14px 4px", fontSize: 10, fontWeight: 700, color: theme.textFaint }}>{t.extSidebar.sharedSpaces}</div>
           {/* 정렬 미구현: 공유됨 섹션은 position 순 표시. DnD는 후속 태스크에서 추가 예정. */}
           <div style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
             {sharedSpaces.map((s) => (
@@ -267,7 +270,7 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace,
                     background: s.id === activeSpaceId ? theme.accentWeak : "transparent", color: s.id === activeSpaceId ? theme.accentInk : theme.textSub, fontWeight: s.id === activeSpaceId ? 600 : 400 }}>
                   <SpaceIcon icon={s.icon} /> {s.name}
                 </button>
-                <button type="button" title="나가기" aria-label="스페이스 나가기" onClick={() => onLeaveSpace(s.id)}
+                <button type="button" title={t.extSidebar.leave} aria-label={t.extSidebar.leaveLabel} onClick={() => onLeaveSpace(s.id)}
                   style={{ border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 3 }}>
                   <LogOut size={13} color={theme.textFaint} />
                 </button>
@@ -280,9 +283,9 @@ export function ExtSidebar({ spaces, sharedSpaces, activeSpaceId, onSelectSpace,
       <ConfirmDialog
         open={pendingDelete !== null}
         danger
-        title="스페이스 삭제"
-        message={<>'{pendingDelete?.name}' 스페이스를 삭제할까요?<br />연관된 컬렉션과 탭 모두 삭제되며 되돌릴 수 없습니다.</>}
-        confirmLabel="삭제"
+        title={t.extSidebar.delete}
+        message={<span style={{ whiteSpace: "pre-line" }}>{t.extSidebar.deleteMessage(pendingDelete?.name ?? "")}</span>}
+        confirmLabel={t.common.delete}
         onConfirm={() => { if (pendingDelete) onDeleteSpace(pendingDelete.id); setPendingDelete(null); }}
         onCancel={() => setPendingDelete(null)}
       />

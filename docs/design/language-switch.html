@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 언어 전환 위치 시안</title>
+<link rel="stylesheet" href="../../apps/extension/public/fonts/tossface/tossface.css" />
+<style>
+  :root{ --accent:#3b5bdb; --accent-weak:#edf0fe; --ink:#1f2430; --muted:#868e96; --faint:#adb5bd; --border:#eaecef; }
+  *{box-sizing:border-box; margin:0}
+  body{font-family:-apple-system,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:#eef0f4; color:var(--ink); padding:28px 20px 70px; font-size:13px}
+  h1{font-size:16px; font-weight:740; letter-spacing:-.02em; margin-bottom:4px}
+  h2{font-size:13.5px; font-weight:740; margin:40px 0 10px; display:flex; align-items:center; gap:8px}
+  .note{font-size:12.5px; color:var(--muted); line-height:1.7; max-width:880px; word-break:keep-all}
+  .note b{color:var(--ink)}
+  .tag{background:var(--ink); color:#fff; font-size:11px; font-weight:800; padding:3px 10px; border-radius:9px}
+  .tag.rec{background:var(--accent)}
+  .pair{display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start}
+  .cap{font-size:11.5px; font-weight:700; color:var(--muted); margin-bottom:7px}
+  .why{font-size:12px; color:var(--muted); line-height:1.7; margin-top:12px; max-width:880px; word-break:keep-all}
+  .why b{color:var(--ink)}
+  .emo{font-family:Tossface}
+  svg.i{width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:block}
+
+  /* 조직 레일 — OrgRail과 같은 치수(접힘 54 · 펼침 196) */
+  .stage{width:290px; height:410px; background:#fcfcfd; border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative}
+  .rail{position:absolute; left:0; top:0; bottom:0; width:54px; background:#f5f6f8; border-right:1px solid var(--border); padding:10px 0;
+    display:flex; flex-direction:column; gap:5px; overflow:hidden}
+  .rail.open{width:196px; box-shadow:8px 0 26px rgba(0,0,0,.13)}
+  .row{position:relative; display:flex; align-items:center; gap:12px; height:40px; padding:0 11px}
+  .row .bar{position:absolute; left:0; top:50%; transform:translateY(-50%); width:4px; height:22px; border-radius:0 3px 3px 0; background:var(--accent)}
+  .lb{font-size:12.5px; color:#495057; white-space:nowrap; opacity:0}
+  .rail.open .lb{opacity:1}
+  .lb.on{color:var(--accent); font-weight:600}
+  .lb.faint{color:var(--faint)}
+  .val{margin-left:auto; font-size:11.5px; color:var(--faint); white-space:nowrap; opacity:0}
+  .rail.open .val{opacity:1}
+  .logo{display:flex; align-items:center; gap:11px; height:34px; padding:0 12px; margin-bottom:2px}
+  .logo i{width:26px; height:26px; border-radius:7px; background:linear-gradient(135deg,#3b5bdb 0 55%,#c5d0fa 55%); flex:none}
+  .logo b{font-size:16px; letter-spacing:-.03em; opacity:0} .rail.open .logo b{opacity:1}
+  .logo b span{color:var(--accent)}
+  .div{height:1px; background:#e2e5ea; margin:2px 12px 4px}
+  .box{width:32px; height:32px; border-radius:9px; flex:none; display:flex; align-items:center; justify-content:center; font-size:18px; position:relative}
+  .box.add{border:1px dashed var(--faint); color:var(--faint); font-size:16px}
+  .box.tool{background:#e9ecf0; color:#6b7280}
+  .box.tool.on{background:var(--accent-weak); color:var(--accent)}
+  .ava{width:32px; height:32px; border-radius:50%; flex:none; background:#dfe2ea; border:2px solid #fff; box-shadow:0 0 0 1px #e2e5ea}
+  .ava.on{box-shadow:0 0 0 2px var(--accent)}
+  .out{margin-left:auto; color:var(--faint); opacity:0} .rail.open .out{opacity:1}
+  .out svg{width:15px; height:15px}
+
+  /* 언어 팝오버 — 받은 초대함 팝오버와 같은 모양(접힌 레일 옆, 줄 아래끝에 맞춤) */
+  .pop{position:absolute; left:62px; width:184px; background:#fff; border:1px solid var(--border); border-radius:12px;
+    box-shadow:0 12px 32px rgba(20,30,60,.18); padding:12px 0 6px}
+  .pop .ph{padding:0 14px 6px; font-size:12px; font-weight:700; color:var(--muted)}
+  .opt{display:flex; align-items:center; height:34px; padding:0 14px; font-size:13px; color:#343a40}
+  .opt.on{color:var(--accent); font-weight:600}
+  .opt.hov{background:#f3f4f7}
+  .opt svg{margin-left:auto; width:15px; height:15px}
+
+  /* 테마 패널 — ThemePanel 축약 */
+  .panel{width:300px; background:#fff; border:1px solid var(--border); border-radius:12px; overflow:hidden}
+  .ph-head{display:flex; align-items:center; justify-content:space-between; padding:13px 14px; background:var(--accent); color:#fff}
+  .ph-head span{display:flex; align-items:center; gap:8px}
+  .ph-head .ic{width:26px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.18)}
+  .ph-head .ic svg{width:15px; height:15px}
+  .ph-head .x{opacity:.75} .ph-head .x svg{width:16px; height:16px}
+  .sec{padding:10px 14px}
+  .sl{font-size:11.5px; font-weight:700; color:var(--muted); margin-bottom:8px}
+  .sl em{font-style:normal; font-weight:500; color:var(--faint); margin-left:6px}
+  .seg{display:flex; gap:2px; padding:3px; border-radius:8px; background:#f1f3f5}
+  .seg b{flex:1; text-align:center; padding:6px 0; border-radius:6px; font-size:12px; font-weight:400; color:var(--muted); white-space:nowrap}
+  .seg b.on{background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.08),0 0 0 1px var(--border)}
+  .sw{display:flex; gap:7px; flex-wrap:wrap}
+  .sw i{width:22px; height:22px; border-radius:50%}
+  .sw i.on{box-shadow:0 0 0 1.5px #fff,0 0 0 3.5px #4dabf7}
+  .grad{height:96px; border-radius:10px; margin-top:10px; background:linear-gradient(135deg,#c5d0fa,#f3d9fa 60%,#ffe8cc)}
+  .reset{padding:6px 14px 12px; font-size:12px; color:var(--muted)}
+  .pdiv{height:1px; background:#eef0f3; margin:0 14px}
+  .grp{padding:14px 14px 2px; font-size:13px; font-weight:740; color:var(--ink)}
+</style>
+</head>
+<body>
+<h1>언어 전환 — 어디에 둘까 시안</h1>
+<p class="note">로그인한 뒤 언어(한국어 · English)를 바꾸는 자리를 고른다. 언어 이름은 늘 그 언어로 쓴다(한국어 / English).
+각 안의 프레임은 <b>펼침</b>, <b>누른 뒤</b>, <b>영어로 바꾼 뒤 펼침</b> 순서. 팝오버는 받은 초대함 팝오버와 같은 규칙(누르면 레일을 접고, 접힌 레일 옆에 줄 아래끝을 맞춰 띄움).</p>
+
+<h2><span class="tag">A안</span> 레일에 언어 줄 추가</h2>
+<div class="pair" id="a"></div>
+<p class="why">테마와 받은 초대 사이에 지구본 줄을 하나 더 둔다. 펼치면 줄 오른쪽 끝에 지금 언어가 보인다. 찾기는 가장 쉽지만,
+한 번 정하면 거의 안 바꾸는 설정이 레일 한 줄을 늘 차지한다. 화면이 낮으면 조직 목록이 그만큼 먼저 잘린다.</p>
+
+<h2><span class="tag">B안</span> 계정 줄을 누르면 언어 팝오버</h2>
+<div class="pair" id="b"></div>
+<p class="why">레일은 그대로 두고, 지금은 눌러도 아무 일 없는 계정 줄(프로필 사진 · 이메일)에 팝오버를 붙인다. 언어처럼 드물게 바꾸는 설정을
+계정 메뉴에 두는 건 흔한 자리라 찾을 때 먼저 눌러 볼 곳이다. 펼침에 보이던 로그아웃 아이콘은 그대로 둔다.
+대신 레일만 봐서는 언어를 바꿀 수 있다는 게 드러나지 않는다.</p>
+
+<h2><span class="tag">C안</span> 테마 패널 맨 아래 언어 섹션</h2>
+<div class="pair" id="c"></div>
+<p class="why">테마 패널 끝에 구분선을 두고 언어 칸을 붙인다. 레일은 그대로. 다만 레일과 패널 이름이 ‘테마’라서 언어를 찾으러 들어갈 곳으로 보이지 않고,
+‘기본으로 되돌리기’가 언어까지 되돌리는지 헷갈릴 수 있다. 이름을 ‘설정’으로 바꾸면 풀리지만, 테마 시안에서 정한 이름을 바꾸는 일이다.</p>
+
+<h2><span class="tag rec">D안 · 추천</span> 테마 줄을 ‘설정’으로 — 언어는 맨 위, 테마는 그 아래</h2>
+<div class="pair" id="d"></div>
+<p class="why">레일의 테마 줄을 톱니 ‘설정’으로 바꾸고, 같은 자리에서 여는 패널 안을 <b>언어</b>와 <b>테마</b> 두 묶음으로 나눈다. Notion·Slack·Discord처럼
+설정 안에 테마와 언어를 나란히 두는 흔한 모양이고, 톱니는 레일에 늘 보여 눌러 봐야 아는 자리가 아니다. 레일 줄 수는 지금과 같다.
+언어는 한 줄이라 맨 위에 두어 스크롤 없이 보이게 하고, 길게 이어지는 테마(배경 사진·슬라이더)는 그 아래로. ‘기본으로 되돌리기’는 테마 묶음 안에 있어 언어와 섞이지 않는다.
+<b>테마 시안에서 정한 레일 이름·팔레트 아이콘을 바꾸는 안</b>이라 그 결정을 다시 여는 것이다.</p>
+
+<script>
+const ICON = {
+  palette: `<svg class="i" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>`,
+  globe: `<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>`,
+  mail: `<svg class="i" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>`,
+  out: `<svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>`,
+  check: `<svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>`,
+  x: `<svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
+  gear: `<svg class="i" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
+};
+
+const L = {
+  ko: { personal: "개인", team: "프로덕트팀", create: "조직 만들기", theme: "테마", settings: "설정", lang: "언어", inbox: "받은 초대", cur: "한국어" },
+  en: { personal: "Personal", team: "Product Team", create: "New organization", theme: "Theme", settings: "Settings", lang: "Language", inbox: "Invitations", cur: "English" },
+};
+
+/** 레일 1개. v: a | b | d, open: 펼침, pressed: 언어 팝오버 열림, lang: ko | en */
+function rail(v, open, pressed, lang) {
+  const t = L[lang];
+  const langRow = v === "a" ? `
+      <div class="row">${pressed ? `<span class="bar"></span>` : ""}<span class="box tool${pressed ? " on" : ""}">${ICON.globe}</span><span class="lb${pressed ? " on" : ""}">${t.lang}</span><span class="val">${t.cur}</span></div>` : "";
+  const acctPressed = v === "b" && pressed;
+  // 팝오버 아래끝 = 누른 줄의 아래끝. 레일 아래 여백 10, 줄 40, 간격 5
+  const popBottom = v === "a" ? 10 + 45 + 45 : 10;
+  const pop = pressed ? `
+    <div class="pop" style="bottom:${popBottom}px">
+      <div class="ph">${t.lang}</div>
+      <div class="opt${lang === "ko" ? " on" : ""}">한국어${lang === "ko" ? ICON.check : ""}</div>
+      <div class="opt${lang === "en" ? " on" : ""}${lang === "ko" ? " hov" : ""}">English${lang === "en" ? ICON.check : ""}</div>
+    </div>` : "";
+  return `
+    <div class="stage"><div class="rail${open ? " open" : ""}">
+      <div class="logo"><i></i><b>tab<span>lign</span></b></div>
+      <div class="div"></div>
+      <div class="row"><span class="bar"></span><span class="box emo" style="background:linear-gradient(#ffc83d,#f5a623)">🏠</span><span class="lb on">${t.personal}</span></div>
+      <div class="row"><span class="box emo" style="background:#fff3bf">🚀</span><span class="lb">${t.team}</span></div>
+      <div class="row"><span class="box add">+</span><span class="lb faint">${t.create}</span></div>
+      <div style="flex:1"></div>
+      <div class="div"></div>
+      <div class="row"><span class="box tool">${v === "d" ? ICON.gear : ICON.palette}</span><span class="lb">${v === "d" ? t.settings : t.theme}</span></div>${langRow}
+      <div class="row"><span class="box tool">${ICON.mail}</span><span class="lb">${t.inbox}</span></div>
+      <div class="row">${acctPressed ? `<span class="bar"></span>` : ""}<span class="ava${acctPressed ? " on" : ""}"></span><span class="lb">jina@example.com</span><span class="out">${ICON.out}</span></div>
+    </div>${pop}</div>`;
+}
+
+function railFrames(v) {
+  const items = [
+    ["펼침", rail(v, true, false, "ko")],
+    [v === "a" ? "언어 줄을 누른 뒤" : "계정 줄을 누른 뒤", rail(v, false, true, "ko")],
+    ["English로 바꾼 뒤 · 펼침", rail(v, true, false, "en")],
+  ];
+  document.getElementById(v).innerHTML = items.map(([c, h]) => `<div><div class="cap">${c}</div>${h}</div>`).join("");
+}
+
+const ACCENTS = ["#3B5BDB", "#2563EB", "#0369A1", "#0F766E", "#15803D", "#C2410C", "#DB2777", "#7C3AED", "#475569"];
+function panel(lang) {
+  const ko = lang === "ko";
+  const seg = (items, on) => `<div class="seg">${items.map((s, i) => `<b class="${i === on ? "on" : ""}">${s}</b>`).join("")}</div>`;
+  return `
+    <div class="panel">
+      <div class="ph-head"><span><span class="ic">${ICON.palette}</span><strong>${ko ? "테마" : "Theme"}</strong></span><span class="x">${ICON.x}</span></div>
+      <div class="sec"><div class="sl">${ko ? "모드" : "Mode"}</div>${seg(ko ? ["라이트", "다크", "시스템"] : ["Light", "Dark", "System"], 2)}</div>
+      <div class="sec"><div class="sl">${ko ? "강조색" : "Accent"}<em>${ko ? "인디고" : "Indigo"}</em></div>
+        <div class="sw">${ACCENTS.map((h, i) => `<i class="${i === 0 ? "on" : ""}" style="background:${h}"></i>`).join("")}</div></div>
+      <div class="sec"><div class="sl">${ko ? "배경" : "Background"}</div>${seg(ko ? ["없음", "단색", "그라데이션", "사진"] : ["None", "Solid", "Gradient", "Photo"], 2)}<div class="grad"></div></div>
+      <div class="reset">${ko ? "기본으로 되돌리기" : "Reset to default"}</div>
+      <div class="pdiv"></div>
+      <div class="sec" style="padding-bottom:14px"><div class="sl">${ko ? "언어" : "Language"}</div>${seg(["한국어", "English"], ko ? 0 : 1)}</div>
+    </div>`;
+}
+document.getElementById("c").innerHTML = [["테마 패널", panel("ko")], ["English로 바꾼 뒤", panel("en")]]
+  .map(([c, h]) => `<div><div class="cap">${c}</div>${h}</div>`).join("");
+
+/** D안 설정 패널 — 언어 묶음이 맨 위, 테마 묶음이 그 아래 */
+function settingsPanel(lang) {
+  const ko = lang === "ko";
+  const seg = (items, on) => `<div class="seg">${items.map((s, i) => `<b class="${i === on ? "on" : ""}">${s}</b>`).join("")}</div>`;
+  return `
+    <div class="panel">
+      <div class="ph-head"><span><span class="ic">${ICON.gear}</span><strong>${ko ? "설정" : "Settings"}</strong></span><span class="x">${ICON.x}</span></div>
+      <div class="grp">${ko ? "언어" : "Language"}</div>
+      <div class="sec" style="padding-bottom:14px">${seg(["한국어", "English"], ko ? 0 : 1)}</div>
+      <div class="pdiv"></div>
+      <div class="grp">${ko ? "테마" : "Theme"}</div>
+      <div class="sec"><div class="sl">${ko ? "모드" : "Mode"}</div>${seg(ko ? ["라이트", "다크", "시스템"] : ["Light", "Dark", "System"], 2)}</div>
+      <div class="sec"><div class="sl">${ko ? "강조색" : "Accent"}<em>${ko ? "인디고" : "Indigo"}</em></div>
+        <div class="sw">${ACCENTS.map((h, i) => `<i class="${i === 0 ? "on" : ""}" style="background:${h}"></i>`).join("")}</div></div>
+      <div class="sec"><div class="sl">${ko ? "배경" : "Background"}</div>${seg(ko ? ["없음", "단색", "그라데이션", "사진"] : ["None", "Solid", "Gradient", "Photo"], 2)}<div class="grad"></div></div>
+      <div class="reset">${ko ? "기본으로 되돌리기" : "Reset to default"}</div>
+    </div>`;
+}
+document.getElementById("d").innerHTML = [["레일 펼침", rail("d", true, false, "ko")], ["설정 패널", settingsPanel("ko")], ["English로 바꾼 뒤", settingsPanel("en")]]
+  .map(([c, h]) => `<div><div class="cap">${c}</div>${h}</div>`).join("");
+
+railFrames("a"); railFrames("b");
+</script>
+</body>
+</html>

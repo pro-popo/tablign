@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { directSourceId, looseSourceId, type SourceNode } from "@tablign/core";
 import { ImportBookmarksDialog } from "../ImportBookmarksDialog";
+import { setLocale } from "../i18n";
 
 const link = (id: string, url: string, title = id): SourceNode => ({ id, title, url });
 
@@ -32,6 +33,14 @@ function open(overrides: Partial<React.ComponentProps<typeof ImportBookmarksDial
 const railOf = (id: string) => screen.getByTestId(`rail-${id}`);
 
 describe("ImportBookmarksDialog", () => {
+  afterEach(() => setLocale("ko"));
+
+  it("언어를 바꾸면 열린 미리보기의 공유 폴더 제목도 바로 바뀐다", () => {
+    open();
+    act(() => setLocale("en"));
+    expect(screen.getByTestId(`col-${directSourceId("dev")}`)).toHaveTextContent("Folder links");
+  });
+
   it("레일에 모든 스페이스를, 보드에는 첫 스페이스의 컬렉션만 보여준다", () => {
     open();
     expect(railOf("dev")).toBeInTheDocument();
