@@ -1,7 +1,7 @@
 import { useDroppable, useDndContext } from "@dnd-kit/core";
 import { SortableContext, useSortable, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { LinkCard, theme } from "@tablign/ui";
+import { LinkCard, theme, useT } from "@tablign/ui";
 import type { Link } from "@tablign/core";
 
 const GRID: React.CSSProperties = {
@@ -65,6 +65,7 @@ export interface DndLinkListProps {
 }
 
 export function DndLinkList({ collectionId, links, onOpenLink, onDeleteLink, onUpdateLink, readOnly }: DndLinkListProps) {
+  const t = useT();
   // 빈 컬렉션에도 드롭할 수 있도록 컨테이너 자체를 droppable로. (강조 점선은 CollectionSection이 담당)
   const { setNodeRef } = useDroppable({ id: `container:${collectionId}`, data: { kind: "container", collectionId } });
 
@@ -73,7 +74,7 @@ export function DndLinkList({ collectionId, links, onOpenLink, onDeleteLink, onU
       <div style={GRID}>
         {links.length === 0 ? (
           <div style={{ gridColumn: "1 / -1", minHeight: 72, border: `1.5px dashed ${theme.border}`, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", color: theme.textFaint, fontSize: 12 }}>
-            여기로 탭을 드래그해 추가하세요
+            {t.dndLinkList.dropHere}
           </div>
         ) : (
           links.map((l) => (
@@ -89,7 +90,7 @@ export function DndLinkList({ collectionId, links, onOpenLink, onDeleteLink, onU
       <div ref={setNodeRef} style={GRID}>
         {links.length === 0 ? (
           <div style={{ gridColumn: "1 / -1", minHeight: 72, border: `1.5px dashed ${theme.border}`, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", color: theme.textFaint, fontSize: 12 }}>
-            여기로 탭을 드래그해 추가하세요
+            {t.dndLinkList.dropHere}
           </div>
         ) : (
           links.map((l) => (

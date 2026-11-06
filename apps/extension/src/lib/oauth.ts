@@ -1,3 +1,4 @@
+import { getT } from "@tablign/ui";
 import { supabase } from "./supabase";
 
 /** chrome.identity가 돌려준 redirect URL에서 OAuth code 추출. 없으면 null. */
@@ -27,7 +28,7 @@ export async function signInWithGoogle(): Promise<string | undefined> {
     },
   });
   if (error) return error.message;
-  if (!data?.url) return "로그인 URL을 받지 못했습니다";
+  if (!data?.url) return getT().oauth.noUrl;
 
   let resultUrl: string | undefined;
   try {
@@ -36,11 +37,11 @@ export async function signInWithGoogle(): Promise<string | undefined> {
     const msg = e instanceof Error ? e.message : "";
     // 사용자가 구글 창을 닫거나 취소한 경우: 에러로 표시하지 않음
     if (/did not approve|cancel|closed/i.test(msg)) return undefined;
-    return msg || "구글 인증에 실패했습니다";
+    return msg || getT().oauth.googleFailed;
   }
 
   const code = extractCodeFromRedirect(resultUrl);
-  if (!code) return "인증 코드를 받지 못했습니다";
+  if (!code) return getT().oauth.noCode;
 
   const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
   if (exErr) return exErr.message;

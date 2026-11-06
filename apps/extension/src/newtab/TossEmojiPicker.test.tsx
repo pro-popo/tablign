@@ -4,11 +4,11 @@ import { TossEmojiPicker } from "./TossEmojiPicker";
 
 vi.mock("./tossEmoji", () => ({
   buildTossCategories: () => [
-    { id: "people", label: "스마일리 & 사람", tab: "😀", items: [
+    { id: "people", tab: "😀", items: [
       { native: "😀", name: "Grinning", search: "smile happy grinning" },
       { native: "😅", name: "Sweat Smile", search: "sweat grin" },
     ] },
-    { id: "nature", label: "동물 & 자연", tab: "🐻", items: [
+    { id: "nature", tab: "🐻", items: [
       { native: "🐶", name: "Dog", search: "dog puppy" },
     ] },
   ],

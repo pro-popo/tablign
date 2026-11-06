@@ -42,3 +42,4 @@ export * from "./ColorGradientPicker";
 export * from "./color";
 export * from "./colorValue";
 export * from "./overlayAnimation";
+export * from "./i18n";

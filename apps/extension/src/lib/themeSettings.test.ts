@@ -1,3 +1,4 @@
+import { getT } from "@tablign/ui";
 import { describe, it, expect, beforeEach } from "vitest";
 import { normalizeTheme, DEFAULT_THEME, accentHex, isDarkTheme, readThemeCache, writeThemeCache, THEME_CACHE_KEY, ACCENT_PRESETS, SAMPLE_PHOTOS } from "./themeSettings";
 
@@ -73,7 +74,8 @@ describe("캐시", () => {
 
 describe("예시 사진", () => {
   it("계절 순으로 놓이고, 목록에 있는 예시만 받는다", () => {
-    expect(Object.values(SAMPLE_PHOTOS).map((p) => p.name)).toEqual(["벚꽃", "바다", "산", "노을", "운해", "설경", "오로라", "밤하늘"]);
+    const photos = getT().themeSettings.photos;
+    expect((Object.keys(SAMPLE_PHOTOS) as (keyof typeof photos)[]).map((k) => photos[k])).toEqual(["벚꽃", "바다", "산", "노을", "운해", "설경", "오로라", "밤하늘"]);
     const withSource = (source: unknown) => normalizeTheme({ background: { kind: "photo", photo: { source } } }).background.photo.source;
     expect(withSource("aurora")).toBe("aurora");
     expect(withSource("upload")).toBe("upload");

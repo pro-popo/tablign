@@ -6,8 +6,6 @@ import type {
 // 타입은 ./types가 단일 출처다. 여기서 재수출하면 index.ts가 두 모듈을
 // 모두 export할 때 같은 이름이 두 번 나와 TS2308이 난다.
 
-/** 폴더에 직접 들어있던 링크가 모이는 컬렉션 이름. */
-export const SHARED_COLLECTION_TITLE = "공유 폴더";
 /** 한 번에 가져올 수 있는 링크 상한. */
 export const MAX_IMPORT_LINKS = 2000;
 /** 이 개수를 넘는 1단 폴더는 기본 해제("나중에 읽기" 같은 묘지). */
@@ -68,7 +66,7 @@ function directLinks(folder: SourceNode): PlannedLink[] {
  * - 루트 직속 링크 = 루트 이름의 스페이스 + `공유 폴더` 하나(키는 `<루트id>:loose`)
  * - 링크가 0개인 컬렉션, 컬렉션이 0개인 스페이스는 만들지 않는다
  */
-export function outlineSpaces(roots: SourceNode[]): PlannedSpace[] {
+export function outlineSpaces(roots: SourceNode[], sharedTitle: string): PlannedSpace[] {
   const spaces: PlannedSpace[] = [];
 
   for (const root of roots) {
@@ -94,7 +92,7 @@ export function outlineSpaces(roots: SourceNode[]): PlannedSpace[] {
       const own = directLinks(child);
       if (own.length) {
         collections.push({
-          sourceId: directSourceId(child.id), title: SHARED_COLLECTION_TITLE,
+          sourceId: directSourceId(child.id), title: sharedTitle,
           synthetic: true, links: own,
         });
       }
@@ -111,7 +109,7 @@ export function outlineSpaces(roots: SourceNode[]): PlannedSpace[] {
       spaces.push({
         sourceId: id, name: root.title,
         collections: [{
-          sourceId: id, title: SHARED_COLLECTION_TITLE, synthetic: true, links: loose,
+          sourceId: id, title: sharedTitle, synthetic: true, links: loose,
         }],
       });
     }
@@ -138,7 +136,7 @@ function tally(spaces: PlannedSpace[]): ImportPlan["totals"] {
 export function planImport(roots: SourceNode[], config: ImportConfig): ImportPlan {
   const spaces: PlannedSpace[] = [];
 
-  for (const sp of outlineSpaces(roots)) {
+  for (const sp of outlineSpaces(roots, config.sharedTitle)) {
     const collections = sp.collections.filter((c) => !!config.enabled[c.sourceId]);
     if (collections.length) spaces.push({ ...sp, collections });
   }
@@ -166,7 +164,8 @@ export function defaultEnabled(roots: SourceNode[]): Record<string, boolean> {
   }
 
   const enabled: Record<string, boolean> = {};
-  for (const sp of outlineSpaces(roots)) {
+  // 키만 쓰므로 제목은 상관없다
+  for (const sp of outlineSpaces(roots, "")) {
     const on = bySpace.get(sp.sourceId) ?? false;
     for (const c of sp.collections) enabled[c.sourceId] = on;
   }

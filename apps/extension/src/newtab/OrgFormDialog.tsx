@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker, ColorGradientPicker } from "@tablign/ui";
+import { theme, Button, overlayAnimationCss, overlayIn, panelIn, ColorPicker, ColorGradientPicker, useT } from "@tablign/ui";
 import { PERSONAL_DEFAULT_ICON, PERSONAL_DEFAULT_COLOR, ORG_ICON_FONT } from "./orgIcon";
 import { OrgIconBox } from "./OrgIconBox";
 import { TossEmojiPicker } from "./TossEmojiPicker";
@@ -74,6 +74,7 @@ function computePlacement(triggerRef: React.RefObject<HTMLElement | null>, neede
 }
 
 export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit, onClose }: OrgFormDialogProps) {
+  const t = useT();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<string>(() =>
     mode === "edit" ? (initial?.icon ?? (personal ? PERSONAL_DEFAULT_ICON : randomIcon())) : randomIcon(),
@@ -175,8 +176,8 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
 
   if (!open) return null;
 
-  const title = mode === "create" ? "새 조직 만들기" : "프로필 설정";
-  const submitLabel = mode === "create" ? "만들기" : "저장";
+  const title = mode === "create" ? t.orgFormDialog.createTitle : t.orgFormDialog.profileTitle;
+  const submitLabel = mode === "create" ? t.orgFormDialog.create : t.common.save;
   // 커스텀 색 슬롯 표시 여부는 "기억된 커스텀 색"(customColor)으로 결정한다 — 프리셋을 골라도 유지됨.
   // 선택 링은 현재 선택색이 그 커스텀 색과 같을 때만 켠다.
   // 커스텀 색은 단색·그라데이션 중 한 종류만 기억(customColor). 종류에 따라 해당 줄의 슬롯에만 표시.
@@ -242,7 +243,7 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
           {personal ? (
             <span style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{name}</span>
           ) : (
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="조직 이름" autoFocus
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.orgFormDialog.namePlaceholder} autoFocus
               style={{ flex: 1, padding: "9px 11px", border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
           )}
         </div>
@@ -252,7 +253,7 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
 
           {/* 이모지 — 대표 칩 + ＋(토스 피커). 색상 행과 동일 구조. */}
           <div style={{ padding: "11px 0" }}>
-            <div style={rowLabel}>이모지</div>
+            <div style={rowLabel}>{t.orgFormDialog.emoji}</div>
             <div ref={emojiWrapRef} style={{ position: "relative", display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6 }}>
               {PRESET_EMOJIS.map((e) => (
                 <button key={e} type="button" aria-label={e} onClick={() => { setIcon(e); setEmojiOpen(false); }}
@@ -260,10 +261,10 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
               ))}
               {hasCustomEmoji ? (
                 // 기억된(대표 외) 이모지 슬롯 — 클릭 = 선택, 안쪽 그리드 배지 = 토스 피커 전체 열기.
-                <button type="button" aria-label={`이모지 ${customEmoji}`} onClick={() => { setIcon(customEmoji as string); setEmojiOpen(false); }}
+                <button type="button" aria-label={t.orgFormDialog.emojiLabel(customEmoji as string)} onClick={() => { setIcon(customEmoji as string); setEmojiOpen(false); }}
                   style={{ position: "relative", ...(customEmojiSelected ? { ...emojiChip, ...emojiChipSel } : emojiChip) }}>
                   {customEmoji}
-                  <span role="button" aria-label="이모지 전체 선택" title="이모지 전체"
+                  <span role="button" aria-label={t.orgFormDialog.allEmoji} title={t.orgFormDialog.allEmojiTitle}
                     onClick={(e) => { e.stopPropagation(); setEmojiOpen((o) => !o); setColorEditor(null); }}
                     style={{ position: "absolute", right: -3, bottom: -3, width: 12, height: 12, borderRadius: "50%", background: theme.accent,
                       boxShadow: `0 0 0 1.5px ${theme.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -271,7 +272,7 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
                   </span>
                 </button>
               ) : (
-                <button type="button" aria-label="이모지 전체 선택" onClick={() => { setEmojiOpen((o) => !o); setColorEditor(null); }} style={plusChip}>＋</button>
+                <button type="button" aria-label={t.orgFormDialog.allEmoji} onClick={() => { setEmojiOpen((o) => !o); setColorEditor(null); }} style={plusChip}>＋</button>
               )}
 
               {/* 토스 피커 팝오버 — 이모지 행에 앵커. */}
@@ -298,7 +299,7 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
           {/* 색상 — 단색 줄 / 그라데이션 줄 (각 줄에 프리셋 + 커스텀 슬롯). */}
           <div style={{ padding: "11px 0" }}>
             {/* 단색 */}
-            <div style={rowLabel}>단색</div>
+            <div style={rowLabel}>{t.orgFormDialog.solid}</div>
             <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6 }}>
               {SWATCHES.map((s) => (
                 <button key={s} type="button" aria-label={s} onClick={() => { setColor(s); setColorEditor(null); }}
@@ -310,19 +311,19 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
               {/* 단색 커스텀 슬롯 → ColorPicker */}
               <div ref={solidWrapRef} style={{ position: "relative", flex: "none", display: "flex", alignItems: "center" }}>
                 {hasCustomSolid ? (
-                  <button type="button" aria-label={`커스텀 색 ${customColor}`}
+                  <button type="button" aria-label={t.orgFormDialog.customColor(customColor as string)}
                     onClick={() => { setColor(customColor as string); setColorEditor(null); }}
                     style={{ position: "relative", width: 24, height: 24, borderRadius: 7, flex: "none",
                       border: `1px solid ${customSolidSelected ? "transparent" : "rgba(0,0,0,.08)"}`,
                       boxShadow: customSolidSelected ? `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${customColor}` : "none",
                       background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
-                    <span role="button" aria-label="커스텀 색 수정" title="색 수정"
+                    <span role="button" aria-label={t.orgFormDialog.editCustomColor} title={t.orgFormDialog.editColor}
                       onClick={(e) => { e.stopPropagation(); openColorEditor("solid", customColor as string); }}
                       style={{ position: "absolute", right: -1.5, bottom: -1.5, width: 12, height: 12, borderRadius: "50%",
                         background: rainbowGradient, boxShadow: "0 0 0 1px rgba(255,255,255,.9)", cursor: "pointer" }} />
                   </button>
                 ) : (
-                  <button type="button" aria-label="색상 직접 선택" onClick={() => openColorEditor("solid")}
+                  <button type="button" aria-label={t.orgFormDialog.pickColor} onClick={() => openColorEditor("solid")}
                     style={{ width: 24, height: 24, borderRadius: 7, border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint,
                       cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
                     ＋
@@ -338,7 +339,7 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
                     </div>
                     <ColorPicker value={colorDraft} onChange={setColorDraft} />
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
-                      <Button onClick={applyColorDraft}>확인</Button>
+                      <Button onClick={applyColorDraft}>{t.common.confirm}</Button>
                     </div>
                   </div>
                 )}
@@ -346,10 +347,10 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
             </div>
 
             {/* 그라데이션 */}
-            <div style={{ ...rowLabel, marginTop: 13 }}>그라데이션</div>
+            <div style={{ ...rowLabel, marginTop: 13 }}>{t.orgFormDialog.gradient}</div>
             <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6 }}>
               {GRADIENT_PRESETS.map((g, i) => (
-                <button key={g} type="button" aria-label={`그라데이션 ${i + 1}`} onClick={() => { setColor(g); setColorEditor(null); }}
+                <button key={g} type="button" aria-label={t.orgFormDialog.gradientN(i + 1)} onClick={() => { setColor(g); setColorEditor(null); }}
                   style={{ width: 24, height: 24, borderRadius: 7, flex: "none",
                     border: color === g ? "none" : "1px solid rgba(0,0,0,.08)",
                     boxShadow: color === g ? `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${theme.accent}` : "none",
@@ -358,19 +359,19 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
               {/* 그라데이션 커스텀 슬롯 → ColorGradientPicker */}
               <div ref={gradWrapRef} style={{ position: "relative", flex: "none", display: "flex", alignItems: "center" }}>
                 {hasCustomGradient ? (
-                  <button type="button" aria-label="커스텀 그라데이션"
+                  <button type="button" aria-label={t.orgFormDialog.customGradient}
                     onClick={() => { setColor(customColor as string); setColorEditor(null); }}
                     style={{ position: "relative", width: 24, height: 24, borderRadius: 7, flex: "none",
                       border: `1px solid ${customGradientSelected ? "transparent" : "rgba(0,0,0,.08)"}`,
                       boxShadow: customGradientSelected ? `0 0 0 1.5px ${theme.surface}, 0 0 0 3px ${theme.accent}` : "none",
                       background: customColor as string, cursor: "pointer", padding: 0, boxSizing: "border-box" }}>
-                    <span role="button" aria-label="커스텀 그라데이션 수정" title="그라데이션 수정"
+                    <span role="button" aria-label={t.orgFormDialog.editCustomGradient} title={t.orgFormDialog.editGradient}
                       onClick={(e) => { e.stopPropagation(); openColorEditor("gradient", customColor as string); }}
                       style={{ position: "absolute", right: -1.5, bottom: -1.5, width: 12, height: 12, borderRadius: "50%",
                         background: rainbowGradient, boxShadow: "0 0 0 1px rgba(255,255,255,.9)", cursor: "pointer" }} />
                   </button>
                 ) : (
-                  <button type="button" aria-label="그라데이션 직접 선택" onClick={() => openColorEditor("gradient")}
+                  <button type="button" aria-label={t.orgFormDialog.pickGradient} onClick={() => openColorEditor("gradient")}
                     style={{ width: 24, height: 24, borderRadius: 7, border: `1px dashed ${theme.textFaint}`, background: theme.surface, color: theme.textFaint,
                       cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>
                     ＋
@@ -386,7 +387,7 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
                     </div>
                     <ColorGradientPicker value={colorDraft} onChange={setColorDraft} />
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
-                      <Button onClick={applyColorDraft}>확인</Button>
+                      <Button onClick={applyColorDraft}>{t.common.confirm}</Button>
                     </div>
                   </div>
                 )}
@@ -399,42 +400,42 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
           {/* 크기·위치 — 아이콘 슬라이더 3개(크기/좌우/상하). */}
           <div style={{ padding: "11px 0" }}>
             <div style={{ ...rowLabel, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
-              <span>크기·위치</span>
-              <button type="button" title="초기화" aria-label="크기·위치 초기화" onClick={() => { setIconScale(100); setIconX(0); setIconY(0); }}
+              <span>{t.orgFormDialog.sizePosition}</span>
+              <button type="button" title={t.orgFormDialog.reset} aria-label={t.orgFormDialog.resetLabel} onClick={() => { setIconScale(100); setIconX(0); setIconY(0); }}
                 style={{ border: "none", background: "none", cursor: "pointer", color: theme.textFaint, display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10.5, fontWeight: 400, padding: 0 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-                초기화
+                {t.orgFormDialog.reset}
               </button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {/* 크기: 상자 + 대각 화살표 */}
               <div className="tbl-srow" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={sliderIcon} title="크기"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="13" width="7" height="7" rx="1.3"/><path d="M11.5 12.5L19 5"/><path d="M13.5 5H19v5.5"/></svg></span>
+                <span style={sliderIcon} title={t.orgFormDialog.size}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="13" width="7" height="7" rx="1.3"/><path d="M11.5 12.5L19 5"/><path d="M13.5 5H19v5.5"/></svg></span>
                 <input type="range" min={ICON_SCALE_MIN} max={ICON_SCALE_MAX} value={iconScale} onChange={(e) => setIconScale(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
                 <span style={{ display: "flex", alignItems: "center", flex: "none" }}>
-                  <button type="button" className="tbl-b" aria-label="크기 감소" onClick={() => setIconScale((v) => clamp(v - 1, ICON_SCALE_MIN, ICON_SCALE_MAX))}>−</button>
+                  <button type="button" className="tbl-b" aria-label={t.orgFormDialog.sizeDown} onClick={() => setIconScale((v) => clamp(v - 1, ICON_SCALE_MIN, ICON_SCALE_MAX))}>−</button>
                   <span style={{ minWidth: 34, textAlign: "center", fontSize: 10.5, color: theme.text, fontVariantNumeric: "tabular-nums" }}>{iconScale}%</span>
-                  <button type="button" className="tbl-b" aria-label="크기 증가" onClick={() => setIconScale((v) => clamp(v + 1, ICON_SCALE_MIN, ICON_SCALE_MAX))}>+</button>
+                  <button type="button" className="tbl-b" aria-label={t.orgFormDialog.sizeUp} onClick={() => setIconScale((v) => clamp(v + 1, ICON_SCALE_MIN, ICON_SCALE_MAX))}>+</button>
                 </span>
               </div>
               {/* 좌우: 원 + 뻗는 화살표(안2) */}
               <div className="tbl-srow" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={sliderIcon} title="좌우"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M8.6 12H3"/><path d="M5.5 9.5L3 12l2.5 2.5"/><path d="M15.4 12H21"/><path d="M18.5 9.5L21 12l-2.5 2.5"/></svg></span>
+                <span style={sliderIcon} title={t.orgFormDialog.horizontal}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M8.6 12H3"/><path d="M5.5 9.5L3 12l2.5 2.5"/><path d="M15.4 12H21"/><path d="M18.5 9.5L21 12l-2.5 2.5"/></svg></span>
                 <input type="range" min={-ICON_OFFSET_MAX} max={ICON_OFFSET_MAX} value={iconX} onChange={(e) => setIconX(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
                 <span style={{ display: "flex", alignItems: "center", flex: "none" }}>
-                  <button type="button" className="tbl-b" aria-label="좌우 감소" onClick={() => setIconX((v) => clamp(v - 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>−</button>
+                  <button type="button" className="tbl-b" aria-label={t.orgFormDialog.horizontalDown} onClick={() => setIconX((v) => clamp(v - 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>−</button>
                   <span style={{ minWidth: 34, textAlign: "center", fontSize: 10.5, color: theme.text, fontVariantNumeric: "tabular-nums" }}>{iconX}</span>
-                  <button type="button" className="tbl-b" aria-label="좌우 증가" onClick={() => setIconX((v) => clamp(v + 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>+</button>
+                  <button type="button" className="tbl-b" aria-label={t.orgFormDialog.horizontalUp} onClick={() => setIconX((v) => clamp(v + 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>+</button>
                 </span>
               </div>
               {/* 상하: 원 + 뻗는 화살표(안2) */}
               <div className="tbl-srow" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={sliderIcon} title="상하"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 8.6V3"/><path d="M9.5 5.5L12 3l2.5 2.5"/><path d="M12 15.4V21"/><path d="M9.5 18.5L12 21l2.5-2.5"/></svg></span>
+                <span style={sliderIcon} title={t.orgFormDialog.vertical}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 8.6V3"/><path d="M9.5 5.5L12 3l2.5 2.5"/><path d="M12 15.4V21"/><path d="M9.5 18.5L12 21l2.5-2.5"/></svg></span>
                 <input type="range" min={-ICON_OFFSET_MAX} max={ICON_OFFSET_MAX} value={iconY} onChange={(e) => setIconY(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
                 <span style={{ display: "flex", alignItems: "center", flex: "none" }}>
-                  <button type="button" className="tbl-b" aria-label="상하 감소" onClick={() => setIconY((v) => clamp(v - 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>−</button>
+                  <button type="button" className="tbl-b" aria-label={t.orgFormDialog.verticalDown} onClick={() => setIconY((v) => clamp(v - 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>−</button>
                   <span style={{ minWidth: 34, textAlign: "center", fontSize: 10.5, color: theme.text, fontVariantNumeric: "tabular-nums" }}>{iconY}</span>
-                  <button type="button" className="tbl-b" aria-label="상하 증가" onClick={() => setIconY((v) => clamp(v + 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>+</button>
+                  <button type="button" className="tbl-b" aria-label={t.orgFormDialog.verticalUp} onClick={() => setIconY((v) => clamp(v + 1, -ICON_OFFSET_MAX, ICON_OFFSET_MAX))}>+</button>
                 </span>
               </div>
             </div>
@@ -442,7 +443,7 @@ export function OrgFormDialog({ open, mode, initial, personal = false, onSubmit,
         </div>
 
         <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <Button variant="outline" onClick={onClose}>취소</Button>
+          <Button variant="outline" onClick={onClose}>{t.common.cancel}</Button>
           <Button onClick={submit} disabled={!name.trim()}>{submitLabel}</Button>
         </div>
       </div>

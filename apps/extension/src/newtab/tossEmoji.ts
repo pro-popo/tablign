@@ -5,17 +5,19 @@ import emojiData from "@emoji-mart/data";
  *  선언한 범위 밖 글리프는 시스템 이모지로 fallback될 수 있다(실무상 잔여 불일치는 작음). */
 const MAX_VERSION = 14;
 
-/** 카테고리 id → 한글 라벨 + 대표 탭 이모지. 여기 없는 카테고리(frequent 등)는 제외된다. */
-const CAT_META: Record<string, { label: string; tab: string }> = {
-  people: { label: "스마일리 & 사람", tab: "😀" },
-  nature: { label: "동물 & 자연", tab: "🐻" },
-  foods: { label: "음식 & 음료", tab: "🍔" },
-  activity: { label: "활동", tab: "⚽" },
-  places: { label: "여행 & 장소", tab: "✈️" },
-  objects: { label: "사물", tab: "💡" },
-  symbols: { label: "기호", tab: "❤️" },
-  flags: { label: "깃발", tab: "🏳️" },
+/** 카테고리 id → 대표 탭 이모지. 여기 없는 카테고리(frequent 등)는 제외된다. 이름은 사전 tossEmoji.categories */
+const CAT_TABS = {
+  people: "😀",
+  nature: "🐻",
+  foods: "🍔",
+  activity: "⚽",
+  places: "✈️",
+  objects: "💡",
+  symbols: "❤️",
+  flags: "🏳️",
 };
+export type TossCategoryId = keyof typeof CAT_TABS;
+const isCategoryId = (id: string): id is TossCategoryId => id in CAT_TABS;
 
 export interface TossEmoji {
   native: string;
@@ -24,8 +26,7 @@ export interface TossEmoji {
   search: string;
 }
 export interface TossCategory {
-  id: string;
-  label: string;
+  id: TossCategoryId;
   tab: string;
   items: TossEmoji[];
 }
@@ -46,8 +47,7 @@ export function buildTossCategories(data: unknown = emojiData): TossCategory[] {
   const d = data as RawData;
   const out: TossCategory[] = [];
   for (const c of d.categories ?? []) {
-    const meta = CAT_META[c.id];
-    if (!meta) continue;
+    if (!isCategoryId(c.id)) continue;
     const items: TossEmoji[] = [];
     for (const id of c.emojis ?? []) {
       const e = d.emojis?.[id];
@@ -57,7 +57,7 @@ export function buildTossCategories(data: unknown = emojiData): TossCategory[] {
       const search = `${(e?.keywords ?? []).join(" ")} ${e?.name ?? ""}`.toLowerCase();
       items.push({ native, name: e?.name ?? id, search });
     }
-    if (items.length) out.push({ id: c.id, label: meta.label, tab: meta.tab, items });
+    if (items.length) out.push({ id: c.id, tab: CAT_TABS[c.id], items });
   }
   return out;
 }

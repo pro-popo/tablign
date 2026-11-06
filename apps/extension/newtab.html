@@ -5,6 +5,12 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png" />
     <link rel="stylesheet" href="/fonts/tossface/tossface.css" />
+    <style>
+      /* 줄 높이를 비워 두면(normal) 한글은 대체 글꼴의 높은 줄을 써서 영어보다 1~2px 높아진다.
+         한글 기본 줄 높이 비율로 정해 두 언어의 높이를 같게 하고, 버튼·입력도 물려받게 한다. */
+      body { line-height: 1.265 }
+      button, input, select, textarea { line-height: inherit }
+    </style>
     <title>tablign</title>
   </head>
   <body style="margin: 0; font-family: sans-serif;">

@@ -2,14 +2,15 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { useState } from "react";
 import { ThemePanel } from "./ThemePanel";
-import { DEFAULT_THEME, ACCENT_PRESETS, type ThemeSettings } from "../lib/themeSettings";
+import { getT } from "@tablign/ui";
+import { DEFAULT_THEME, type ThemeSettings } from "../lib/themeSettings";
 
-function Harness({ initial = DEFAULT_THEME, onClose = () => {}, spy, onPreview, onUpload, uploadState, uploadUrl }: {
-  initial?: ThemeSettings; onClose?: () => void; spy?: (s: ThemeSettings) => void; onPreview?: (s: ThemeSettings) => void;
+function Harness({ initial = DEFAULT_THEME, spy, onPreview, onUpload, uploadState, uploadUrl }: {
+  initial?: ThemeSettings; spy?: (s: ThemeSettings) => void; onPreview?: (s: ThemeSettings) => void;
   onUpload?: (f: File) => void; uploadState?: "idle" | "uploading" | "error"; uploadUrl?: string | null;
 }) {
   const [s, setS] = useState(initial);
-  return <ThemePanel settings={s} onChange={(fn) => setS((p) => { const n = fn(p); spy?.(n); return n; })} onClose={onClose}
+  return <ThemePanel settings={s} onChange={(fn) => setS((p) => { const n = fn(p); spy?.(n); return n; })}
     onPreview={onPreview} onUpload={onUpload ?? (() => {})} uploadState={uploadState} uploadUrl={uploadUrl} viewport={[1000, 700]} />;
 }
 
@@ -28,7 +29,7 @@ describe("ThemePanel", () => {
   it("강조색 프리셋을 누르면 그 번호, 이름이 뜬다", () => {
     const spy = vi.fn();
     render(<Harness spy={spy} />);
-    expect(screen.getByText(ACCENT_PRESETS[0].name, { selector: "em" })).toBeInTheDocument();
+    expect(screen.getByText(getT().themeSettings.accents[0], { selector: "em" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "보라" }));
     expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ accent: { preset: 7 } }));
     expect(screen.getByText("보라", { selector: "em" })).toBeInTheDocument();
@@ -43,18 +44,11 @@ describe("ThemePanel", () => {
     expect(screen.getByText("직접 고른 색", { selector: "em" })).toBeInTheDocument();
   });
 
-  it("기본으로 되돌리기는 처음 값으로, 닫기는 onClose", () => {
-    const spy = vi.fn(), onClose = vi.fn();
-    render(<Harness initial={{ ...DEFAULT_THEME, mode: "dark", accent: { custom: "#123456" }, glass: 60 }} spy={spy} onClose={onClose} />);
+  it("기본으로 되돌리기는 테마 묶음 안에 있고, 누르면 처음 값으로", () => {
+    const spy = vi.fn();
+    render(<Harness initial={{ ...DEFAULT_THEME, mode: "dark", accent: { custom: "#123456" }, glass: 60 }} spy={spy} />);
     fireEvent.click(screen.getByRole("button", { name: "기본으로 되돌리기" }));
     expect(spy).toHaveBeenLastCalledWith(DEFAULT_THEME);
-    fireEvent.click(screen.getByRole("button", { name: "테마 닫기" }));
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  it("패널 안에 안내 문구를 두지 않는다", () => {
-    const { container } = render(<Harness />);
-    expect(container.textContent).not.toMatch(/해요|돼요/);
   });
 
   it("배경 종류를 바꿔도 다른 종류의 값은 남는다", () => {

@@ -1,6 +1,6 @@
 import { useRef, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
-import { Search, Favicon, SpaceIcon, theme } from "@tablign/ui";
+import { Search, Favicon, SpaceIcon, theme, useT } from "@tablign/ui";
 import { searchLinks, type LinkSearchResult } from "@tablign/core";
 import { supabase } from "../lib/supabase";
 
@@ -16,6 +16,7 @@ const searchCss = `
 
 /** 보고 있는 조직(orgId) 안의 링크를 찾는다. 조직이 아직 정해지지 않았으면 찾지 않는다. */
 export function ExtSearchBar({ orgId, onSelectSpace }: { orgId: string | null; onSelectSpace: (spaceId: string) => void }) {
+  const t = useT();
   const [q, setQ] = useState("");
   const [focused, setFocused] = useState(false);
   const [res, setRes] = useState<LinkSearchResult[] | null>(null);
@@ -52,7 +53,7 @@ export function ExtSearchBar({ orgId, onSelectSpace }: { orgId: string | null; o
           onChange={(e) => run(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder="탭 검색"
+          placeholder={t.extSearchBar.placeholder}
           style={{ border: "none", background: "none", outline: "none", fontSize: 13, width: "100%", color: theme.text }}
         />
       </div>
@@ -64,7 +65,7 @@ export function ExtSearchBar({ orgId, onSelectSpace }: { orgId: string | null; o
           style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,.12)", padding: 8, zIndex: 30, maxHeight: 320, overflow: "auto" }}
         >
           {res!.length === 0 && (
-            <div style={{ color: theme.textFaint, padding: 6, fontSize: 12 }}>결과 없음</div>
+            <div style={{ color: theme.textFaint, padding: 6, fontSize: 12 }}>{t.extSearchBar.noResults}</div>
           )}
           {res!.map((l) => (
             <div key={l.id} className="tbl-sr-link" style={{ display: "flex", alignItems: "center", borderRadius: 6 }}>

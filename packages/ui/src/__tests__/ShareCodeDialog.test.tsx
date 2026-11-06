@@ -1,10 +1,33 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ShareCodeDialog } from "../ShareCodeDialog";
+import { setLocale } from "../i18n";
 
 function noop() {}
 
 describe("ShareCodeDialog", () => {
+  afterEach(() => setLocale("ko"));
+
+  it("영어로 그리면 만료일도 영어 날짜 형식으로 보인다", () => {
+    setLocale("en");
+    const expires = "2026-12-24T00:00:00Z";
+    render(
+      <ShareCodeDialog open collectionTitle="Docs" issued={{ code: "ABCD2345", expires_at: expires }}
+        onIssue={noop} onRevoke={noop} onClose={noop} />,
+    );
+    expect(screen.getByText(new RegExp(new Date(expires).toLocaleDateString("en").replace(/\//g, "\\/")))).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revoke" })).toBeInTheDocument();
+  });
+
+  it("한국어로 그리면 만료일이 한국어 날짜 형식으로 보인다", () => {
+    const expires = "2026-12-24T00:00:00Z";
+    render(
+      <ShareCodeDialog open collectionTitle="자료" issued={{ code: "ABCD2345", expires_at: expires }}
+        onIssue={noop} onRevoke={noop} onClose={noop} />,
+    );
+    expect(screen.getByText(new Date(expires).toLocaleDateString("ko"), { exact: false })).toBeInTheDocument();
+  });
+
   it("issued가 없으면 만료 선택 화면을 보여주고 발급을 호출한다", () => {
     const onIssue = vi.fn();
     render(<ShareCodeDialog open collectionTitle="자료" issued={null} onIssue={onIssue} onRevoke={noop} onClose={noop} />);

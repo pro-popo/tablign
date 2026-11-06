@@ -33,7 +33,7 @@ function cleanGroupName(name: string | undefined): string {
 export function fromTobyExport(data: unknown): SourceNode[] {
   const groups = (data as { groups?: unknown } | null)?.groups;
   if (!Array.isArray(groups)) {
-    throw new Error("Toby 내보내기 파일이 아니에요");
+    throw new Error("Not a Toby export file");
   }
 
   const children: SourceNode[] = [];

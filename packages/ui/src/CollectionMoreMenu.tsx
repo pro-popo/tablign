@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, ArrowLeft } from "./icons";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 import { SpaceIcon } from "./SpaceIcon";
 
 export interface SpaceOption { id: string; name: string; icon?: string | null }
@@ -19,6 +20,7 @@ export interface CollectionMoreMenuProps {
 
 /** 컬렉션 헤더의 ⋯ 메뉴. 이동/복사 → 스페이스 선택 2단계 팝오버. */
 export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare, onCopyLinks, isPrivate, onTogglePrivate }: CollectionMoreMenuProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"move" | "copy" | null>(null);
   const rootRef = useRef<HTMLSpanElement>(null);
@@ -43,8 +45,8 @@ export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare, onCopyLink
     <span ref={rootRef} style={{ position: "relative", display: "flex" }}>
       <button
         type="button"
-        title="컬렉션 메뉴"
-        aria-label="컬렉션 메뉴"
+        title={t.collectionMoreMenu.menu}
+        aria-label={t.collectionMoreMenu.menu}
         onClick={() => (open ? close() : setOpen(true))}
         style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3, borderRadius: 6 }}
       >
@@ -63,19 +65,19 @@ export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare, onCopyLink
             <>
               {spaces.length > 0 && (
                 <>
-                  <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => setMode("move")}>다른 스페이스로 이동</button>
-                  <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => setMode("copy")}>다른 스페이스에 복사</button>
+                  <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => setMode("move")}>{t.collectionMoreMenu.moveTo}</button>
+                  <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => setMode("copy")}>{t.collectionMoreMenu.copyTo}</button>
                 </>
               )}
               {onCopyLinks && (
-                <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => { onCopyLinks(); close(); }}>링크 전체 복사</button>
+                <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => { onCopyLinks(); close(); }}>{t.collectionMoreMenu.copyLinks}</button>
               )}
               {onShare && (
-                <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => { onShare(); close(); }}>공유 코드</button>
+                <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => { onShare(); close(); }}>{t.collectionMoreMenu.shareCode}</button>
               )}
               {onTogglePrivate && (
                 <button type="button" className="tbl-cmenu-item" style={itemStyle} onClick={() => { onTogglePrivate(); close(); }}>
-                  {isPrivate ? "공개로 전환" : "비공개로 전환"}
+                  {isPrivate ? t.collectionMoreMenu.makePublic : t.collectionMoreMenu.makePrivate}
                 </button>
               )}
             </>
@@ -84,14 +86,14 @@ export function CollectionMoreMenu({ spaces, onMove, onCopy, onShare, onCopyLink
               <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 6px", color: theme.textFaint, fontSize: 12 }}>
                 <button
                   type="button"
-                  title="뒤로"
-                  aria-label="뒤로"
+                  title={t.collectionMoreMenu.back}
+                  aria-label={t.collectionMoreMenu.back}
                   onClick={() => setMode(null)}
                   style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 2 }}
                 >
                   <ArrowLeft size={13} color={theme.textFaint} />
                 </button>
-                {mode === "move" ? "이동할 스페이스" : "복사할 스페이스"}
+                {mode === "move" ? t.collectionMoreMenu.moveTarget : t.collectionMoreMenu.copyTarget}
               </div>
               {spaces.map((s) => (
                 <button key={s.id} type="button" className="tbl-cmenu-item" style={{ ...itemStyle, display: "flex", alignItems: "center", gap: 8 }} onClick={() => pick(s.id)}>

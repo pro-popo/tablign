@@ -32,6 +32,7 @@ export {
   Moon,
   Monitor,
   Palette,
+  Settings,
   Pipette,
   ArrowLeftRight,
   RotateCcw,

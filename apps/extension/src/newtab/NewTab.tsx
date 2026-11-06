@@ -40,7 +40,7 @@ const collisionDetection: CollisionDetection = (args) => {
   });
   return cardHit ? [cardHit] : hits;
 };
-import { AppShell, RightDrawer, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, PendingCollection, ShareCodeDialog, ImportCodeDialog, type ImportCodeInfo, ImportBookmarksDialog, ImportSourceDialog, ExportSpacesDialog, JsonStructurePath, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users, useHoverPeek } from "@tablign/ui";
+import { AppShell, RightDrawer, Board, CollectionSection, CollectionSkeleton, EmptyState, Button, Favicon, theme, Plus, CollectionMoreMenu, useToast, SpaceOnboarding, CollectionOnboarding, AddCollectionButton, PendingCollection, ShareCodeDialog, ImportCodeDialog, type ImportCodeInfo, ImportBookmarksDialog, ImportSourceDialog, ExportSpacesDialog, JsonStructurePath, ConfirmDialog, MemberDialog, InvitationList, MemberAvatars, Users, useHoverPeek, useT, orgDisplayName } from "@tablign/ui";
 import {
   listSpaces, listMyMemberships, leaveSpace, listCollections, listLinks, createLink, createLinks, createCollection, createSpace, moveLink, deleteLink, deleteCollection,
   updateLink, updateCollection, updateSpace, deleteSpace as apiDeleteSpace, sequentialPositions, positionBetween,
@@ -61,7 +61,7 @@ import { OrgSpacePreview } from "./OrgSpacePreview";
 import { useActiveSpace } from "../lib/useActiveSpace";
 import { useActiveOrg } from "../lib/useActiveOrg";
 import { OpenTabsPanel } from "./OpenTabsPanel";
-import { ThemePanel } from "./ThemePanel";
+import { SettingsPanel } from "./SettingsPanel";
 import { useThemeSettings } from "../lib/useThemeSettings";
 import { ExtSidebar } from "./ExtSidebar";
 import { OrgRail } from "./OrgRail";
@@ -80,11 +80,8 @@ interface DragPreview { label: string; faviconUrl: string | null; domain: string
 
 function openUrl(url: string) { chrome.tabs.create({ url }); }
 
-/** 받은 초대 권한 이름 — 스페이스(편집자·뷰어)와 조직(관리자·멤버) 값이 겹치지 않아 한 목록으로 쓴다 */
-const INVITATION_ROLES = [
-  { value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" },
-  { value: "admin", label: "관리자" }, { value: "member", label: "멤버" },
-];
+/** 받은 초대 권한 — 스페이스(편집자·뷰어)와 조직(관리자·멤버) 값이 겹치지 않아 한 목록으로 쓴다. 이름은 그릴 때 사전에서 */
+const INVITATION_ROLES = ["editor", "viewer", "admin", "member"] as const;
 
 const NEW_TAB_PLACEHOLDER = "__newtab__";
 
@@ -146,6 +143,7 @@ function SortableCollection({
 }
 
 export function NewTab() {
+  const t = useT();
   const [session, setSession] = useState<Session | null>(null);
   // 세션 복원(getSession)은 비동기라, 끝나기 전 session=null로 로그인 화면이 깜빡인다.
   // "확인 중"을 별도 상태로 두고 그 동안 렌더를 보류해 깜빡임을 막는다.
@@ -227,7 +225,7 @@ export function NewTab() {
   // 테마 — 기기 캐시로 바로 그리고, 로그인하면 서버와 맞춘다(로그인 화면도 따른다)
   const themeState = useThemeSettings(supabase, session?.user.id ?? null);
   // 테마 서랍 — 레일의 팔레트 버튼으로 연다. 열린 탭 패널과 따로 오른쪽 끝에 떠서, 창 폭이 바뀌어도 그대로다.
-  const [themeOpen, setThemeOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   useEffect(() => {
@@ -352,13 +350,13 @@ export function NewTab() {
     setMembers(ms); setPendingInvites(invs);
   }
   async function handleInvite(email: string, role: string) {
-    try { await inviteToSpace(supabase, activeSpaceId!, email, role as "editor" | "viewer"); toast.show("초대를 보냈어요"); reloadMembers(); }
-    catch (e) { console.error(e); toast.show("초대하지 못했어요. 이미 멤버이거나 잘못된 이메일일 수 있어요."); }
+    try { await inviteToSpace(supabase, activeSpaceId!, email, role as "editor" | "viewer"); toast.show(t.newTab.inviteSent); reloadMembers(); }
+    catch (e) { console.error(e); toast.show(t.newTab.inviteFailed); }
   }
   async function refreshAll() {
     const [sp, ms, invs] = await Promise.all([listSpaces(supabase), listMyMemberships(supabase), listMyInvitations(supabase)]);
     setSpaces(sp); setMemberships(ms); setMyInvitations(invs);
-    toast.show("스페이스에 참여했어요");
+    toast.show(t.newTab.joinedSpace);
   }
 
   async function openOrgMemberDialog() {
@@ -373,15 +371,15 @@ export function NewTab() {
     setOrgMembers(ms); setOrgPendingInvites(invs);
   }
   async function handleOrgInvite(email: string, role: string) {
-    try { await inviteToOrg(supabase, activeOrgId!, email, role as "admin" | "member"); toast.show("초대를 보냈어요"); reloadOrgMembers(); }
-    catch (e) { console.error(e); toast.show("초대하지 못했어요. 이미 멤버이거나 잘못된 이메일일 수 있어요."); }
+    try { await inviteToOrg(supabase, activeOrgId!, email, role as "admin" | "member"); toast.show(t.newTab.inviteSent); reloadOrgMembers(); }
+    catch (e) { console.error(e); toast.show(t.newTab.inviteFailed); }
   }
   // 조직 초대 수락: 새 조직이 레일에 바로 보이도록 조직 목록·조직 멤버십·내 조직 초대를 함께 재조회.
   async function acceptOrgInv(id: string) {
     await acceptOrgInvitation(supabase, id);
     const [orgs, oms, oInvs] = await Promise.all([listOrganizations(supabase), listMyOrgMemberships(supabase), listMyOrgInvitations(supabase)]);
     setOrganizations(orgs); setOrgMemberships(oms); setMyOrgInvitations(oInvs);
-    toast.show("조직에 참여했어요");
+    toast.show(t.newTab.joinedOrg);
   }
 
   async function acceptAnyInvitation(id: string) {
@@ -435,12 +433,14 @@ export function NewTab() {
     if (!session) return;
     const transform = { icon_scale: v.icon_scale, icon_x: v.icon_x, icon_y: v.icon_y };
     if (orgFormMode === "create") {
-      const org = await createOrganization(supabase, { name: v.name || "새 조직", owner_id: session.user.id, icon: v.icon, color: v.color, ...transform });
+      const org = await createOrganization(supabase, { name: v.name || t.newTab.newOrg, owner_id: session.user.id, icon: v.icon, color: v.color, ...transform });
       setOrganizations((prev) => [...prev, org]);
       persistOrg(org.id);
       showSpace(null);
     } else if (activeOrg) {
-      const updated = await updateOrganization(supabase, activeOrg.id, { name: v.name || activeOrg.name, icon: v.icon, color: v.color, ...transform });
+      // 개인 조직은 이름을 고칠 수 없다 — 폼엔 화면 언어로 번역된 이름이 들어 있으니 저장값을 그대로 둔다
+      const name = activeOrg.is_personal ? activeOrg.name : v.name || activeOrg.name;
+      const updated = await updateOrganization(supabase, activeOrg.id, { name, icon: v.icon, color: v.color, ...transform });
       setOrganizations((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
     }
     setOrgFormOpen(false);
@@ -456,10 +456,10 @@ export function NewTab() {
       if (personal) persistOrg(personal.id); else showOrg(null);
       showSpace(null);
       setOrgDeleteOpen(false);
-      toast.show("조직을 삭제했어요.");
+      toast.show(t.newTab.orgDeleted);
     } catch (e) {
       console.error(e);
-      toast.show("조직을 삭제하지 못했어요.");
+      toast.show(t.newTab.orgDeleteFailed);
     }
   }
 
@@ -492,11 +492,11 @@ export function NewTab() {
     try {
       await moveCollectionToSpace(supabase, collection.id, targetSpaceId);
       const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
-      toast.show(`'${collection.title}' 컬렉션을 '${name}' 스페이스로 이동했어요`);
+      toast.show(t.newTab.moved(collection.title, name));
       loadCollections();
     } catch (e) {
       console.error(e);
-      toast.show("이동에 실패했어요. 다시 시도해 주세요.");
+      toast.show(t.newTab.moveFailed);
     }
   }
 
@@ -504,20 +504,20 @@ export function NewTab() {
     try {
       await copyCollection(supabase, collection.id, targetSpaceId);
       const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
-      toast.show(`'${collection.title}' 컬렉션을 '${name}' 스페이스에 복사했어요`);
+      toast.show(t.newTab.copied(collection.title, name));
     } catch (e) {
       console.error(e);
-      toast.show("복사에 실패했어요. 다시 시도해 주세요.");
+      toast.show(t.newTab.copyFailed);
     }
   }
 
   async function copyCollectionLinks(collection: Collection, links: Link[]) {
     try {
       await navigator.clipboard.writeText(linksToText(collection.title, links));
-      toast.show(`링크 ${links.length}개를 복사했어요`);
+      toast.show(t.newTab.linksCopied(links.length));
     } catch (e) {
       console.error(e);
-      toast.show("복사하지 못했어요. 다시 시도해 주세요.");
+      toast.show(t.newTab.linksCopyFailed);
     }
   }
 
@@ -532,7 +532,8 @@ export function NewTab() {
   const [importAlert, setImportAlert] = useState<"invalid" | "empty" | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [bookmarkRoots, setBookmarkRoots] = useState<SourceNode[]>([]);
-  const [importTitle, setImportTitle] = useState("북마크 가져오기");
+  // 가져오기 창 제목은 종류만 담고 그릴 때 사전에서 찾는다
+  const [importKind, setImportKind] = useState<"bookmarks" | "json">("bookmarks");
   // 컬렉션 삭제 확인 다이얼로그 대상 (스페이스 삭제와 동일한 2단계 확인)
   const [deleteColTarget, setDeleteColTarget] = useState<Collection | null>(null);
 
@@ -547,7 +548,7 @@ export function NewTab() {
       await deleteCollection(supabase, c.id);
       loadCollections();
       // 다이얼로그를 건너뛰었으므로 삭제됐다는 사실은 토스트로 알린다(되돌리기는 없다)
-      toast.show(`'${c.title}' 컬렉션을 삭제했어요`);
+      toast.show(t.newTab.collectionDeleted(c.title));
       return;
     }
     setDeleteColTarget(c);
@@ -589,7 +590,7 @@ export function NewTab() {
       setIssuedCode(await createCollectionShareCode(supabase, shareTarget.id, expiresInDays));
     } catch (e) {
       console.error(e);
-      toast.show("코드를 만들지 못했어요. 다시 시도해 주세요.");
+      toast.show(t.newTab.codeFailed);
     }
   }
 
@@ -597,11 +598,11 @@ export function NewTab() {
     if (!issuedCode) return;
     try {
       await revokeCollectionShareCode(supabase, issuedCode.code);
-      toast.show("공유 코드를 회수했어요");
+      toast.show(t.newTab.codeRevoked);
       setShareTarget(null);
     } catch (e) {
       console.error(e);
-      toast.show("회수하지 못했어요. 다시 시도해 주세요.");
+      toast.show(t.newTab.revokeFailed);
     }
   }
 
@@ -621,7 +622,7 @@ export function NewTab() {
       throw e; // 다이얼로그가 에러 문구를 띄우도록 그대로 올린다
     }
     const name = spaces.find((s) => s.id === targetSpaceId)?.name ?? "";
-    toast.show(`'${name}' 스페이스로 가져왔어요`);
+    toast.show(t.newTab.importedInto(name));
     // 대상이 현재 스페이스면 activeSpaceId가 그대로라 재조회 effect가 돌지 않는다 → 직접 재조회
     if (sameSpace) await loadCollections();
     setPending((prev) => prev.filter((p) => p.key !== key));
@@ -633,12 +634,12 @@ export function NewTab() {
     if (!session) return;
     let spaceId = activeSpaceId;
     if (!spaceId) {
-      const s = await createSpace(supabase, { user_id: session.user.id, name: "개인", org_id: activeOrgId ?? undefined });
+      const s = await createSpace(supabase, { user_id: session.user.id, name: t.org.personal, org_id: activeOrgId ?? undefined });
       setSpaces((prev) => [...prev, s]);
       selectSpace(s.id);
       spaceId = s.id;
     }
-    const created = await createCollection(supabase, { user_id: session.user.id, space_id: spaceId, title: "새 컬렉션" });
+    const created = await createCollection(supabase, { user_id: session.user.id, space_id: spaceId, title: t.newTab.newCollection });
     setAutoEditId(created.id);
     await loadCollections();
   }
@@ -913,7 +914,7 @@ export function NewTab() {
   async function ensureSpaceId(): Promise<string | null> {
     if (!session) return null;
     if (activeSpaceId) return activeSpaceId;
-    const s = await createSpace(supabase, { user_id: session.user.id, name: "개인", org_id: activeOrgId ?? undefined });
+    const s = await createSpace(supabase, { user_id: session.user.id, name: t.org.personal, org_id: activeOrgId ?? undefined });
     setSpaces((prev) => [...prev, s]);
     selectSpace(s.id);
     return s.id;
@@ -949,7 +950,7 @@ export function NewTab() {
   /** 창 N 제목과 담을 수 있는 탭 수 — 저장·끌기 자리표시·드래그 미리보기가 같은 값을 쓴다. */
   function windowSummary(windowId: number) {
     const idx = groups.findIndex((g) => g.windowId === windowId);
-    return { idx, title: `창 ${idx + 1}`, count: saveableTabs(groups[idx]?.tabs ?? []).length };
+    return { idx, title: t.newTab.windowTitle(idx + 1), count: saveableTabs(groups[idx]?.tabs ?? []).length };
   }
 
   /**
@@ -967,7 +968,7 @@ export function NewTab() {
       const { idx, title, count } = windowSummary(windowId);
       const group = groups[idx];
       if (!group) return;
-      if (count === 0) { toast.show("담을 수 있는 탭이 없어요"); return; }
+      if (count === 0) { toast.show(t.newTab.noSaveableTabs); return; }
 
       if (at === undefined) setPending((prev) => [...prev, { key, title, count }]);
       const r = await saveWindowInto(spaceId, group, title);
@@ -985,10 +986,10 @@ export function NewTab() {
         await Promise.all(sequentialPositions(ordered.map((c) => c.id)).map((p) => updateCollection(supabase, p.id, { position: p.position })));
       }
       loadCollections();
-      toast.show(`탭 ${r.links.length}개를 담았어요`);
+      toast.show(t.newTab.tabsSaved(r.links.length));
     } catch (e) {
       console.error(e);
-      toast.show("담지 못했어요. 다시 시도해 주세요.");
+      toast.show(t.newTab.saveFailed);
       loadCollections();
     } finally {
       setPending((prev) => prev.filter((p) => p.key !== key));
@@ -1010,9 +1011,9 @@ export function NewTab() {
       const spaceId = await ensureSpaceId();
       if (!spaceId) return;
       const targets = groups
-        .map((group, i) => ({ group, title: `창 ${i + 1}`, count: saveableTabs(group.tabs).length }))
+        .map((group, i) => ({ group, title: t.newTab.windowTitle(i + 1), count: saveableTabs(group.tabs).length }))
         .filter((t) => t.count > 0);
-      if (targets.length === 0) { toast.show("담을 수 있는 탭이 없어요"); return; }
+      if (targets.length === 0) { toast.show(t.newTab.noSaveableTabs); return; }
 
       // 담기 전에 결과의 모양을 이미 안다 — 창별 이름과 링크 수로 골격을 먼저 놓는다.
       const items = targets.map((t, i) => ({ key: `pending-all-${i}`, title: t.title, count: t.count }));
@@ -1029,11 +1030,11 @@ export function NewTab() {
         materialize(items[i].key, r);
       }
       loadCollections();
-      toast.show(cols === 1 ? `탭 ${links}개를 담았어요` : `컬렉션 ${cols}개에 탭 ${links}개를 담았어요`);
+      toast.show(cols === 1 ? t.newTab.tabsSaved(links) : t.newTab.tabsSavedInto(cols, links));
     } catch (e) {
       console.error(e);
       // 낙관적 골격을 걷고 실패를 알린다. 이미 저장된 창은 재조회로 남는다(부분 성공).
-      toast.show("담지 못했어요. 다시 시도해 주세요.");
+      toast.show(t.newTab.saveFailed);
       loadCollections();
     } finally {
       setPending((prev) => prev.filter((p) => !keys.includes(p.key)));
@@ -1107,12 +1108,12 @@ export function NewTab() {
   const importableOrgs = organizations
     .filter((o) => o.owner_id === userId
       || orgMemberships.find((m) => m.org_id === o.id)?.role === "admin")
-    .map((o) => ({ id: o.id, name: o.name }));
+    .map((o) => ({ id: o.id, name: orgDisplayName(o, t) }));
 
   /** 진입점(조직 메뉴·온보딩) 공통 — 소스 선택부터 시작한다 */
   function openImport() {
     // 조직 목록 로드 전 진입 방어 — 목적지 없이 다이얼로그를 열지 않는다
-    if (!importableOrgs.length) { toast.show("잠시 후 다시 시도해 주세요"); return; }
+    if (!importableOrgs.length) { toast.show(t.newTab.tryAgainLater); return; }
     setImportSourceOpen(true);
   }
 
@@ -1120,7 +1121,7 @@ export function NewTab() {
     // 권한이 아직 적용 안 된 상태(manifest 변경 후 확장 미새로고침)면 API 자체가 없다 —
     // 일반 실패와 구분해 사용자가 스스로 고칠 수 있는 안내를 준다.
     if (!chrome.bookmarks) {
-      toast.show("북마크 권한이 아직 적용되지 않았어요. chrome://extensions에서 tablign을 새로고침해 주세요.");
+      toast.show(t.newTab.bookmarksPermission);
       return;
     }
     try {
@@ -1130,10 +1131,10 @@ export function NewTab() {
       setBookmarkRoots(fromChromeTree(tree[0]?.children ?? []));
     } catch (e) {
       console.error(e);
-      toast.show(`북마크를 읽지 못했어요 — ${e instanceof Error ? e.message : String(e)}`);
+      toast.show(t.newTab.bookmarksReadFailed(e instanceof Error ? e.message : String(e)));
       return;
     }
-    setImportTitle("북마크 가져오기");
+    setImportKind("bookmarks");
     setImportSourceOpen(false);
     setBookmarkImportOpen(true);
   }
@@ -1149,7 +1150,7 @@ export function NewTab() {
     }
     if (!roots.length) { setImportAlert("empty"); return; }
     setBookmarkRoots(roots);
-    setImportTitle("JSON 가져오기");
+    setImportKind("json");
     setImportSourceOpen(false);
     setBookmarkImportOpen(true);
   }
@@ -1162,7 +1163,7 @@ export function NewTab() {
     const a = document.createElement("a");
     a.href = url;
     // sv-SE 로캘은 로컬 날짜를 YYYY-MM-DD로 준다
-    a.download = `tablign-${activeOrg?.name ?? "spaces"}-${new Date().toLocaleDateString("sv-SE")}.json`;
+    a.download = `tablign-${activeOrg ? orgDisplayName(activeOrg, t) : "spaces"}-${new Date().toLocaleDateString("sv-SE")}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url));
     setExportOpen(false);
@@ -1180,7 +1181,7 @@ export function NewTab() {
     setBookmarkImportOpen(false);
     persistOrg(orgId);
     selectSpace(result.first_space_id);
-    toast.show(`스페이스 ${result.space_ids.length}개를 만들었어요`);
+    toast.show(t.newTab.spacesCreated(result.space_ids.length));
   }
 
   // 담을 수 있는 탭만 센다. group.tabs.length로 세면 tablign 새 탭 자신과 chrome:// 페이지까지
@@ -1225,16 +1226,16 @@ export function NewTab() {
             onPeekLeave={railPeeks ? leftPeek.leave : undefined}
             onHoverOrg={railPeeks ? setPreviewOrgId : undefined}
             peekOrgId={railPeeks && leftPeek.open ? (previewOrgId ?? activeOrgId) : null}
-            themeOpen={themeOpen}
-            onToggleTheme={() => setThemeOpen((v) => !v)}
+            settingsOpen={settingsOpen}
+            onToggleSettings={() => setSettingsOpen((v) => !v)}
             invitationCount={myInvitations.length + myOrgInvitations.length}
             invitations={
               <InvitationList
                 invitations={[
-                  ...myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role, kind: "스페이스" })),
-                  ...myOrgInvitations.map((i) => ({ id: i.id, space_name: i.org_name, inviter_name: i.inviter_name, role: i.role, kind: "조직" })),
+                  ...myInvitations.map((i) => ({ id: i.id, space_name: i.space_name, inviter_name: i.inviter_name, role: i.role, kind: t.newTab.inviteKinds.space })),
+                  ...myOrgInvitations.map((i) => ({ id: i.id, space_name: i.org_name, inviter_name: i.inviter_name, role: i.role, kind: t.newTab.inviteKinds.org })),
                 ]}
-                roles={INVITATION_ROLES}
+                roles={INVITATION_ROLES.map((value) => ({ value, label: t.newTab.roles[value] }))}
                 onAccept={acceptAnyInvitation}
                 onDecline={declineAnyInvitation}
               />
@@ -1289,8 +1290,8 @@ export function NewTab() {
                 onPin={rightOverlay ? () => { rightPeek.close(); if (narrow) setNarrowRightDock(true); else toggleRight(); } : undefined} />
             }
             overlay={(
-              <RightDrawer open={themeOpen} width={panels.themeWidth} onResize={setThemeWidth} label="테마">
-                <ThemePanel settings={themeState.settings} onChange={themeState.update} onPreview={themeState.preview} onClose={() => setThemeOpen(false)}
+              <RightDrawer open={settingsOpen} width={panels.themeWidth} onResize={setThemeWidth} label={t.settingsPanel.title}>
+                <SettingsPanel settings={themeState.settings} onChange={themeState.update} onPreview={themeState.preview} onClose={() => setSettingsOpen(false)}
                   viewport={themeState.viewport} uploadUrl={themeState.uploadUrl} uploadState={themeState.uploadState} onUpload={themeState.uploadPhoto} />
               </RightDrawer>
             )}
@@ -1298,7 +1299,7 @@ export function NewTab() {
             <Board>
               {spacesLoaded && orgSpaces.length === 0 ? (
                 // 활성 조직에 스페이스가 0개(신규 가입 직후, 전부 삭제, 또는 방금 만든 빈 조직): 온보딩 빈 상태.
-                <SpaceOnboarding onCreate={() => addSpace("개인", null)} />
+                <SpaceOnboarding onCreate={() => addSpace(t.org.personal, null)} />
               ) : (
                 // 헤더 + 본문을 flex 컬럼으로 묶어, 빈 상태가 헤더 아래 '남은 공간'을 정확히 채우게 한다.
                 // (헤더 높이를 상수로 빼서 계산하면 헤더가 바뀔 때 어긋난다)
@@ -1310,7 +1311,7 @@ export function NewTab() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {members.length > 0 && <MemberAvatars people={members} />}
                   {isOwner && activeSpaceOrg?.is_personal && (
-                    <Button variant="outline" onClick={openMemberDialog}><Users size={15} /> 멤버</Button>
+                    <Button variant="outline" onClick={openMemberDialog}><Users size={15} /> {t.newTab.members}</Button>
                   )}
                   {canEdit && <AddCollectionButton onCreate={addCollection} onImportCode={() => setImportOpen(true)} />}
                 </div>
@@ -1345,7 +1346,7 @@ export function NewTab() {
                       onImportCode={() => setImportOpen(true)}
                     />
                   ) : (
-                    <EmptyState title="아직 컬렉션이 없어요." />
+                    <EmptyState title={t.newTab.noCollections} />
                   )
                 ) : (
                   <SortableContext items={visibleCollections.map((c) => `col:${c.id}`)} strategy={verticalListSortingStrategy}>
@@ -1425,7 +1426,7 @@ export function NewTab() {
             background: theme.surface, boxShadow: "0 8px 20px rgba(20,30,60,.22)", cursor: "grabbing",
             fontWeight: 600, color: theme.text,
           }}>
-            {windowSummary(active.windowId).title} · 탭 {windowSummary(active.windowId).count}개
+            {windowSummary(active.windowId).title} · {t.newTab.tabCount(windowSummary(active.windowId).count)}
           </div>
         ) : active?.type === "space" ? (
           <div style={{
@@ -1458,7 +1459,7 @@ export function NewTab() {
         issued={issuedCode}
         onIssue={issueShareCode}
         onRevoke={revokeShareCode}
-        onCopied={() => toast.show("공유 코드를 복사했어요")}
+        onCopied={() => toast.show(t.newTab.codeCopied)}
         onClose={() => setShareTarget(null)}
       />
       <ImportCodeDialog
@@ -1478,12 +1479,13 @@ export function NewTab() {
       {/* 가져오기 창 위에 한 겹 더 뜬다 — 확인하면 가져오기 창으로 돌아와 다시 고른다 */}
       <ConfirmDialog
         open={importAlert !== null}
-        title={importAlert === "empty" ? "가져올 링크가 없어요" : "가져올 수 없는 파일이에요"}
+        title={importAlert === "empty" ? t.newTab.noLinksTitle : t.newTab.invalidFileTitle}
         message={importAlert === "empty" ? (
-          <><code style={inlineCode}>cards</code>에 http·https로 시작하는 <code style={inlineCode}>url</code>이 하나도 없어요.</>
+          <>{t.newTab.noLinksBody.split(/(\{cards\}|\{url\})/).map((part, i) =>
+            part === "{cards}" || part === "{url}" ? <code key={i} style={inlineCode}>{part.slice(1, -1)}</code> : part)}</>
         ) : (
           <>
-            이런 구조의 JSON 파일을 골라주세요.
+            {t.newTab.pickStructure}
             <div style={{ marginTop: 12, padding: "10px 12px 9px", background: theme.surface2, borderRadius: 9 }}>
               <JsonStructurePath />
             </div>
@@ -1504,7 +1506,7 @@ export function NewTab() {
       />
       <ImportBookmarksDialog
         open={bookmarkImportOpen}
-        title={importTitle}
+        title={importKind === "json" ? t.newTab.importJsonTitle : t.importBookmarksDialog.title}
         roots={bookmarkRoots}
         orgs={importableOrgs}
         // 활성 조직이 편집 불가(일반 멤버)면 목록에 없으므로 첫 편집 가능 조직으로 폴백
@@ -1515,9 +1517,9 @@ export function NewTab() {
       <ConfirmDialog
         open={deleteColTarget !== null}
         danger
-        title="컬렉션 삭제"
-        message={<>'{deleteColTarget?.title}' 컬렉션을 삭제할까요?<br />담긴 링크가 모두 삭제되며 되돌릴 수 없습니다.</>}
-        confirmLabel="삭제"
+        title={t.newTab.deleteCollection}
+        message={<span style={{ whiteSpace: "pre-line" }}>{t.newTab.deleteCollectionMessage(deleteColTarget?.title ?? "")}</span>}
+        confirmLabel={t.common.delete}
         onConfirm={async () => {
           if (!deleteColTarget) return;
           await deleteCollection(supabase, deleteColTarget.id);
@@ -1529,13 +1531,13 @@ export function NewTab() {
       <MemberDialog
         open={memberDialogOpen}
         spaceName={activeSpace?.name ?? ""}
-        roles={[{ value: "editor", label: "편집자" }, { value: "viewer", label: "뷰어" }]}
+        roles={(["editor", "viewer"] as const).map((value) => ({ value, label: t.newTab.roles[value] }))}
         members={members.map((m) => ({ user_id: m.user_id, role: m.role, display_name: m.display_name, avatar_url: m.avatar_url }))}
         pendingInvites={pendingInvites.map((i) => ({ id: i.id, invitee_email: i.invitee_email, role: i.role }))}
         onInvite={handleInvite}
-        onChangeRole={async (uid, role) => { try { await updateMemberRole(supabase, activeSpaceId!, uid, role as "editor" | "viewer"); reloadMembers(); } catch (e) { console.error(e); toast.show("역할을 변경하지 못했어요."); } }}
-        onRemove={async (uid) => { try { await removeMember(supabase, activeSpaceId!, uid); reloadMembers(); } catch (e) { console.error(e); toast.show("멤버를 제거하지 못했어요."); } }}
-        onCancelInvite={async (id) => { try { await cancelInvitation(supabase, id); reloadMembers(); } catch (e) { console.error(e); toast.show("초대를 취소하지 못했어요."); } }}
+        onChangeRole={async (uid, role) => { try { await updateMemberRole(supabase, activeSpaceId!, uid, role as "editor" | "viewer"); reloadMembers(); } catch (e) { console.error(e); toast.show(t.newTab.roleChangeFailed); } }}
+        onRemove={async (uid) => { try { await removeMember(supabase, activeSpaceId!, uid); reloadMembers(); } catch (e) { console.error(e); toast.show(t.newTab.memberRemoveFailed); } }}
+        onCancelInvite={async (id) => { try { await cancelInvitation(supabase, id); reloadMembers(); } catch (e) { console.error(e); toast.show(t.newTab.inviteCancelFailed); } }}
         onClose={() => setMemberDialogOpen(false)}
       />
       {orgFormOpen && (
@@ -1543,7 +1545,7 @@ export function NewTab() {
           <OrgFormDialog
             open={orgFormOpen}
             mode={orgFormMode}
-            initial={orgFormMode === "edit" && activeOrg ? { name: activeOrg.name, icon: activeOrg.icon, color: activeOrg.color, icon_scale: activeOrg.icon_scale, icon_x: activeOrg.icon_x, icon_y: activeOrg.icon_y } : undefined}
+            initial={orgFormMode === "edit" && activeOrg ? { name: orgDisplayName(activeOrg, t), icon: activeOrg.icon, color: activeOrg.color, icon_scale: activeOrg.icon_scale, icon_x: activeOrg.icon_x, icon_y: activeOrg.icon_y } : undefined}
             personal={orgFormMode === "edit" && !!activeOrg?.is_personal}
             onSubmit={submitOrgForm}
             onClose={() => setOrgFormOpen(false)}
@@ -1553,22 +1555,22 @@ export function NewTab() {
       <ConfirmDialog
         open={orgDeleteOpen}
         danger
-        title="조직 삭제"
-        message={<>'{activeOrg?.name}' 조직을 삭제할까요?<br />조직의 모든 스페이스·컬렉션·멤버가 삭제되며 되돌릴 수 없습니다.</>}
-        confirmLabel="삭제"
+        title={t.newTab.deleteOrg}
+        message={<span style={{ whiteSpace: "pre-line" }}>{t.newTab.deleteOrgMessage(activeOrg?.name ?? "")}</span>}
+        confirmLabel={t.common.delete}
         onConfirm={deleteOrg}
         onCancel={() => setOrgDeleteOpen(false)}
       />
       <MemberDialog
         open={orgMemberDialogOpen}
-        spaceName={activeOrg?.name ?? ""}
-        roles={[{ value: "admin", label: "관리자" }, { value: "member", label: "멤버" }]}
+        spaceName={activeOrg ? orgDisplayName(activeOrg, t) : ""}
+        roles={(["admin", "member"] as const).map((value) => ({ value, label: t.newTab.roles[value] }))}
         members={orgMembers.map((m) => ({ user_id: m.user_id, role: m.role, display_name: m.display_name, avatar_url: m.avatar_url }))}
         pendingInvites={orgPendingInvites.map((i) => ({ id: i.id, invitee_email: i.invitee_email, role: i.role }))}
         onInvite={handleOrgInvite}
-        onChangeRole={async (uid, role) => { try { await updateOrgMemberRole(supabase, activeOrgId!, uid, role as "admin" | "member"); reloadOrgMembers(); } catch (e) { console.error(e); toast.show("역할을 변경하지 못했어요."); } }}
-        onRemove={async (uid) => { try { await removeOrgMember(supabase, activeOrgId!, uid); reloadOrgMembers(); } catch (e) { console.error(e); toast.show("멤버를 제거하지 못했어요."); } }}
-        onCancelInvite={async (id) => { try { await cancelOrgInvitation(supabase, id); reloadOrgMembers(); } catch (e) { console.error(e); toast.show("초대를 취소하지 못했어요."); } }}
+        onChangeRole={async (uid, role) => { try { await updateOrgMemberRole(supabase, activeOrgId!, uid, role as "admin" | "member"); reloadOrgMembers(); } catch (e) { console.error(e); toast.show(t.newTab.roleChangeFailed); } }}
+        onRemove={async (uid) => { try { await removeOrgMember(supabase, activeOrgId!, uid); reloadOrgMembers(); } catch (e) { console.error(e); toast.show(t.newTab.memberRemoveFailed); } }}
+        onCancelInvite={async (id) => { try { await cancelOrgInvitation(supabase, id); reloadOrgMembers(); } catch (e) { console.error(e); toast.show(t.newTab.inviteCancelFailed); } }}
         onClose={() => setOrgMemberDialogOpen(false)}
       />
     </DndContext>

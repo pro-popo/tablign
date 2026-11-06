@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 import { Segmented } from "./Segmented";
 import { SwatchRow, selectRing } from "./SwatchRow";
 import { ArrowLeftRight, Plus, Trash2, RotateCcw } from "./icons";
@@ -27,6 +28,7 @@ const PREVIEW = "[data-gradient-preview]";
 
 /** 그라데이션 편집 — 위 한 줄(직선·원형 + 도구), 미리보기에서 점 끌기, 아래 빠른 색 줄(고른 점의 색). */
 export function GradientEditor({ value, onChange, onPreview, quickColors, viewport }: GradientEditorProps) {
+  const t = useT();
   const [draft, setDraft] = useState<ThemeGradient | null>(null);
   const g = draft ?? value;
   const n = g.stops.length;
@@ -129,15 +131,15 @@ export function GradientEditor({ value, onChange, onPreview, quickColors, viewpo
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
         <div style={{ flex: "none", width: 112 }}>
-          <Segmented small items={[{ value: "linear", label: "직선" }, { value: "radial", label: "원형" }]} value={g.type}
+          <Segmented small items={[{ value: "linear", label: t.gradientEditor.linear }, { value: "radial", label: t.gradientEditor.radial }]} value={g.type}
             onChange={(type) => { const [a, b] = GRADIENT_POINTS[type]; onChange({ ...g, type, points: [[...a], [...b]] }); }} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 1, padding: 2, borderRadius: 8, background: theme.surface2 }}>
-          <Tool label="색 뒤집기" onClick={() => { setSel(n - 1 - sel); onChange(flipStops(g)); }}><ArrowLeftRight size={15} /></Tool>
-          <Tool label="색 추가" onClick={add} disabled={n >= MAX_STOPS}><Plus size={15} /></Tool>
-          <Tool label="빼기" onClick={del} disabled={n <= 2}><Trash2 size={15} /></Tool>
+          <Tool label={t.gradientEditor.flip} onClick={() => { setSel(n - 1 - sel); onChange(flipStops(g)); }}><ArrowLeftRight size={15} /></Tool>
+          <Tool label={t.gradientEditor.addStop} onClick={add} disabled={n >= MAX_STOPS}><Plus size={15} /></Tool>
+          <Tool label={t.gradientEditor.removeStop} onClick={del} disabled={n <= 2}><Trash2 size={15} /></Tool>
           <i aria-hidden="true" style={{ width: 1, alignSelf: "stretch", margin: "4px 3px", background: theme.border }} />
-          <Tool label="초기화" onClick={() => { setSel(1); onChange(defaultGradient(g.type)); }}><RotateCcw size={15} /></Tool>
+          <Tool label={t.gradientEditor.reset} onClick={() => { setSel(1); onChange(defaultGradient(g.type)); }}><RotateCcw size={15} /></Tool>
         </div>
       </div>
       <div ref={boxRef} data-gradient-preview onPointerDown={onPointerDown}
@@ -155,7 +157,7 @@ export function GradientEditor({ value, onChange, onPreview, quickColors, viewpo
         </svg>
         {g.stops.map((s, k) => {
           const [px, py] = pos(k), mid = k > 0 && k < n - 1;
-          return <button key={k} type="button" data-stop={k} aria-label={`${k === 0 ? "시작" : k === n - 1 ? "끝" : "중간"} 색`} aria-pressed={sel === k}
+          return <button key={k} type="button" data-stop={k} aria-label={t.gradientEditor.stops[k === 0 ? "start" : k === n - 1 ? "end" : "middle"]} aria-pressed={sel === k}
             style={handle(s.color, mid, sel === k, px, py)} />;
         })}
       </div>

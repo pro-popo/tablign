@@ -13,6 +13,8 @@ export interface SourceNode {
 export interface ImportConfig {
   /** 폴더 id(및 루트 직속 묶음 id) → 가져올지. defaultEnabled()가 초기값을 만든다. */
   enabled: Record<string, boolean>;
+  /** 직속 링크가 모이는 컬렉션 이름(공유 폴더). 화면 언어에 따라 호출하는 쪽이 넘긴다. */
+  sharedTitle: string;
 }
 
 export interface PlannedLink {

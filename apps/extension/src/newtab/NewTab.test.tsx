@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
-import { ToastProvider } from "@tablign/ui";
+import { ToastProvider, setLocale } from "@tablign/ui";
 import { NewTab } from "./NewTab";
 
 // supabase 클라이언트 모킹: 로그인된 세션을 즉시 돌려준다.
@@ -375,6 +375,43 @@ describe("NewTab — 컬렉션이 0개일 때", () => {
     fireEvent.click(dead);
     expect(createCollection).not.toHaveBeenCalled();
   });
+
+  describe("영어로 쓰면 자동으로 붙는 이름도 영어로 저장된다", () => {
+    afterEach(() => setLocale("ko"));
+
+    it("빈 컬렉션은 New collection", async () => {
+      setLocale("en");
+      listSpaces.mockResolvedValue(onlySpace);
+      stubTabs(MIXED);
+      renderNewTab();
+      // 열린 창이 도착해 다시 그려진 뒤에 누른다(그 전 노드는 떨어져 나갈 수 있다)
+      await screen.findByText("Save 2 tabs from this window", {}, { timeout: 4000 });
+      fireEvent.click(screen.getByRole("button", { name: /Create an empty collection/ }));
+      await waitFor(() => expect(createCollection).toHaveBeenCalledTimes(1));
+      expect(createCollection.mock.calls[0][1]).toMatchObject({ space_id: "s1", title: "New collection" });
+    });
+
+    it("창을 담은 컬렉션은 Window 1", async () => {
+      setLocale("en");
+      listSpaces.mockResolvedValue(onlySpace);
+      stubTabs(MIXED);
+      renderNewTab();
+      await screen.findByText("Save 2 tabs from this window", {}, { timeout: 4000 });
+      fireEvent.click(screen.getByRole("button", { name: /Save 2 tabs from this window/ }));
+      await waitFor(() => expect(createCollection).toHaveBeenCalledTimes(1));
+      expect(createCollection.mock.calls[0][1]).toMatchObject({ space_id: "s1", title: "Window 1" });
+    });
+
+    it("첫 스페이스는 Personal", async () => {
+      setLocale("en");
+      listSpaces.mockResolvedValue([]);
+      createSpace.mockResolvedValue({ id: "s1", user_id: "u1", name: "Personal", icon: null, position: 1000, created_at: "x" });
+      renderNewTab();
+      fireEvent.click(await screen.findByRole("button", { name: /Create your first space/ }));
+      await waitFor(() => expect(createSpace).toHaveBeenCalledTimes(1));
+      expect(createSpace.mock.calls[0][1]).toMatchObject({ name: "Personal" });
+    });
+  });
 });
 
 describe("NewTab — 공유 코드로 추가", () => {
@@ -746,6 +783,26 @@ describe("NewTab — 조직 생성·편집 다이얼로그", () => {
       // 개인은 color=null이라 다이얼로그가 개인 기본색(옐로우 그라데이션)으로 떠야 레일·헤더 배경과 일치한다(인디고 기본색 아님).
       expect(updateOrganization).toHaveBeenCalledWith(expect.anything(), "org-personal", expect.objectContaining({ name: "개인", color: expect.stringMatching(/ffd43b/i) })),
     );
+  });
+
+  it("영어 화면에서 개인 프로필을 저장해도 DB의 기본 이름 '개인'은 그대로 둔다", async () => {
+    setLocale("en");
+    try {
+      listSpaces.mockResolvedValue([
+        { id: "s1", user_id: "u1", name: "개인", icon: null, position: 1000, created_at: "x", org_id: "org-personal" },
+      ]);
+      renderNewTab();
+      fireEvent.click(await screen.findByRole("button", { name: "Manage organization" }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: "Profile settings" }));
+      const dialog = await screen.findByRole("dialog", { name: "Profile settings" });
+      expect(within(dialog).getByText("Personal")).toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+      await waitFor(() =>
+        expect(updateOrganization).toHaveBeenCalledWith(expect.anything(), "org-personal", expect.objectContaining({ name: "개인" })),
+      );
+    } finally {
+      setLocale("ko");
+    }
   });
 
   it("프로필 설정에서 그라데이션을 지정하면 그라데이션 문자열로 저장된다", async () => {
@@ -1178,17 +1235,17 @@ describe("NewTab — 테마를 연 채 창 폭 바꾸기", () => {
     listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" }]);
     renderNewTab();
     await screen.findAllByText("내 스페이스");
-    fireEvent.click(screen.getByRole("button", { name: "테마" }));
-    expect(await screen.findByRole("button", { name: "테마 닫기" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "설정" }));
+    expect(await screen.findByRole("button", { name: "설정 닫기" })).toBeVisible();
 
     resize(true);
     // 접히는 패널은 0.2초 뒤 레일로 바뀐다 — 그보다 기다려도 그대로여야 한다
     await new Promise((r) => setTimeout(r, 300));
-    expect(screen.getByRole("button", { name: "테마 닫기" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "설정 닫기" })).toBeVisible();
 
     resize(false);
     await new Promise((r) => setTimeout(r, 300));
-    expect(screen.getByRole("button", { name: "테마 닫기" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "설정 닫기" })).toBeVisible();
   });
 });
 
@@ -1197,16 +1254,16 @@ describe("NewTab — 테마 서랍", () => {
     listSpaces.mockResolvedValue([{ id: "s1", user_id: "u1", name: "내 스페이스", icon: null, position: 1000, created_at: "x", org_id: "org-personal" }]);
     renderNewTab();
     await screen.findAllByText("내 스페이스");
-    fireEvent.click(screen.getByRole("button", { name: "테마" }));
-    expect(await screen.findByRole("region", { name: "테마" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "테마" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "설정" }));
+    expect(await screen.findByRole("region", { name: "설정" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "설정" })).toHaveAttribute("aria-pressed", "true");
     // 열린 탭 패널은 접히거나 바뀌지 않는다
     expect(screen.getByText("열린 탭")).toBeVisible();
     expect(screen.getByRole("button", { name: "패널 접기" })).toBeVisible();
 
-    fireEvent.click(screen.getByRole("button", { name: "테마 닫기" }));
-    await waitFor(() => expect(screen.queryByRole("region", { name: "테마" })).toBeNull());
-    expect(screen.getByRole("button", { name: "테마" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "설정 닫기" }));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "설정" })).toBeNull());
+    expect(screen.getByRole("button", { name: "설정" })).toHaveAttribute("aria-pressed", "false");
   });
 });
 
@@ -1297,7 +1354,7 @@ describe("NewTab — 큰 화면, 스페이스 덮개에서 조직 레일로", ()
     const add = (await screen.findByText("스페이스 추가")).closest("button")!;
     await waitFor(() => expect(add).toBeVisible());
 
-    const peek = add.closest(".tbl-peek")!, themeBtn = screen.getByRole("button", { name: "테마" });
+    const peek = add.closest(".tbl-peek")!, themeBtn = screen.getByRole("button", { name: "설정" });
     fireEvent.mouseOut(peek, { relatedTarget: themeBtn });
     await new Promise((r) => setTimeout(r, 400));
     expect(add).toBeVisible();

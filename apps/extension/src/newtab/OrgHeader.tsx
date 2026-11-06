@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Organization } from "@tablign/core";
-import { theme } from "@tablign/ui";
+import { orgDisplayName, theme, useT } from "@tablign/ui";
 import { OrgIconBox } from "./OrgIconBox";
 
 export type OrgRole = "owner" | "admin" | "member";
@@ -18,6 +18,7 @@ export interface OrgHeaderProps {
 }
 
 export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, onImport, onExport }: OrgHeaderProps) {
+  const t = useT();
   const isPersonal = org.is_personal;
   // 멤버는 조직 관리 권한이 없어 메뉴를 열 수 없으므로 톱니바퀴를 숨긴다.
   // 개인 조직은 프로필 설정(onEditOrg)이 있으면 톱니를 노출한다(멤버 개념이 없어 myRole 판정은 무의미).
@@ -44,10 +45,10 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
       <OrgIconBox org={org} size={28} />
-      <strong style={{ fontSize: 15, color: theme.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{org.name}</strong>
+      <strong style={{ fontSize: 15, color: theme.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orgDisplayName(org, t)}</strong>
       {showGear && (
         <div ref={menuWrapRef} style={{ position: "relative", marginLeft: "auto", flexShrink: 0 }}>
-          <button type="button" title="조직 관리" aria-label="조직 관리" aria-haspopup="menu" aria-expanded={menuOpen}
+          <button type="button" title={t.orgHeader.manage} aria-label={t.orgHeader.manage} aria-haspopup="menu" aria-expanded={menuOpen}
             onClick={() => setMenuOpen((o) => !o)}
             style={{ border: "none", background: "none", cursor: "pointer", display: "flex", padding: 3, color: menuOpen ? theme.textMuted : theme.textFaint }}>
             {/* lucide settings(톱니) */}
@@ -64,25 +65,25 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, 
                 <button type="button" role="menuitem" style={menuItem}
                   onClick={() => { setMenuOpen(false); onEditOrg(); }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = theme.surface2)}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>프로필 설정</button>
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>{t.orgHeader.profile}</button>
               )}
               {!isPersonal && (
                 <button type="button" role="menuitem" style={menuItem}
                   onClick={() => { setMenuOpen(false); onOpenMembers(); }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = theme.surface2)}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>멤버 관리</button>
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>{t.orgHeader.members}</button>
               )}
               {onImport && (
                 <button type="button" role="menuitem" style={menuItem}
                   onClick={() => { setMenuOpen(false); onImport(); }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = theme.surface2)}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>북마크 가져오기</button>
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>{t.orgHeader.importBookmarks}</button>
               )}
               {onExport && (
                 <button type="button" role="menuitem" style={menuItem}
                   onClick={() => { setMenuOpen(false); onExport(); }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = theme.surface2)}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>스페이스 내보내기</button>
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>{t.orgHeader.exportSpaces}</button>
               )}
               {/* 되돌릴 수 없는 항목은 구분선으로 떼어낸다 — 색만으로는 오조작을 막지 못한다 */}
               {onDeleteOrg && (
@@ -92,7 +93,7 @@ export function OrgHeader({ org, myRole, onOpenMembers, onEditOrg, onDeleteOrg, 
                 <button type="button" role="menuitem" style={{ ...menuItem, color: theme.danger }}
                   onClick={() => { setMenuOpen(false); onDeleteOrg(); }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = theme.dangerWeak)}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>조직 삭제</button>
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>{t.orgHeader.deleteOrg}</button>
               )}
             </div>
           )}

@@ -18,11 +18,10 @@ describe("buildTossCategories", () => {
     expect(people.items.map((i) => i.native)).toEqual(["😀"]);
   });
   it("frequent 등 비표준 카테고리는 제외한다", () => {
-    expect(buildTossCategories(fake).some((c) => c.id === "frequent")).toBe(false);
+    expect(buildTossCategories(fake).map((c) => c.id)).not.toContain("frequent");
   });
-  it("한글 라벨과 대표 탭 이모지를 붙인다", () => {
+  it("대표 탭 이모지를 붙인다", () => {
     const people = buildTossCategories(fake).find((c) => c.id === "people")!;
-    expect(people.label).toBe("스마일리 & 사람");
     expect(people.tab).toBe("😀");
   });
   it("keywords+name 소문자 검색 인덱스를 만든다", () => {

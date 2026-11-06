@@ -15,7 +15,7 @@ export async function resizeImage(blob: Blob, maxSide = MAX_SIDE, quality = 0.85
   canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
   bmp.close?.();
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("이미지를 줄이지 못했어요"))), "image/jpeg", quality));
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not downscale image"))), "image/jpeg", quality));
 }
 
 export async function uploadBackground(client: SupabaseClient, userId: string, file: Blob): Promise<{ path: string; blob: Blob }> {
@@ -28,7 +28,7 @@ export async function uploadBackground(client: SupabaseClient, userId: string, f
 
 export async function downloadBackground(client: SupabaseClient, path: string): Promise<Blob> {
   const { data, error } = await client.storage.from(BUCKET).download(path);
-  if (error || !data) throw error ?? new Error("사진을 받지 못했어요");
+  if (error || !data) throw error ?? new Error("Could not download photo");
   return data;
 }
 

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tablign — 작은 화면 레일 툴팁·프로필 메뉴 시안</title>
+<link rel="stylesheet" href="../../apps/extension/public/fonts/tossface/tossface.css" />
+<style>
+  :root{ --accent:#3b5bdb; --accent-weak:#edf0fe; --ink:#1f2430; --muted:#868e96; --faint:#adb5bd; --border:#eaecef; --danger:#e03131; }
+  *{box-sizing:border-box; margin:0}
+  body{font-family:-apple-system,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:#eef0f4; color:var(--ink); padding:28px 20px 70px; font-size:13px; line-height:1.265}
+  h1{font-size:16px; font-weight:740; letter-spacing:-.02em; margin-bottom:4px}
+  h2{font-size:13.5px; font-weight:740; margin:40px 0 10px; display:flex; align-items:center; gap:8px}
+  .note{font-size:12.5px; color:var(--muted); line-height:1.7; max-width:880px; word-break:keep-all}
+  .note b{color:var(--ink)}
+  .tag{background:var(--ink); color:#fff; font-size:11px; font-weight:800; padding:3px 10px; border-radius:9px}
+  .tag.rec{background:var(--accent)}
+  .pair{display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start}
+  .cap{font-size:11.5px; font-weight:700; color:var(--muted); margin-bottom:7px}
+  .why{font-size:12px; color:var(--muted); line-height:1.7; margin-top:12px; max-width:880px; word-break:keep-all}
+  .why b{color:var(--ink)}
+  .emo{font-family:Tossface}
+  svg.i{width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:block}
+
+  /* 작은 화면 — 레일은 접힌 채(54px) 펼쳐지지 않는다. 오른쪽은 보드 자리 */
+  .stage{width:270px; height:420px; background:#fcfcfd; border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative}
+  .board{position:absolute; left:54px; right:0; top:0; bottom:0; padding:16px 14px}
+  .board i{display:block; height:10px; border-radius:5px; background:#eceef2; margin-bottom:10px}
+  .board i.c{height:58px; border-radius:9px; background:#f3f4f7; margin:14px 0}
+  .rail{position:absolute; left:0; top:0; bottom:0; width:54px; background:#f5f6f8; border-right:1px solid var(--border); padding:10px 0;
+    display:flex; flex-direction:column; gap:5px}
+  .row{position:relative; display:flex; align-items:center; height:40px; padding:0 11px; cursor:pointer}
+  .row .bar{position:absolute; left:0; top:50%; transform:translateY(-50%); width:4px; height:22px; border-radius:0 3px 3px 0; background:var(--accent)}
+  .logo{display:flex; align-items:center; height:34px; padding:0 14px; margin-bottom:2px}
+  .logo i{width:26px; height:26px; border-radius:7px; background:linear-gradient(135deg,#3b5bdb 0 55%,#c5d0fa 55%); flex:none}
+  .div{height:1px; background:#e2e5ea; margin:2px 12px 4px}
+  .box{width:32px; height:32px; border-radius:9px; flex:none; display:flex; align-items:center; justify-content:center; font-size:18px; position:relative}
+  .box.add{border:1px dashed var(--faint); color:var(--faint); font-size:16px}
+  .box.tool{background:#e9ecf0; color:#6b7280; transition:background .12s}
+  .row.hov .box.tool{background:#dfe3e8; color:#495057}
+  .badge{position:absolute; top:-5px; right:-6px; min-width:15px; height:15px; padding:0 4px; border-radius:8px; background:var(--accent); color:#fff;
+    font-size:9.5px; font-weight:800; line-height:15px; text-align:center; border:2px solid #f5f6f8; box-sizing:content-box}
+  .ava{width:32px; height:32px; border-radius:50%; flex:none; background:#dfe2ea; border:2px solid #fff; box-shadow:0 0 0 1px #e2e5ea; transition:box-shadow .12s}
+  .row.hov .ava{box-shadow:0 0 0 1px #c9ced6}
+  .ava.on{box-shadow:0 0 0 2px var(--accent)}
+
+  /* 툴팁 — 레일 바로 오른쪽, 줄 가운데에 맞춤 */
+  .tip{position:absolute; left:62px; transform:translateY(50%); white-space:nowrap; font-size:12px; font-weight:600; padding:6px 9px; border-radius:7px; z-index:5; pointer-events:none}
+  .tip::before{content:""; position:absolute; left:-4px; top:50%; width:8px; height:8px; transform:translateY(-50%) rotate(45deg); border-radius:1px}
+  .tip.a{background:#1f2430; color:#fff}
+  .tip.a::before{background:#1f2430}
+  .tip.b{background:#fff; color:var(--ink); border:1px solid var(--border); box-shadow:0 6px 18px rgba(20,30,60,.14)}
+  .tip.b::before{background:#fff; border-left:1px solid var(--border); border-bottom:1px solid var(--border)}
+  .tip .n{margin-left:6px; font-weight:700; color:#9fb2ff}
+  .tip.b .n{color:var(--accent)}
+
+  /* 프로필 메뉴 — 받은 초대함 팝오버와 같은 모양(레일 옆, 줄 아래끝에 맞춤) */
+  .menu{position:absolute; left:62px; bottom:10px; width:200px; background:#fff; border:1px solid var(--border); border-radius:12px;
+    box-shadow:0 12px 32px rgba(20,30,60,.18); padding:6px 0; z-index:6}
+  .menu .who{padding:8px 14px 9px; font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .menu .sep{height:1px; background:#eef0f3; margin:0 0 4px}
+  .item{display:flex; align-items:center; gap:9px; height:34px; padding:0 14px; font-size:13px; color:#343a40; cursor:pointer}
+  .item svg{width:15px; height:15px; color:var(--muted)}
+  .item.hov, .item:hover{background:#f3f4f7}
+
+  /* 직접 해 보는 레일 — 마우스를 올리면 툴팁, 프로필을 누르면 메뉴 */
+  .live .tip{display:none}
+  .live .row:hover .box.tool{background:#dfe3e8; color:#495057}
+  .live .row:hover .ava{box-shadow:0 0 0 1px #c9ced6}
+  .live .row:hover > .tip{display:block; animation:tipIn .12s ease}
+  .live .menu{display:none}
+  .live.menu-open .menu{display:block; animation:popIn .14s ease}
+  .live.menu-open .ava{box-shadow:0 0 0 2px var(--accent)}
+  .live.menu-open .row.acct > .tip{display:none}
+  @keyframes tipIn{from{opacity:0; transform:translate(-3px,50%)} to{opacity:1; transform:translate(0,50%)}}
+  @keyframes popIn{from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none}}
+</style>
+</head>
+<body>
+<h1>작은 화면 레일 — 툴팁과 프로필 메뉴 시안</h1>
+<p class="note">작은 화면에서는 조직 레일이 접힌 채(아이콘만) 펼쳐지지 않아서 <b>설정·받은 초대</b>가 무엇인지 이름이 안 보이고, <b>로그아웃 버튼은 아예 보이지 않는다</b>(로그아웃은 레일이 펼쳐질 때만 나온다).
+설정·받은 초대에 마우스를 올리면 레일 바로 오른쪽에 이름이 뜨고, 프로필을 누르면 로그아웃 메뉴가 뜬다. 큰 화면(마우스를 올리면 레일이 펼쳐지는 화면)은 지금 그대로다.
+각 안의 프레임은 <b>설정에 올림</b>, <b>받은 초대에 올림(2개)</b>, <b>프로필을 누름</b>, 마지막은 <b>직접 해 보기</b>.</p>
+
+<h2><span class="tag rec">A안 · 추천</span> 어두운 툴팁</h2>
+<div class="pair" id="a"></div>
+<p class="why">진한 바탕에 흰 글자의 작은 말풍선. Slack·Discord·VS Code처럼 아이콘만 있는 레일에서 흔히 보는 모양이고, 흰 카드인 받은 초대함·프로필 메뉴와 섞이지 않아
+<b>‘누르면 뜨는 창’과 ‘이름만 알려 주는 표시’가 한눈에 구분</b>된다. 다크 모드에서는 바탕과 글자 색을 뒤집는다(밝은 바탕에 어두운 글자).</p>
+
+<h2><span class="tag">B안</span> 밝은 툴팁</h2>
+<div class="pair" id="b"></div>
+<p class="why">받은 초대함 팝오버와 같은 흰 바탕·테두리·그림자. 앱의 다른 떠 있는 창과 모양이 같아 차분하지만, 이름만 알려 주는 표시와 누르면 뜨는 창이 같은 모양이라
+프로필 메뉴와 나란히 있으면 둘의 성격이 덜 구분된다.</p>
+
+<h2>공통 — 프로필 메뉴</h2>
+<p class="why">받은 초대함 팝오버와 같은 규칙: 레일 옆에 줄 아래끝을 맞춰 띄우고, 바깥을 누르거나 Esc로 닫는다. 작은 화면에서는 이메일도 안 보이므로
+메뉴 맨 위에 <b>지금 로그인한 이메일</b>을 흐리게 두고, 그 아래에 <b>로그아웃</b> 한 줄. 누른 동안 프로필 사진에 강조색 테두리가 생긴다.
+툴팁은 기다림 없이 바로 뜬다(브라우저 기본 툴팁은 1초쯤 기다려야 뜬다). 프로필에는 툴팁을 두지 않는다 — 누르면 바로 메뉴에 이메일이 보이기 때문.</p>
+
+<script>
+const ICON = {
+  gear: `<svg class="i" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  mail: `<svg class="i" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>`,
+  out: `<svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>`,
+};
+const EMAIL = "jina@example.com";
+// 줄 가운데 높이(레일 아래에서): 아래 여백 10 + 줄 40 + 간격 5
+const MID = { acct: 30, inbox: 75, settings: 120 };
+
+const tip = (v, at, text, n) => `<span class="tip ${v}" style="bottom:${MID[at]}px">${text}${n ? `<span class="n">${n}</span>` : ""}</span>`;
+const liveTip = (v, text, n) => `<span class="tip ${v}" style="bottom:20px">${text}${n ? `<span class="n">${n}</span>` : ""}</span>`;
+const menu = () => `
+  <div class="menu">
+    <div class="who">${EMAIL}</div>
+    <div class="sep"></div>
+    <div class="item">${ICON.out}로그아웃</div>
+  </div>`;
+
+/** v: a | b, state: settings | inbox | acct | live */
+function stage(v, state) {
+  const live = state === "live";
+  const hov = (k) => (!live && state === k ? " hov" : "");
+  const rowTip = (k, text, n) => (live ? liveTip(v, text, n) : "");
+  const outside = live ? "" : state === "acct" ? menu() : state === "settings" ? tip(v, "settings", "설정") : tip(v, "inbox", "받은 초대", 2);
+  return `
+    <div class="stage${live ? " live" : ""}" data-v="${v}">
+      <div class="board"><i style="width:60%"></i><i style="width:35%"></i><i class="c"></i><i class="c"></i><i class="c"></i></div>
+      <div class="rail">
+        <div class="logo"><i></i></div>
+        <div class="div"></div>
+        <div class="row"><span class="bar"></span><span class="box emo" style="background:linear-gradient(#ffc83d,#f5a623)">🏠</span></div>
+        <div class="row"><span class="box emo" style="background:#fff3bf">🚀</span></div>
+        <div class="row"><span class="box add">+</span></div>
+        <div style="flex:1"></div>
+        <div class="div"></div>
+        <div class="row${hov("settings")}"><span class="box tool">${ICON.gear}</span>${rowTip("settings", "설정")}</div>
+        <div class="row${hov("inbox")}"><span class="box tool">${ICON.mail}<span class="badge">2</span></span>${rowTip("inbox", "받은 초대", 2)}</div>
+        <div class="row acct${hov("acct")}"><span class="ava${state === "acct" ? " on" : ""}"></span></div>
+      </div>
+      ${live ? menu() : outside}
+    </div>`;
+}
+
+function frames(v) {
+  const items = [["설정에 올림", stage(v, "settings")], ["받은 초대에 올림", stage(v, "inbox")], ["프로필을 누름", stage(v, "acct")], ["직접 해 보기", stage(v, "live")]];
+  document.getElementById(v).innerHTML = items.map(([c, h]) => `<div><div class="cap">${c}</div>${h}</div>`).join("");
+}
+frames("a");
+frames("b");
+
+// 직접 해 보기: 프로필을 누르면 메뉴, 바깥을 누르거나 Esc면 닫힘
+document.querySelectorAll(".stage.live").forEach((s) => {
+  s.querySelector(".row.acct").addEventListener("click", (e) => { e.stopPropagation(); s.classList.toggle("menu-open"); });
+  s.querySelector(".menu").addEventListener("click", (e) => e.stopPropagation());
+});
+document.addEventListener("click", () => document.querySelectorAll(".stage.live.menu-open").forEach((s) => s.classList.remove("menu-open")));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll(".stage.live.menu-open").forEach((s) => s.classList.remove("menu-open")); });
+</script>
+</body>
+</html>

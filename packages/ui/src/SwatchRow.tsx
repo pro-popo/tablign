@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 import { normalizeHex } from "./color";
 import { ColorPicker } from "./ColorPicker";
 import { Pipette } from "./icons";
@@ -31,6 +32,7 @@ export interface SwatchRowProps {
 
 /** 색 칸 줄 + 끝의 무지개 칸. 무지개 칸을 누르면 칸 줄 바로 밑에 '직접 고르기' 팝오버가 뜬다(아래 내용을 밀지 않고 겹친다). */
 export function SwatchRow({ colors, value, onChange, columns, shape = "tile", labels, customSelected, keepOpenSelector }: SwatchRowProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const customRef = useRef<HTMLButtonElement>(null);
   const v = normalizeHex(value) ?? value;
@@ -50,7 +52,7 @@ export function SwatchRow({ colors, value, onChange, columns, shape = "tile", la
           return <button key={c} type="button" title={labels?.[i] ?? c} aria-label={labels?.[i] ?? c} aria-pressed={on}
             onClick={() => onChange(normalizeHex(c) ?? c)} style={cell(c, on)} />;
         })}
-        <button ref={customRef} type="button" title="직접 고르기" aria-label="직접 고르기" aria-expanded={open} aria-pressed={isCustom}
+        <button ref={customRef} type="button" title={t.swatchRow.custom} aria-label={t.swatchRow.custom} aria-expanded={open} aria-pressed={isCustom}
           onClick={() => setOpen((o) => !o)}
           style={cell(isCustom ? v : circle ? RAINBOW : RAINBOW_SOFT, isCustom && !open)} />
       </div>
@@ -65,6 +67,7 @@ function ColorPopover({ value, onChange, onClose, triggerRef, keepOpenSelector }
   value: string; onChange: (hex: string) => void; onClose: () => void;
   triggerRef: RefObject<HTMLElement>; keepOpenSelector?: string;
 }) {
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [tailX, setTailX] = useState(0);
   const close = useRef(onClose);
@@ -96,7 +99,7 @@ function ColorPopover({ value, onChange, onClose, triggerRef, keepOpenSelector }
   };
 
   return (
-    <div ref={ref} role="dialog" aria-label="직접 고르기"
+    <div ref={ref} role="dialog" aria-label={t.swatchRow.custom}
       style={{ position: "absolute", left: 0, right: 0, top: "calc(100% + 10px)", zIndex: 40, padding: 12, borderRadius: 14, boxSizing: "border-box",
         background: theme.surface, boxShadow: `0 0 0 1px ${theme.border}, 0 14px 32px rgba(20,30,60,.18)`, animation: "tbl-pop-in .14s ease-out" }}>
       <style>{popCss}</style>
@@ -104,7 +107,7 @@ function ColorPopover({ value, onChange, onClose, triggerRef, keepOpenSelector }
         background: theme.surface, boxShadow: `-1px -1px 0 0 ${theme.border}` }} />
       <ColorPicker value={value} onChange={onChange}
         extra={Eye ? (
-          <button type="button" title="화면에서 색 따기" aria-label="화면에서 색 따기" onClick={pick}
+          <button type="button" title={t.swatchRow.eyedropper} aria-label={t.swatchRow.eyedropper} onClick={pick}
             style={{ width: 30, height: 30, flex: "none", border: `1px solid ${theme.border}`, borderRadius: 8, background: theme.surface, color: theme.textSub,
               display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
             <Pipette size={14} />

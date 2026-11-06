@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
 
 /**
@@ -42,19 +43,20 @@ const importSourceCss = `
 }
 `;
 
-const JSON_STRUCTURE = [["groups", "스페이스"], ["lists", "컬렉션"], ["cards", "링크"], ["url", "주소"]] as const;
+const JSON_STRUCTURE = ["groups", "lists", "cards", "url"] as const;
 
 /** 가져올 수 있는 JSON의 경로 한 줄 — 키 이름 아래에 뜻을 작게. 말풍선과 잘못된 파일 얼럿이 같이 쓴다. */
 export function JsonStructurePath() {
+  const t = useT();
   return (
     <span style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-      {JSON_STRUCTURE.map(([key, meaning], i) => (
+      {JSON_STRUCTURE.map((key, i) => (
         <Fragment key={key}>
           {i > 0 && <span style={{ color: theme.textFaint, fontSize: 12, lineHeight: "16px" }}>›</span>}
           <span style={{ display: "flex", flexDirection: "column" }}>
             <code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 11,
               color: theme.accentInk, lineHeight: "16px" }}>{key}</code>
-            <span style={{ fontSize: 10.5, color: theme.textFaint, lineHeight: "14px" }}>{meaning}</span>
+            <span style={{ fontSize: 10.5, color: theme.textFaint, lineHeight: "14px" }}>{t.importSourceDialog.structure[key]}</span>
           </span>
         </Fragment>
       ))}
@@ -73,11 +75,14 @@ export interface ImportSourceDialogProps {
 
 /** 가져오기 소스 선택 — 미리보기 다이얼로그(ImportBookmarksDialog) 앞에 끼우는 한 장. */
 export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: ImportSourceDialogProps) {
+  const t = useT();
+  // '구조' 말풍선을 문장 중간에 끼운다
+  const [jsonBefore, jsonAfter] = t.importSourceDialog.jsonDesc.split("{term}");
   const fileRef = useRef<HTMLInputElement>(null);
   // 소스 하나를 고르면 양쪽 버튼을 모두 잠근다 — 파일을 읽는 사이 다른 소스를
   // 트리거하면 나중에 끝나는 쪽이 미리보기를 조용히 덮어쓴다.
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
   // 읽는 도중 다이얼로그가 닫히면(open=false) 늦게 도착한 결과를 버린다 —
   // 취소한 줄 알았던 미리보기가 잠시 후 되살아나면 안 된다.
   const openRef = useRef(open);
@@ -86,7 +91,7 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
   useEffect(() => {
     if (!open) return;
     setBusy(false);
-    setError(null);
+    setError(false);
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -96,7 +101,7 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
 
   async function pickBookmarks() {
     setBusy(true);
-    setError(null);
+    setError(false);
     try {
       await onBookmarks();
     } finally {
@@ -108,7 +113,7 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
   async function onFilePicked(file: File | undefined) {
     if (!file) return;
     setBusy(true);
-    setError(null);
+    setError(false);
     try {
       // File.text()는 jsdom에 없다 — FileReader는 브라우저·테스트 양쪽에서 동작한다
       const text = await new Promise<string>((resolve, reject) => {
@@ -119,7 +124,7 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
       });
       if (openRef.current) onTobyFile(text);
     } catch {
-      if (openRef.current) setError("파일을 읽지 못했어요. 다시 시도해 주세요.");
+      if (openRef.current) setError(true);
     } finally {
       setBusy(false);
       // 같은 파일을 다시 골라도 change가 뜨도록 초기화
@@ -142,20 +147,20 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,25,.38)", animation: overlayIn,
         display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
       <style>{overlayAnimationCss + importSourceCss}</style>
-      <div role="dialog" aria-modal="true" aria-label="가져오기" onClick={(e) => e.stopPropagation()}
+      <div role="dialog" aria-modal="true" aria-label={t.importSourceDialog.title} onClick={(e) => e.stopPropagation()}
         style={{ boxSizing: "border-box", width: 340, maxWidth: "calc(100vw - 32px)", animation: panelIn,
           background: theme.surface, borderRadius: 14, padding: "20px 18px 16px",
           boxShadow: "0 18px 50px rgba(0,0,0,.26)" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>가져오기</div>
-        <div style={{ marginTop: 4, fontSize: 12.5, color: theme.textMuted }}>어디서 가져올까요?</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>{t.importSourceDialog.title}</div>
+        <div style={{ marginTop: 4, fontSize: 12.5, color: theme.textMuted }}>{t.importSourceDialog.subtitle}</div>
 
         <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
           <button type="button" className="tbl-src-opt" style={option} disabled={busy} onClick={pickBookmarks}>
             <span aria-hidden className="tbl-src-ico" style={iconBox}>★</span>
             <span style={{ minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: theme.text }}>Chrome 북마크</span>
+              <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: theme.text }}>{t.importSourceDialog.chrome}</span>
               <span style={{ display: "block", marginTop: 2, fontSize: 12, color: theme.textMuted }}>
-                북마크바의 폴더를 그대로 옮겨요
+                {t.importSourceDialog.chromeDesc}
               </span>
             </span>
           </button>
@@ -164,13 +169,14 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
             onClick={() => fileRef.current?.click()}>
             <span aria-hidden className="tbl-src-ico" style={iconBox}>⬒</span>
             <span style={{ minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: theme.text }}>JSON 파일</span>
+              <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: theme.text }}>{t.importSourceDialog.json}</span>
               <span style={{ display: "block", marginTop: 2, fontSize: 12, color: theme.textMuted }}>
+                {jsonBefore}
                 <span className="tbl-src-term">
-                  구조
+                  {t.importSourceDialog.structureTerm}
                   <span className="tbl-src-tip" data-testid="json-structure-tip" aria-hidden><JsonStructurePath /></span>
                 </span>
-                에 맞는 JSON 파일을 골라주세요
+                {jsonAfter}
               </span>
             </span>
           </button>
@@ -179,7 +185,7 @@ export function ImportSourceDialog({ open, onBookmarks, onTobyFile, onClose }: I
         </div>
 
         {error && (
-          <p style={{ marginTop: 10, fontSize: 12, color: theme.danger }}>{error}</p>
+          <p style={{ marginTop: 10, fontSize: 12, color: theme.danger }}>{t.importSourceDialog.readFailed}</p>
         )}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 import { overlayAnimationCss, overlayIn, panelIn } from "./overlayAnimation";
 import { Button } from "./Button";
 
@@ -22,12 +23,13 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = "확인",
-  cancelLabel = "취소",
+  confirmLabel,
+  cancelLabel,
   danger = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const t = useT();
   useEffect(() => {
     if (!open) return;
     // 다른 다이얼로그 위에 뜨기도 하므로 캡처 단계에서 먼저 받고 멈춘다 —
@@ -62,13 +64,13 @@ export function ConfirmDialog({
           <div style={{ marginTop: 8, fontSize: 13, lineHeight: 1.5, color: theme.textMuted }}>{message}</div>
         )}
         <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          {cancelLabel !== null && <Button variant="outline" onClick={onCancel}>{cancelLabel}</Button>}
+          {cancelLabel !== null && <Button variant="outline" onClick={onCancel}>{cancelLabel ?? t.common.cancel}</Button>}
           <Button
             onClick={onConfirm}
             autoFocus
             style={danger ? { background: theme.danger } : undefined}
           >
-            {confirmLabel}
+            {confirmLabel ?? t.common.confirm}
           </Button>
         </div>
       </div>

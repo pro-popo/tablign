@@ -1,5 +1,6 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { theme } from "./theme";
+import { useT } from "./i18n";
 import { ColorPicker } from "./ColorPicker";
 import { parseColorValue, buildColorValue, type ColorValue } from "./colorValue";
 
@@ -30,6 +31,7 @@ function asGradient(v: ColorValue): GradientValue {
 }
 
 export function ColorGradientPicker({ value, onChange }: ColorGradientPickerProps) {
+  const t = useT();
   // 완전 제어형이면 클릭이 emit만 하고 로컬 재렌더를 유발하지 않아 즉시 반영되지 않는다.
   // ColorPicker와 동일한 self-echo 패턴으로 로컬 값을 두고, 외부 value가 내가 emit한 값과 다를 때만 동기화한다.
   const [localValue, setLocalValue] = useState(value);
@@ -113,7 +115,7 @@ export function ColorGradientPicker({ value, onChange }: ColorGradientPickerProp
   });
 
   const chip = (stop: ActiveStop, label: string, hex: string) => (
-    <button type="button" aria-label={`${label} 색 선택`} style={chipStyle(active === stop)} onClick={() => setActive(stop)}>
+    <button type="button" aria-label={t.colorGradientPicker.pick(label)} style={chipStyle(active === stop)} onClick={() => setActive(stop)}>
       <span style={{ width: 16, height: 16, borderRadius: 5, flex: "none", background: hex, boxShadow: "0 0 0 1px rgba(0,0,0,.08)" }} />
       <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.2 }}>
         <span style={{ fontSize: 8.5, color: theme.textFaint, fontWeight: 700, letterSpacing: ".3px" }}>{label}</span>
@@ -129,16 +131,16 @@ export function ColorGradientPicker({ value, onChange }: ColorGradientPickerProp
       <div ref={barRef} data-testid="gradient-bar" style={{ position: "relative", height: 24, borderRadius: 7,
         background: `linear-gradient(90deg, ${parsed.start} ${parsed.startPos}%, ${parsed.end} ${parsed.endPos}%)`,
         boxShadow: "0 0 0 1px rgba(0,0,0,.06)" }}>
-        <button type="button" aria-label="시작 색" style={handleStyle(parsed.start, active === "start", stopLeft(parsed.startPos))}
+        <button type="button" aria-label={t.colorGradientPicker.startColor} style={handleStyle(parsed.start, active === "start", stopLeft(parsed.startPos))}
           onPointerDown={(e) => onHandlePointerDown("start", e)} />
-        <button type="button" aria-label="끝 색" style={handleStyle(parsed.end, active === "end", stopLeft(parsed.endPos))}
+        <button type="button" aria-label={t.colorGradientPicker.endColor} style={handleStyle(parsed.end, active === "end", stopLeft(parsed.endPos))}
           onPointerDown={(e) => onHandlePointerDown("end", e)} />
       </div>
 
       {/* 중간 색 정보(시작·끝 hex) — 클릭 시 그 스톱 선택 */}
       <div style={{ display: "flex", gap: 8, margin: "13px 0" }}>
-        {chip("start", "시작", parsed.start)}
-        {chip("end", "끝", parsed.end)}
+        {chip("start", t.colorGradientPicker.start, parsed.start)}
+        {chip("end", t.colorGradientPicker.end, parsed.end)}
       </div>
 
       {/* 선택 스톱 편집 팔레트(항상 표시, hex 행 없음) */}
